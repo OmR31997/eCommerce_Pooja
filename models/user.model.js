@@ -26,8 +26,7 @@ const UserSchema = new mongoose.Schema({
         default: 'user'
     },
     otp: {
-        type: String,
-        required: [true, `'otp' field must be required`],
+        type: String
     },
     otpExpiresAt: {
         type: Date
@@ -43,4 +42,4 @@ const UserSchema = new mongoose.Schema({
     },
 }, {timestamps: true});
 
-export const User = mongoose.model('user', UserSchema)
+export const User = mongoose.model('user', UserSchema);

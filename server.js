@@ -4,7 +4,9 @@ import cors from 'cors';
 import CorsConfig from '../server-app/config/cors.config.js';
 import {DB_Connect, DB_Disconnect} from './config/db.config.js';
 
-import UserRoute from './routes/user.route.js';
+import AuthRoute from './routes/auth.route.js'; 
+import VendorRoute from './routes/vendor.route.js';
+
 const appServer = express();
 appServer.use(express.json());
 appServer.use(express.urlencoded({extended: true}));
@@ -17,6 +19,8 @@ appServer.get('/api/health', async (req, res) => {
     res.status(200).json({message: 'API health is good!'});
 });
 
-appServer.use('/api/user', UserRoute);
+appServer.use('/api/auth', AuthRoute);
+appServer.use('/api/vendor', VendorRoute);
+
 const port = process.env.PORT;
 appServer.listen(port, () => console.log(`Server is running at http://localhost:${port}/api/health`));

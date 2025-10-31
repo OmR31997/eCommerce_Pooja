@@ -1,9 +1,8 @@
 import mongoose from "mongoose";
-
 export const DB_Connect = async (DB_URI) => {
     
     if (!DB_URI || DB_URI.length === 0) {
-        console.log('DB_URI Missing');
+        throw new Error('DB_URI is missing!');
     }
 
     try {
