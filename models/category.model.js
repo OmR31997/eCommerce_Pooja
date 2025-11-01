@@ -4,18 +4,17 @@ const CategorySchema = new mongoose.Schema({
     name: {
         type: String,
         trim: true,
-        required: true,
+        required: [true, `'name' field must be required`],
     },
     slug: {
         type: String,
         unique: true,
         lowercase: true,
         trim: true,
-        required: true,
     },
     description: {
         type: String,
-        required: true,
+        required: [true, `'description' field must be required`],
     },
     imageUrl: {
         type: String,
@@ -27,13 +26,5 @@ const CategorySchema = new mongoose.Schema({
         default: 'active',
     },
 }, {timestamps: true});
-
-//Auto generates slug via name if not provided case
-CategorySchema.pre('save', function(next) {
-    if(!this.slug && this.name) {
-        this.slug = this.name.toLowerCase().replace(/\s+/g, '-');
-    }
-    next();
-});
 
 export const Category = mongoose.model('category', CategorySchema);

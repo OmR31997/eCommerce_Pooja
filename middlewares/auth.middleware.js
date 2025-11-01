@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 export const authentication = async (req, res, next) => {
     const authHeader = req.headers['authorization'];
 
-    if(!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({
             error: 'Unauthorized: Token not provided',
         });
@@ -14,13 +14,13 @@ export const authentication = async (req, res, next) => {
     try {
         const decode = jwt.verify(token, process.env.JWT_SECRET);
 
-        if(!decode) {
+        if (!decode) {
             return res.status(401).json({
                 error: 'Invalid or expired token',
             });
         }
 
-        req.user = decode; 
+        req.user = decode;
 
         next();
 
@@ -34,7 +34,7 @@ export const authentication = async (req, res, next) => {
 
 export const authorization = {
     ADMIN: (req, res, next) => {
-        if(req.user?.role ==='admin') {
+        if (req.user?.role === 'admin') {
             return next();
         }
 
@@ -44,7 +44,7 @@ export const authorization = {
     },
 
     VENDOR: (req, res, next) => {
-        if(req.user?.role ==='vendor') {
+        if (req.user?.role === 'vendor') {
             return next();
         }
 
@@ -54,10 +54,12 @@ export const authorization = {
     },
 
     CUSTOMER: (req, res, next) => {
-        if(req.user?.role ==='user') {
-            return res.status(403).json({
-                error: 'Access denied: Customer Only Authorized'
-            })
+        if (req.user?.role === 'user') {
+            return next();
         }
+
+        return res.status(403).json({
+            error: 'Access denied: Customer Only Authorized'
+        })
     }
 }

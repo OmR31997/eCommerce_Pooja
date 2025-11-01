@@ -1,5 +1,5 @@
 import express from 'express';
-import { forgor_password, reset_password, send_otp, sign_in, sign_up } from '../controllers/auth.controller.js';
+import { confirm_signIn_otp, forgot_password, reset_password, send_otp, sign_in, sign_up } from '../controllers/auth.controller.js';
 
 const router = express.Router();
 
@@ -21,8 +21,22 @@ router.post('/sign-up', sign_up);
 */
 router.post('/sign-in', sign_in);
 
-router.post('/forgot-password', forgor_password);
+/* *Description -> OTP Confirmation 
+   *End-Point -> /api/auth/confirm-otp-signIn
+   *Methtod -> POST
+*/
+router.post('/confirm-otp-signIn', confirm_signIn_otp);
 
+/* *Description -> to update password if forgotten 
+   *End-Point -> /api/auth/forgot-password
+   *Methtod -> POST
+*/
+router.post('/forgot-password', forgot_password);
+
+/* *Description -> to update password, verify the otp or token 
+   *End-Point -> /api/auth/reset-password
+   *Methtod -> POST
+*/
 router.post('/reset-password', reset_password);
 
 export default router;

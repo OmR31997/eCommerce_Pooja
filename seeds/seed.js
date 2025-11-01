@@ -14,7 +14,7 @@ const seedDatabase = async () => {
     const existAdmin = await User.findOne({ role: "admin" });
 
     if (!existAdmin || existAdmin.length === 0) {
-      const userData = {
+      const adminRecord = new User({
         name: 'admin',
         email: process.env.ADMIN_EMAIL,
         phone: '9009828489',
@@ -22,9 +22,11 @@ const seedDatabase = async () => {
         role: process.env.ROLE,
         isVerified: true,
         status: 'active',
-      }
+      });
 
-      const responseUser = await User.create(userData);
+      adminRecord.allowAdminSeed = true;
+      
+      const responseUser = await adminRecord.save();
 
       const responseAdmin = await Admin.create({
         userId: responseUser._id,
@@ -41,6 +43,7 @@ const seedDatabase = async () => {
         message: 'Admin seeded successfully',
         email: responseUser.email,
         phone: responseUser.phone,
+        adminId: responseAdmin._id,
         // AdminID: responseAdmin._id
       });
 

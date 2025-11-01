@@ -1,51 +1,8 @@
 import { User } from '../models/user.model.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import crypto from 'crypto'
-
-// **In-Memory Cache (for testing in small project)
-const otpStore = new Map();
-
-const resetTokenStore = new Map();
-
-export const set_otp = (key, otp, ttlMs) => {
-    otpStore.set(key, {
-        otp,
-        expiresAt: Date.now() + ttlMs
-    });
-
-    setTimeout(() => otpStore.delete(key), ttlMs);
-}
-
-export const verifyOtp = (key, otp) => {
-    const entry = otpStore.get(key);
-    if (!entry) {
-        return {
-            valid: false,
-            reason: 'OTP expired or not found',
-        }
-    }
-
-    if (Date.now() > entry.expiresAt) {
-        otpStore.delete(key);
-        return {
-            reason: 'OTP expired',
-            valid: false,
-        }
-    }
-
-    if (entry.otp !== otp) {
-        return {
-            reason: 'Invalid OTP',
-            valid: false,
-        }
-    }
-
-    otpStore.delete(key);
-
-    return { valid: true };
-};
-/* **End In-Memory** */
+import { generateOtp, otpStore, verifyOtp } from '../services/otp.service.js';
+import { generateEncryptedToken, resetTokenStore } from '../services/token.service.js';
 
 export const send_otp = async (req, res) => {
     try {
@@ -58,22 +15,20 @@ export const send_otp = async (req, res) => {
             });
         }
 
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const ttlMs = 5 * 60 * 1000;
-        const otpExpiresAt = new Date(Date.now() + ttlMs);
-        const key = phone || email
-
-        set_otp(key, otp, ttlMs);
+        const key = email || phone;
+        const { otp, message, otpExpiresAt } = generateOtp(key)
 
         console.log({
             otp,
+            message,
             otpExpiresAt,
-        });
+        })
 
         return res.status(200).json({
             message: 'OTP generated successfully',
-            expiresIn: '5 minutes'
+            otpExpiresAt,
         });
+
     } catch (error) {
         return res.status(500).json({
             error: error.message,
@@ -104,7 +59,18 @@ export const sign_up = async (req, res) => {
             });
         }
 
-        const otpKey = phone || email;
+        let otpKey = null;
+        if (otpStore.has(email))
+            otpKey = email;
+        else if (otpStore.has(phone))
+            otpKey = phone;
+
+        if (!otpKey) {
+            return res.status(400).json({
+                error: 'No OTP found for this email or phone. Please request OTP again.',
+                success: false
+            });
+        }
         const verification = verifyOtp(otpKey, otp);
 
         if (!verification.valid) {
@@ -122,10 +88,10 @@ export const sign_up = async (req, res) => {
 
         const response = await User.create(userData);
 
-        return res.status(200).json({
+        return res.status(201).json({
             data: {
                 message: 'User created successfully with OTP verification',
-                ...response,
+                data: response._doc,
                 success: true
             },
         })
@@ -144,14 +110,6 @@ export const sign_up = async (req, res) => {
             });
         }
 
-        if (error.code === 11000) {
-            const field = Object.keys(error.keyValue)[0];
-            return res.status(400).json({
-                error: `${field} already exists`,
-                success: false,
-            })
-        }
-
         return res.status(500).json({
             error: error.message,
             message: 'Internal Server Error',
@@ -161,7 +119,8 @@ export const sign_up = async (req, res) => {
 }
 
 export const sign_in = async (req, res) => {
-    const { email, phone, password, otp } = req.body;
+    const { email, phone, password } = req.body;
+
     const errors = [];
 
     if ((email && phone) || !(email || phone)) {
@@ -170,9 +129,6 @@ export const sign_in = async (req, res) => {
 
     if (!password)
         errors.push(`'password' field must be required`);
-
-    if (!otp)
-        errors.push(`'otp' field must be required`);
 
     if (errors.length > 0) {
         return res.status(400).json({
@@ -198,15 +154,6 @@ export const sign_in = async (req, res) => {
                 success: false
             })
         }
-        const otpKey = phone || email;
-        const verification = verifyOtp(otpKey, otp);
-
-        if (!verification.valid) {
-            return res.status(400).json({
-                error: verification.reason,
-                success: false,
-            });
-        }
 
         const isValidPassword = await bcrypt.compare(password, existUser.password);
 
@@ -217,13 +164,18 @@ export const sign_in = async (req, res) => {
             })
         }
 
-        const accessToken = await jwt.sign({
-            userId: existUser._id,
-            role: existUser.role,
-        }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        const otpKey = phone || email;
+        const { otp, otpExpiresAt, message } = generateOtp(otpKey);
+
+        console.log({
+            otp,
+            message,
+            otpExpiresAt,
+        });
 
         return res.status(200).json({
-            accessToken,
+            message: 'OTP has been sent successfully',
+            warning: 'OTP expired in 5 minutes',
             success: true,
         });
 
@@ -236,7 +188,62 @@ export const sign_in = async (req, res) => {
     }
 }
 
-export const forgor_password = async (req, res) => {
+export const confirm_signIn_otp = async (req, res) => {
+    try {
+        const { otp, phone, email } = req.body;
+
+        const errors = [];
+        if ((email && phone) || !(email || phone)) {
+            errors.push(`Field either 'email' or 'phone' must be required`);
+        }
+
+        if (!otp)
+            errors.push(`'otp' field must be required`);
+
+        if (errors.length > 0) {
+            return res.status(400).json({
+                errors,
+                message: 'Validatior failed',
+                success: false,
+            });
+        }
+
+        const existUser = await User.findOne({ $or: [{ email }, { phone }] });
+        if (!existUser) {
+            return res.status(404).json({ error: 'User not found', success: false });
+        }
+
+        const otpKey = phone || email;
+        const verification = verifyOtp(otpKey, otp);
+
+        if (!verification.valid) {
+            return res.status(400).json({
+                error: verification.reason,
+                success: false
+            });
+        }
+
+        const accessToken = jwt.sign({
+            userId: existUser._id,
+            role: existUser.role,
+        }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+        return res.status(200).json({
+            message: 'OTP has been verified successfully',
+            accessToken,
+            success: false,
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            error: error.message,
+            message: 'Internal Server Error',
+            success: false,
+        });
+    }
+}
+
+export const forgot_password = async (req, res) => {
     try {
         const { email, phone } = req.body;
 
@@ -260,18 +267,28 @@ export const forgor_password = async (req, res) => {
             });
         }
 
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        /* *Via OTP * */
         const key = email || phone;
-        set_otp(key, otp, 5 * 60 * 1000);
+        const { otp, message, otpExpiresAt } = generateOtp(key)
 
         console.log({
             otp,
-            message: 'Otp Expires in 5 minutes'
-        });
+            message,
+            otpExpiresAt,
+        })
+
+        /* *Via Token Encryption-Decryption* */
+        // const { resetToken, tokenExpiresAt, message } = generateEncryptedToken(existUser._id);
+
+        // console.log({
+        //     token: resetToken,
+        //     message,
+        //     tokenExpiresAt
+        // });
 
         return res.status(200).json({
             message: 'OTP generated successfully',
-            expiresIn: '5 minutes'
+            otpExpiresAt,
         })
     } catch (error) {
         return res.status(500).json({
@@ -283,10 +300,16 @@ export const forgor_password = async (req, res) => {
 }
 
 export const reset_password = async (req, res) => {
-    const { otp, newPassword, phone, email } = req.body;
+    const { otp, token, newPassword, phone, email } = req.body;
 
     const errors = [];
 
+    /* *In Token Case* */
+    // if (!token) {
+    //     errors.push(`'token' field must be required`);
+    // }
+
+    /* *In OTP Case* */
     if ((email && phone) || !(email || phone)) {
         errors.push(`Field either 'email' or 'phone' must be required`);
     }
@@ -306,6 +329,7 @@ export const reset_password = async (req, res) => {
     }
 
     try {
+        /* *OTP-Case* */
         const otpKey = phone || email;
         const verification = verifyOtp(otpKey, otp);
 
@@ -316,10 +340,39 @@ export const reset_password = async (req, res) => {
             });
         }
 
+        /* *Token-Case* */
+        // const tokenData = resetTokenStore.get(token);
+
+        // if (!tokenData) {
+        //     return res.status(400).json({
+        //         error: 'Invalid or expired token',
+        //     });
+        // }
+
+        // if (tokenData.expiresAt < Date.now()) {
+        //     resetTokenStore.delete(token);
+        //     return res.status(400).json({
+        //         error: 'Token expired',
+        //     });
+        // }
+
+        // const existUser = await User.findById(tokenData.userId);
+
+        // if (!existUser) {
+        //     return res.status(400).json({
+        //         error: `User not found`
+        //     })
+        // }
+
         const hashedPassword = await bcrypt.hash(newPassword, 10);
 
+        /* *Token-Case* */
+        // existUser.password = hashedPassword;
+        // const response = await existUser.save();
+
+        /* *OTP-Case* */
         const filter = email ? { email } : { phone };
-        const response = await User.findOneAndUpdate(filter, {$set: {password: hashedPassword, resetRequestedAt: new Date()}}, {new: true});
+        const response = await User.findOneAndUpdate(filter, { $set: { password: hashedPassword } }, { new: true });
 
         return res.json({
             message: 'Password Updated successfully',
