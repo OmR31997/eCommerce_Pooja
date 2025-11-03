@@ -1,10 +1,11 @@
 import { Category } from '../models/category.model.js';
 
+/* **create_product_category logic here** */
 export const create_product_category = async (req, res) => {
     try {
         const { name, slug } = req.body;
 
-        if(!name) {
+        if (!name) {
             return res.status(400).json({
                 error: `'name' field must be required`,
                 success: false,
@@ -49,6 +50,34 @@ export const create_product_category = async (req, res) => {
             });
         }
 
+        return res.status(500).json({
+            error: error.message,
+            message: 'Internal Server Error',
+            success: false,
+        });
+    }
+}
+
+/* **view_categories logic here** */
+export const view_categories = async (req, res) => {
+    try {
+        const { slug } = req.params;
+
+        const categories = await Category.find({ status: 'active' });
+
+        if (categories.length === 0) {
+            return res.status(404).json({
+                error: 'Category not found',
+                success: false,
+            });
+        }
+
+        return res.status(200).json({
+            data: categories,
+            success: true,
+        });
+
+    } catch (error) {
         return res.status(500).json({
             error: error.message,
             message: 'Internal Server Error',

@@ -2,6 +2,7 @@ import { User } from '../models/user.model.js';
 import { Vendor } from '../models/vendor.model.js';
 import { generateOtp, verifyOtp } from '../services/otp.service.js';
 
+/* **vendor_signup logic here** */
 export const vendor_signup = async (req, res) => {
     try {
 
@@ -83,10 +84,11 @@ export const vendor_signup = async (req, res) => {
     }
 }
 
+/* **confirm_otp logic here** */
 export const confirm_otp = async (req, res) => {
     try {
         const { otp, businessEmail } = req.body;
-        const { userId } = req.user;
+        const { id } = req.user;
 
         const errors = [];
 
@@ -116,13 +118,13 @@ export const confirm_otp = async (req, res) => {
         }
 
         const vendorData = {
-            userId,
             ...req.body,
+            userId: id,
         }
 
         const responseVendor = await Vendor.create(vendorData);
 
-        const responseUser = await User.findByIdAndUpdate(userId, { $set: { role: 'vendor' } }, { new: true });;
+        const responseUser = await User.findByIdAndUpdate(id, { $set: { role: 'vendor' } }, { new: true });;
 
         return res.status(202).json({
             responseVendor,
@@ -134,5 +136,18 @@ export const confirm_otp = async (req, res) => {
             message: 'Internal Server Error',
             success: false,
         });
+    }
+}
+
+/* **get_vendor_dashboard logic here** */
+export const get_vendor_dashboard = async (req, res) => {
+    try {
+        
+    } catch (error) {
+        return res.status(500).json({
+            error: error.message,
+            message: 'Internal Server Error',
+            success: false,
+        })
     }
 }

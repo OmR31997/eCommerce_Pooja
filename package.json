@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node server.js",
+    "seed:dev": "node ./seeds/seed.js",
+    "start:dev": "nodemon server.js",
+    "start:prod": "cross-env NODE_ENV=production node server.js"
   },
   "keywords": [],
   "author": "",
@@ -19,5 +22,8 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.19.2",
     "multer": "^2.0.2"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0"
   }
 }

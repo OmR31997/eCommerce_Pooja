@@ -3,7 +3,9 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { generateOtp, otpStore, verifyOtp } from '../services/otp.service.js';
 import { generateEncryptedToken, resetTokenStore } from '../services/token.service.js';
+import { Vendor } from '../models/vendor.model.js';
 
+/* **send_otp logic here** */
 export const send_otp = async (req, res) => {
     try {
         const { phone, email } = req.body;
@@ -34,10 +36,11 @@ export const send_otp = async (req, res) => {
             error: error.message,
             message: 'Internal Server Error',
             success: false
-        })
+        });
     }
 }
 
+/* **sign_up logic here** */
 export const sign_up = async (req, res) => {
     try {
         const { email, phone, otp, password } = req.body;
@@ -118,6 +121,7 @@ export const sign_up = async (req, res) => {
     }
 }
 
+/* **sign_in logic here** */
 export const sign_in = async (req, res) => {
     const { email, phone, password } = req.body;
 
@@ -188,6 +192,7 @@ export const sign_in = async (req, res) => {
     }
 }
 
+/* **confirm_signIn_otp logic here** */
 export const confirm_signIn_otp = async (req, res) => {
     try {
         const { otp, phone, email } = req.body;
@@ -223,10 +228,23 @@ export const confirm_signIn_otp = async (req, res) => {
             });
         }
 
-        const accessToken = jwt.sign({
-            userId: existUser._id,
-            role: existUser.role,
-        }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        let accessToken = undefined;
+        if (existUser.role === 'vendor') {
+            const vendor = await Vendor.findOne({userId: existUser._id}).select('_id shopName');
+            console.log(vendor)
+            accessToken = jwt.sign({
+                id: vendor._id,
+                shopName: vendor.shopName,
+                role: existUser.role,
+            }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        }
+        else {
+            accessToken = jwt.sign({
+                id: existUser._id,
+                name: existUser.name,
+                role: existUser.role,
+            }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        }
 
         return res.status(200).json({
             message: 'OTP has been verified successfully',
@@ -243,6 +261,7 @@ export const confirm_signIn_otp = async (req, res) => {
     }
 }
 
+/* **forgot_password logic here** */
 export const forgot_password = async (req, res) => {
     try {
         const { email, phone } = req.body;
@@ -299,6 +318,7 @@ export const forgot_password = async (req, res) => {
     }
 }
 
+/* **reset_password logic here** */
 export const reset_password = async (req, res) => {
     const { otp, token, newPassword, phone, email } = req.body;
 
@@ -356,7 +376,7 @@ export const reset_password = async (req, res) => {
         //     });
         // }
 
-        // const existUser = await User.findById(tokenData.userId);
+        // const existUser = await User.findById(tokenData.id);
 
         // if (!existUser) {
         //     return res.status(400).json({

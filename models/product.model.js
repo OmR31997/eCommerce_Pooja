@@ -4,35 +4,35 @@ const ProductSchema = new mongoose.Schema({
     vendorId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Vendor',
-        required: true,
+        required: [true, `'vendorId' field must be required`],
     },
     categoryId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Category',
-        required: true,
+        required: [true, `'categoryId' field must be required`],
     },
     name: {
         type: String,
         trim: true,
-        required: true,
+        required: [true, `'name' field must be required`],
     },
     description: {
         type: String,
-        required: true,
+        required: [true, `'description' field must be required`],
     },
     price: {
         type: Number,
-        required: true,
-    } ,
+        required: [true, `'price' field must be required`],
+    },
     stock: {
         type: Number,
         default: 0,
     },
-    sku: {
+    sku: {  //"Stock Keeping Unit"
         type: String,
         trim: true,
         unique: true,
-        required: true,
+        required: [true, `'sku' field must be required`],
     },
     images: {
         type: [String],
@@ -41,7 +41,15 @@ const ProductSchema = new mongoose.Schema({
     status: {
         type: String,
         enum: ['pending', 'approved', 'rejected', 'inactive'],
-        default: 'pending'
+        default: 'pending',
+        validate: {
+            validator: function (value) {
+                if (this.isNew && value !== 'pending')
+                    throw new Error(`'status' must be 'pending' at the creation time`);
+
+                return true;
+            }
+        }
     },
     discount: {
         type: Number,
@@ -52,7 +60,7 @@ const ProductSchema = new mongoose.Schema({
     rating: {
         average: {
             type: Number,
-            default: 0, 
+            default: 0,
             min: 0,
             max: 5,
         },
@@ -61,6 +69,6 @@ const ProductSchema = new mongoose.Schema({
             default: 0
         }
     }
-}, {timestamps: true});
+}, { timestamps: true });
 
-export const Product = mongoose.model('product', ProductSchema);
+export const Product = mongoose.model('Product', ProductSchema);

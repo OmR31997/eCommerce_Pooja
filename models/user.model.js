@@ -30,7 +30,7 @@ const UserSchema = new mongoose.Schema({
                     return true
 
                 if (this.isNew && value !== 'user')
-                    throw new Error(`'role' must be 'user' at creation time`);
+                    throw new Error(`'role' must be 'user' at the creation time`);
 
                 return true
             }
@@ -54,4 +54,4 @@ const UserSchema = new mongoose.Schema({
     },
 }, { timestamps: true });
 
-export const User = mongoose.model('user', UserSchema);
+export const User = mongoose.model('User', UserSchema);

@@ -4,13 +4,13 @@ const CartSchema = new mongoose.Schema({
     userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: true,
+        required: [true, `'userId' field must be required`],
     },
     items: [{
         productId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Product',
-            required: true,
+            required: [true, `'productId' field must be required`],
         },
         quantity: {
             type: Number,
@@ -18,18 +18,18 @@ const CartSchema = new mongoose.Schema({
         },
         price: {
             type: Number,
-            required: true,
+            required: [true, `'price' field must be required`],
         },
         subtotal: {
             type: Number,
-            required: true,
+            required: [true, `'subtotal' field must be required`],
         }
     }],
     totalAmount: {
         type: Number,
-        required: true,
+        required: [true, `'totalAmount' field must be required`],
     },
 
 }, {timestamps: true});
 
-export const Cart = mongoose.model('cart', CartSchema);
+export const Cart = mongoose.model('Cart', CartSchema);
