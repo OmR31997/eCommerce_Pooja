@@ -4,21 +4,24 @@ import { confirm_otp, get_vendor_dashboard, vendor_signup } from '../controllers
 
 const router = express.Router();
 
-/* *Description -> To sign-up as vendor
-   *End-Point -> /api/vendor/sign-up
-   *Methtod -> POST
+/* @description -> To sign-up as vendor
+   @end-Point -> /api/vendor/sign-up
+   @methtod -> POST
+   @access -> Private (user) 
 */
 router.post('/sign-up', authentication, authorization.CUSTOMER, vendor_signup);
 
-/* *Description -> To confirm-otp and update in vendor & user records
-   *End-Point -> /api/vendor/confirm-otp
-   *Methtod -> POST
+/* @description -> To confirm-otp and update in vendor & user records
+   @end-Point -> /api/vendor/confirm-otp
+   @methtod -> POST
+   @access -> Private (user) 
 */
 router.post('/confirm-otp', authentication, authorization.CUSTOMER, confirm_otp);
 
-/* *Description -> To view dashboard data of vendor 
-   *End-Point -> /api/vendor/dashboard
-   *Methtod -> GET
+/* @description -> To view dashboard data of vendor 
+   @end-Point -> /api/vendor/dashboard
+   @methtod -> GET
+   @access -> Private (vendor) 
 */
 router.get('/dashboard', authentication, authorization.VENDOR, get_vendor_dashboard);
 

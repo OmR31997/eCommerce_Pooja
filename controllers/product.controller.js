@@ -6,7 +6,7 @@ import { Product } from '../models/product.model.js';
 export const create_product = async (req, res) => {
     try {
         const { sku, categorySlug } = req.body;
-        const { id, shopName } = req.user;
+        const vendorId = req.user.id;
 
         if (sku) {
             return res.status(400).json({
@@ -15,14 +15,14 @@ export const create_product = async (req, res) => {
             });
         }
 
-        if(!categorySlug) {
+        if (!categorySlug) {
             return res.status(400).json({
                 error: `'categorySlug' field must be required`,
                 success: false,
             });
         }
 
-        const category = await Category.findOne({slug: categorySlug}).select('_id name');
+        const category = await Category.findOne({ slug: categorySlug }).select('_id name');
 
         if (!category) {
             return res.status(404).json({
@@ -35,21 +35,20 @@ export const create_product = async (req, res) => {
 
         const responseProduct = await Product.create({
             ...req.body,
-            vendorId: id,
+            vendorId,
             categoryId: category._id,
             sku: default_sku,
         });
 
         return res.status(201).json({
+            message: 'Product created successfully',
             data: {
                 ...responseProduct._doc,
                 categoryName: category.name,
-                shopName: shopName,
-                categoryId: undefined,
-                vendorId: undefined, 
             },
             success: true,
         });
+
     } catch (error) {
         if (error.name === 'ValidationError') {
             const errors = {};
@@ -77,9 +76,9 @@ export const create_product = async (req, res) => {
 export const view_products = async (req, res) => {
     try {
         const products = await Product.find()
-        .populate({path:'vendorId', select:'shopName -_id'})
-        .populate('categoryId', 'name slug -_id')
-        .select('-vendorId -categoryId');
+            .populate({ path: 'vendorId', select: 'shopName -_id' })
+            .populate('categoryId', 'name slug -_id')
+            .select('-vendorId -categoryId');
 
         if (products.length === 0) {
             return res.status(404).json({
@@ -104,27 +103,18 @@ export const view_products = async (req, res) => {
 /* **view_single_product logic here** */
 export const view_single_product = async (req, res) => {
     try {
+        const key = req.params.id;
 
-        const product = await Product.findOne({sku: req.params.sku})
-        .populate({path:'vendorId', select:'shopName -_id'})
-        .populate('categoryId', 'name slug -_id')
-        .select('-vendorId -categoryId');
+        const filter = key.startsWith('SKU-') ? { sku: key } : { _id: key };
+
+        const product = await Product.findOne(filter)
+            .populate({ path: 'vendorId', select: 'shopName -_id' })
+            .populate('categoryId', 'name slug -_id')
+            .select('-vendorId -categoryId');
 
         if (!product) {
             return res.status(404).json({
                 error: 'Product not found',
-                success: false,
-            });
-        }
-
-        return res.status(200).json({
-            data: product,
-            success: true,
-        });;
-
-        if(!product) {
-            return res.status(404).json({
-                error: `Product not found with given this 'categoryId'`,
                 success: false,
             });
         }

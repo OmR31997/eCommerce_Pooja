@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { generateOtp, otpStore, verifyOtp } from '../services/otp.service.js';
 import { generateEncryptedToken, resetTokenStore } from '../services/token.service.js';
+import { Admin } from '../models/admin.model.js';
 import { Vendor } from '../models/vendor.model.js';
 
 /* **send_otp logic here** */
@@ -228,24 +229,30 @@ export const confirm_signIn_otp = async (req, res) => {
             });
         }
 
-        let accessToken = undefined;
-        if (existUser.role === 'vendor') {
-            const vendor = await Vendor.findOne({userId: existUser._id}).select('_id shopName');
-            console.log(vendor)
-            accessToken = jwt.sign({
-                id: vendor._id,
-                shopName: vendor.shopName,
+        let payload = undefined;
+        
+        if (existUser.role === 'admin') {
+            const admin = await Admin.findOne({ userId: existUser._id }).select('_id');
+            payload = {
+                id: admin._id,
                 role: existUser.role,
-            }, process.env.JWT_SECRET, { expiresIn: '1h' });
+            }
         }
-        else {
-            accessToken = jwt.sign({
-                id: existUser._id,
-                name: existUser.name,
+        else if (existUser.role === 'vendor') {
+            const vendor = await Vendor.findOne({ userId: existUser._id }).select('_id shopName');
+            payload = {
+                id: vendor._id,
                 role: existUser.role,
-            }, process.env.JWT_SECRET, { expiresIn: '1h' });
+            }
+        }
+        else if (existUser.role === 'user') {
+            payload = {
+                id: existUser._id,
+                role: existUser.role,
+            }
         }
 
+        const accessToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' });
         return res.status(200).json({
             message: 'OTP has been verified successfully',
             accessToken,

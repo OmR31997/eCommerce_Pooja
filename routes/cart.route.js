@@ -4,27 +4,31 @@ import { add_to_cart, clear_cart, remove_cart_item, view_cart } from '../control
 
 const router = express.Router();
 
-/* *Description -> to add cart 
-   *End-Point -> /api/cart
-   *Methtod -> POST
+/* @description -> to add cart 
+   @end-Point -> /api/cart
+   @methtod -> POST
+   @access -> Private (user) 
 */
 router.post('/add-to-cart', authentication, authorization.CUSTOMER, add_to_cart);
 
-/* *Description -> to view carted items 
-   *End-Point -> /api/cart
-   *Methtod -> GET
+/* @description -> to view carted items 
+   @end-Point -> /api/cart
+   @methtod -> GET
+   @access -> Private (user/) 
 */
 router.get('/view', authentication, authorization.CUSTOMER, view_cart);
 
-/* *Description -> to remove item from the carted items 
-   *End-Point -> /api/cart/item/:id
-   *Methtod -> DELETE
+/* @description -> to remove item from the carted items 
+   @end-Point -> /api/cart/item/:id
+   @methtod -> DELETE
+   @access -> Private (user) 
 */
-router.delete('/item/:sku', authentication, authorization.CUSTOMER, remove_cart_item);
+router.delete('/item/:id', authentication, authorization.CUSTOMER, remove_cart_item);
 
-/* *Description -> to clear cart items 
-   *End-Point -> /api/cart/clear
-   *Methtod -> DELETE
+/* @description -> to clear cart items 
+   @end-Point -> /api/cart/clear
+   @methtod -> DELETE
+   @access -> Private (user) 
 */
 router.delete('/clear', authentication, authorization.CUSTOMER, clear_cart);
 

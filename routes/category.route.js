@@ -4,15 +4,16 @@ import { authentication, authorization } from '../middlewares/auth.middleware.js
 
 const router = express.Router()
 
-/* *Description -> To a new category
-   *End-Point -> /api/category/create
-   *Methtod -> GET
+/* @description -> To a new category
+   @end-Point -> /api/category/create
+   @methtod -> POST
+   @access -> Private (admin) 
 */
 router.post('/create', authentication, authorization.ADMIN, create_product_category);
 
-/* *Description -> To view categories
-   *End-Point -> /api/category/view
-   *Methtod -> GET
+/* @description -> To view categories
+   @end-Point -> /api/category/view
+   @methtod -> GET 
 */
 router.get('/view', view_categories);
 

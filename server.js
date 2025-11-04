@@ -12,6 +12,7 @@ import VendorRoute from './routes/vendor.route.js';
 import CategoryRoute from './routes/category.route.js';
 import ProductRoute from './routes/product.route.js';
 import CartRoute from './routes/cart.route.js';
+import PaymentRoute from './routes/payment.route.js';
 import OrderRoute from './routes/order.route.js';
 
 import { authentication, authorization } from './middlewares/auth.middleware.js';
@@ -52,6 +53,7 @@ appServer.use('/api/vendor', VendorRoute);
 appServer.use('/api/category', CategoryRoute);
 appServer.use('/api/product', ProductRoute);
 appServer.use('/api/cart', CartRoute);
+appServer.use('/api/payment', PaymentRoute);
 appServer.use('/api/order', OrderRoute);
 
 const port = process.env.PORT;

@@ -4,45 +4,46 @@ const OrderSchema = new mongoose.Schema({
     userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: true,
+        required: [true, `'userId' field must be required`],
     },
     vendorId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Vendor',
-        required: true,
+        required: [true, `'vendorId' field must be required`],
 
     },
     items: [{
         productId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Product',
-            required: true,
+            required: [true, `'productId' field must be required`],
         },
         quantity: {
             type: Number,
-            default: 1,
+            required: [true, `'quantity' field must be required`],
         },
         price: {
             type: Number,
-            required: true,
+            required: [true, `'price' field must be required`],
         },
         subtotal: {
             type: Number,
-            required: true,
+            required: [true, `'subtotal' field must be required`],
         }
     }],
     totalAmount: {
         type: Number,
-        required: true,
+        required: [true, `'totalAmount' field must be required`],
     },
     paymentMethod: {
         type: String,
-        enum: ['COD', 'Online']
+        enum: ['COD', 'Online'],
+        required: [true, `'paymentMethod' field must be required`],
     },
     paymentStatus: {
         type: String,
-        enum: ['pending', 'paid', 'failed'],
-        default: 'pending'
+        enum: ['pending', 'initiated', 'paid', 'failed'],
+        required: [true, `'paymentStatus' field must be required`],
     },
     orderStatus: {
         type: String,
@@ -53,33 +54,36 @@ const OrderSchema = new mongoose.Schema({
         name: {
             type: String,
             trim: true,
-            required: true,
+            required: [true, `name' field must be required`],
         },
         phone: {
             type: String,
-            required: true,
+            required: [true, `'phone' field must be required`],
         },
         addressLine: {
             type: String,
-            required: true,
+            required: [true, `'addressLine' field must be required`],
         },
         city: {
             type: String,
-            required: true,
+            required: [true, `'city' field must be required`],
         },
         state: {
             type: String,
-            required: true,
+            required: [true, `'state' field must be required`],
         },
         postalCode: {
             type: String,
-            required: true
+            required: [true, `'postalCode' field must be required`],
         }
     },
     trackingId: {
         type: String,
-        default: null
-    }
+        default: null,
+    },
+    paymentId: {
+        type: String, // Razorpay or Stripe transaction ID
+    },
 }, { timestamps: true });
 
-export const Order = mongoose.model('order', OrderSchema);
+export const Order = mongoose.model('Order', OrderSchema);

@@ -1,4 +1,3 @@
-import { error } from 'console';
 import { Cart } from '../models/cart.model.js';
 import { Product } from '../models/product.model.js';
 
@@ -129,17 +128,10 @@ export const view_cart = async (req, res) => {
 /* **remove_cart_item logic here** */
 export const remove_cart_item = async (req, res) => {
     try {
-        const { sku } = req.params;
+        const cartId = req.params.id;
         const { id } = req.user;
 
-        if (!sku) {
-            return res.status(400).json({
-                error: `'sku' field must be required`,
-                success: false,
-            });
-        }
-
-        const cart = await Cart.findOne({ userId: id })
+        const cart = await Cart.findOne({$and: {_id: cartId, userId: id}})
             .populate({ path: 'items.productId', select: 'sku' });
 
         if (!cart) {

@@ -1,25 +1,26 @@
 import express from 'express';
-import { create_product, view_products, view_single_product } from '../controllers/product.controller.js';
+import { create_product, view_products, view_single_product, } from '../controllers/product.controller.js';
 import { authentication, authorization } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
-/* *Description -> To create a new product via vendor
-   *End-Point -> /api/product/create
-   *Methtod -> POST
+/* @description -> To create a new product via vendor
+   @end-Point -> /api/product/create
+   @methtod -> POST
+   @access -> Private (vendor/admin) 
 */
 router.post('/create', authentication, authorization.VENDOR, create_product);
 
-/* *Description -> To view products
-   *End-Point -> /api/product/view
-   *Methtod -> POST
+/* @description -> To view products
+   @end-Point -> /api/product/view
+   @methtod -> POST
 */
 router.get('/view', view_products);
 
-/* *Description -> To view single product
-   *End-Point -> /api/product/view/:slug
-   *Methtod -> POST
+/* @description -> To view single product by id/sku
+   @end-Point -> /api/product/view/:id
+   @methtod -> POST
 */
-router.get('/view/:sku', view_single_product);
+router.get('/view/:id', view_single_product);
 
 export default router;

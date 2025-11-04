@@ -61,7 +61,6 @@ export const create_product_category = async (req, res) => {
 /* **view_categories logic here** */
 export const view_categories = async (req, res) => {
     try {
-        const { slug } = req.params;
 
         const categories = await Category.find({ status: 'active' });
 
