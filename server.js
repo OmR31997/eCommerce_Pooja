@@ -15,7 +15,7 @@ import CartRoute from './routes/cart.route.js';
 import PaymentRoute from './routes/payment.route.js';
 import OrderRoute from './routes/order.route.js';
 
-import { authentication, authorization } from './middlewares/auth.middleware.js';
+import { authentication, authorization, authorizationRoles } from './middlewares/auth.middleware.js';
 
 const appServer = express();
 appServer.use(express.json());
@@ -48,7 +48,7 @@ appServer.get('/api/health', async (req, res) => {
 });
 
 appServer.use('/api/auth', AuthRoute);
-appServer.use('/api/admin', authentication, authorization.ADMIN, AdminRoute);
+appServer.use('/api/admin', authentication, authorizationRoles(['admin']), AdminRoute);
 appServer.use('/api/vendor', VendorRoute);
 appServer.use('/api/category', CategoryRoute);
 appServer.use('/api/product', ProductRoute);

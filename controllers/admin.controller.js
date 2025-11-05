@@ -24,45 +24,37 @@ export const get_admin_dashboard = async (req, res) => {
     }
 }
 
-/* **vendor_approval logic here** */
-export const vendor_approval = async (req, res) => {
-    const { businessEmail } = req.body;
-
-    if (!businessEmail) {
-        return res.status(400).json({
-            error: `'businessEmail' field must be required`,
-            success: false,
-        });
-    }
-
+/* **manage_vendor logic here** */
+export const manage_vendor = async (req, res) => {
     try {
-        const responseVendor = await Vendor.findOneAndUpdate({ businessEmail }, { $set: { isApproved: true } }, { new: true });
+        const vendorId = req.params.vendorId;
 
-        if (!responseVendor) {
+        if(req.user.role !== 'admin') {
+            return res.status(403).json({
+                error: 'Access denied. Only admin can perform this action.',
+                success: false,
+            });
+        } 
+
+        const vendor = await Vendor.findById(vendorId);
+
+        if(!vendor) {
             return res.status(404).json({
-                error: 'Vendor not found',
+                error: `Vendor not found for ID: ${vendorId}`,
                 success: false,
             });
         }
 
-        return res.status(200).json({
-            message: 'Vendor has been approved successfully',
-            responseVendor,
-            success: true,
-        })
-    } catch (error) {
-        return res.status(500).json({
-            error: error.message,
-            message: 'Internal Server Error',
-            success: false,
-        });
-    }
-}
+        // Toggle Approval Status
+        vendor.isApproved = !vendor.isApproved;
 
-/* **product_approval logic here** */
-export const product_approval = async (req, res) => {
-    try {
-        
+        const responseUpdate = await vendor.save();
+
+        return res.status(200).json({
+            message: `Vendor ${vendor.isApproved ? 'approved' : 'disapproved'} successfully`,
+            data: responseUpdate,
+            success: true,
+        });
     } catch (error) {
         return res.status(500).json({
             error: error.message,

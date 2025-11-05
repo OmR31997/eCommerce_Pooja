@@ -1,7 +1,7 @@
 import express from 'express';
-import { authentication, authorization} from '../middlewares/auth.middleware.js';
-import { confirm_otp, get_vendor_dashboard, vendor_signup } from '../controllers/vendor.controller.js';
-
+import { authentication, authorization, authorizationRoles} from '../middlewares/auth.middleware.js';
+import { confirm_otp, get_dashboard, update_profile, vendor_signup } from '../controllers/vendor.controller.js';
+import { Upload } from '../middlewares/upload.middleware.js';
 const router = express.Router();
 
 /* @description -> To sign-up as vendor
@@ -16,13 +16,15 @@ router.post('/sign-up', authentication, authorization.CUSTOMER, vendor_signup);
    @methtod -> POST
    @access -> Private (user) 
 */
-router.post('/confirm-otp', authentication, authorization.CUSTOMER, confirm_otp);
+router.post('/confirm-otp', Upload.single('logoUrl'), authentication, authorization.CUSTOMER, confirm_otp);
 
 /* @description -> To view dashboard data of vendor 
    @end-Point -> /api/vendor/dashboard
    @methtod -> GET
    @access -> Private (vendor) 
 */
-router.get('/dashboard', authentication, authorization.VENDOR, get_vendor_dashboard);
+router.get('/dashboard', authentication, authorization.VENDOR, get_dashboard);
+
+router.patch('/:id', authentication, authorizationRoles(['vendor']), update_profile);
 
 export default router;

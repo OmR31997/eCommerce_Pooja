@@ -1,5 +1,6 @@
 import express from 'express';
-import { get_admin_dashboard, product_approval, vendor_approval } from '../controllers/admin.controller.js';
+import { get_admin_dashboard, manage_vendor } from '../controllers/admin.controller.js';
+import { authentication, authorizationRoles } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
@@ -15,13 +16,6 @@ router.get('/dashboard', get_admin_dashboard);
    @methtod -> POST
    @access -> Private (admin) 
 */
-router.post('/vendor-approval', vendor_approval);
-
-/* @description -> To give approval to the product
-   @end-Point -> /api/admin/product-approval
-   @methtod -> POST
-   @access -> Private (admin) 
-*/
-router.post('/product-approval', product_approval);
+router.post('/:id/vendor-approval', authentication, authorizationRoles(['admin']), manage_vendor);
 
 export default router;

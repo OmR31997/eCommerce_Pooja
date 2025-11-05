@@ -1,11 +1,13 @@
+import { Product } from '../models/product.model.js';
 import { User } from '../models/user.model.js';
 import { Vendor } from '../models/vendor.model.js';
+import { Order } from '../models/order.model.js';
 import { generateOtp, verifyOtp } from '../services/otp.service.js';
+import { ToSaveCloudStorage } from '../services/cloudUpload.service.js';
 
 /* **vendor_signup logic here** */
 export const vendor_signup = async (req, res) => {
     try {
-
         const { businessEmail, bankDetails } = req.body;
 
         const errors = [];
@@ -89,10 +91,11 @@ export const confirm_otp = async (req, res) => {
     try {
         const { otp, businessEmail } = req.body;
         const { id } = req.user;
+        const file = req.file;
 
         const errors = [];
 
-        if(!otp) {
+        if (!otp) {
             errors.push(`'otp' field must be required`);
         }
 
@@ -117,9 +120,33 @@ export const confirm_otp = async (req, res) => {
             });
         }
 
-        const vendorData = {
-            ...req.body,
-            userId: id,
+        let vendorData = undefined;
+        if (file) {
+            // {
+            //   fieldname: 'logoUrl',
+            //   originalname: 'Screenshot 2025-08-24 095918.png',
+            //   encoding: '7bit',
+            //   mimetype: 'image/png',
+            //   destination: 'public\\uploads',
+            //   filename: '1762347984076Screenshot 2025-08-24 095918.png.png',
+            //   path: 'public\\uploads\\1762347984076Screenshot 2025-08-24 095918.png.png',
+            //   size: 26131
+            // } FROM CONTROLLER
+            console.log(req.file, 'FROM CONTROLLER')
+
+            const secure_url = await ToSaveCloudStorage(file.path, '/eCommerce/LogoUrls');
+
+            vendorData = {
+                ...req.body,
+                logoUrl: secure_url,
+                userId: id,
+            }
+        }
+        else {
+            vendorData = {
+                ...req.body,
+                userId: id,
+            }
         }
 
         const responseVendor = await Vendor.create(vendorData);
@@ -140,14 +167,47 @@ export const confirm_otp = async (req, res) => {
 }
 
 /* **get_vendor_dashboard logic here** */
-export const get_vendor_dashboard = async (req, res) => {
+export const get_dashboard = async (req, res) => {
     try {
-        
+        const vendorId = req.user.id;
+
+        const totalProducts = await Product.countDocuments({ vendorId });
+        const totalOrders = await Order.countDocuments({ vendorId });
+
+        const revenue = await Order.aggregate([
+            { $match: { vendorId } },
+            { $group: { _id: null, totalRevenue: { $sum: "$totalAmount" } } },
+        ]);
+
+        return res.status(200).json({
+            data: {
+                totalProducts,
+                totalOrders,
+                totalRevenue: revenue[0]?.totalRevenue || 0,
+            },
+            success: true,
+        });
     } catch (error) {
         return res.status(500).json({
             error: error.message,
             message: 'Internal Server Error',
             success: false,
-        })
+        });
     }
+}
+
+export const update_profile = (req, res) => {
+    try {
+
+    } catch (error) {
+        return res.status(500).json({
+            error: error.message,
+            message: 'Internal Server Error',
+            success: false,
+        });
+    }
+}
+
+export const get_revenue_via_duration = (req, res) => {
+
 }

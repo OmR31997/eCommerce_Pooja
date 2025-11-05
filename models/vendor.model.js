@@ -23,7 +23,7 @@ const VendorSchema = new mongoose.Schema({
     },
     logoUrl: {
         type: String,
-        required: [true, `'logoUrl' field must be required`],
+        required: false,
     },
     isApproved: {
         type: Boolean,

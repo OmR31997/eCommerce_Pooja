@@ -1,5 +1,5 @@
 import express from 'express';
-import { authentication, authorization } from '../middlewares/auth.middleware.js';
+import { authentication, authorization, authorizationRoles } from '../middlewares/auth.middleware.js';
 import { cancel_order, checkout, update_order_status, view_order_by_id, view_user_orders } from '../controllers/order.controller.js';
 
 const router = express.Router();
@@ -14,16 +14,16 @@ router.post('/checkout', authentication, authorization.CUSTOMER, checkout);
 /* @description -> To view ordered items
    @end-Point -> /api/order/view
    @methtod -> GET
-   @access -> Private (user) 
+   @access -> Private (user/vendor) 
 */
-router.get('/view', authentication, authorization.CUSTOMER, view_user_orders);
+router.get('/view', authentication, authorizationRoles(['vendor', 'user']), view_user_orders);
 
 /* @description -> To view ordered item by orderId
    @end-Point -> /api/order/view/:id
    @methtod -> GET
-   @access -> Private (user) 
+   @access -> Private (user/vendor) 
 */
-router.get('/view/:id', authentication, authorization.CUSTOMER, view_order_by_id);
+router.get('/view/:id', authentication, authorizationRoles(['vendor', 'user']), view_order_by_id);
 
 /* @description -> To cancel the order
    @end-Point -> /api/order/:id/cancel

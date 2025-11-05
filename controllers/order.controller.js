@@ -87,8 +87,17 @@ export const checkout = async (req, res) => {
 /* **view_user_orders logic here** */
 export const view_user_orders = async (req, res) => {
     try {
-        const { id } = req.user;
-        const orders = await Order.find({ userId: id })
+        const { id, role } = req.user;
+
+        const filter = {};
+        if (role === 'vendor') {
+            filter.vendorId = id;
+        }
+        else if (role === 'user') {
+            filter.userId = id;
+        }
+
+        const orders = await Order.find(filter)
             .populate({ path: 'items.productId' })
             .sort({ createdAt: -1 });
 
@@ -116,10 +125,17 @@ export const view_user_orders = async (req, res) => {
 /* **view_order_by_id logic here** */
 export const view_order_by_id = async (req, res) => {
     try {
-        const orderId = req.params.id;
-        const userId = req.user.id;
+        const { id, role } = req.user;
 
-        const order = await Order.findOne({ _id: orderId, userId })
+        const filter = { _id: req.params.id };
+        if (role === 'vendor') {
+            filter.vendorId = id;
+        }
+        else if (role === 'user') {
+            filter.userId = id;
+        }
+
+        const order = await Order.findOne(filter)
             .populate({ path: 'items.productId', select: 'name price images' })
             .sort({ created: -1 });
 

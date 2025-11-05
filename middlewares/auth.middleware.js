@@ -32,6 +32,7 @@ export const authentication = async (req, res, next) => {
     }
 }
 
+// Static Authorization
 export const authorization = {
     ADMIN: (req, res, next) => {
         if (req.user?.role === 'admin') {
@@ -61,5 +62,21 @@ export const authorization = {
         return res.status(403).json({
             error: 'Access denied: Customer Only Authorized'
         })
+    }
+}
+
+// Dynamic Authorization
+export const authorizationRoles = (allowedRoles =[]) => {
+    return (req, res, next) => {
+        const role = req.user?.role;
+
+        if(!role || !allowedRoles.includes(role)) {
+            return res.status(403).json({
+                error: `Access denied: [${allowedRoles.join(', ')}] only`,
+                success: true,
+            });
+        }
+
+        next();
     }
 }

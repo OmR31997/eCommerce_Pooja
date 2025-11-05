@@ -14,8 +14,10 @@ const storage = multer.diskStorage({
     },
     filename: (req, file, callBack) => {
         const uniqueName = Date.now() + file.originalname + path.extname(file.originalname);
+        // 1762347960546Screenshot 2025-08-24 095918.png.png FROM MULTER
+        console.log(uniqueName, 'FROM MULTER')
         callBack(null, uniqueName);
     }
 });
 
-export const upload = multer({ storage, limits: { fieldSize: 2 * 1024 * 1024 } });
+export const Upload = multer({ storage, limits: { fieldSize: 2 * 1024 * 1024 } });
