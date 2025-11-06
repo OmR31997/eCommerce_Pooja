@@ -1,7 +1,7 @@
 import express from 'express';
 import { create_product_category, view_categories } from '../controllers/category.controller.js';
-import { authentication, authorization } from '../middlewares/auth.middleware.js';
-
+import { authentication, authorizationRoles } from '../middlewares/auth.middleware.js';
+import { Upload } from '../middlewares/upload.middleware.js';
 const router = express.Router()
 
 /* @description -> To a new category
@@ -9,7 +9,7 @@ const router = express.Router()
    @methtod -> POST
    @access -> Private (admin) 
 */
-router.post('/create', authentication, authorization.ADMIN, create_product_category);
+router.post('/create', Upload('CTG-').single('imageUrl'), create_product_category);
 
 /* @description -> To view categories
    @end-Point -> /api/category/view

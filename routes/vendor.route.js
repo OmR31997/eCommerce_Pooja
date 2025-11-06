@@ -9,21 +9,21 @@ const router = express.Router();
    @methtod -> POST
    @access -> Private (user) 
 */
-router.post('/sign-up', authentication, authorization.CUSTOMER, vendor_signup);
+router.post('/sign-up', authentication, authorizationRoles(['user']), vendor_signup);
 
 /* @description -> To confirm-otp and update in vendor & user records
    @end-Point -> /api/vendor/confirm-otp
    @methtod -> POST
    @access -> Private (user) 
 */
-router.post('/confirm-otp', Upload.single('logoUrl'), authentication, authorization.CUSTOMER, confirm_otp);
+router.post('/confirm-otp', authentication, authorizationRoles(['user']), Upload('LOGO-').single('logoUrl'), confirm_otp);
 
 /* @description -> To view dashboard data of vendor 
    @end-Point -> /api/vendor/dashboard
    @methtod -> GET
    @access -> Private (vendor) 
 */
-router.get('/dashboard', authentication, authorization.VENDOR, get_dashboard);
+router.get('/dashboard', authentication, authorizationRoles(['vendor']), get_dashboard);
 
 router.patch('/:id', authentication, authorizationRoles(['vendor']), update_profile);
 

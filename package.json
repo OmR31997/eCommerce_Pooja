@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
     "seed:dev": "node ./seeds/seed.js",
-    "start:dev": "cross-env NODE_ENV=devlopment nodemon server.js",
+    "start:dev": "cross-env NODE_ENV=development nodemon server.js",
     "start:prod": "cross-env NODE_ENV=production node server.js"
   },
   "keywords": [],

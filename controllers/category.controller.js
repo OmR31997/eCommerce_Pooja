@@ -1,9 +1,12 @@
 import { Category } from '../models/category.model.js';
-
+import { ValidateFileSize, ValidateImageFileType } from '../utils/fileHelper.js';
+import { ToSaveCloudStorage } from '../services/cloudUpload.service.js';
 /* **create_product_category logic here** */
 export const create_product_category = async (req, res) => {
     try {
         const { name, slug } = req.body;
+
+        const file = req.file;
 
         if (!name) {
             return res.status(400).json({
@@ -25,14 +28,43 @@ export const create_product_category = async (req, res) => {
             });
         }
 
-        const response = await Category.create({
+        const categoryData = {
             ...req.body,
             slug: generateSlug,
-        });
+        };
+
+        console.log(file)
+        if (file) {
+            if (!ValidateImageFileType(file.mimetype)) {
+                DeleteLocalFile(file.path);
+                return res.status(400).json({
+                    error: 'Invalid file type. Only images allowed.',
+                    success: false,
+                });
+            }
+
+            if (!ValidateFileSize(file.size, 1)) {
+                DeleteLocalFile(file.path);
+                return res.status(400).json({
+                    error: 'File size exceeds 2MB limit',
+                    success: false,
+                });
+            }
+
+            const categoryFileName = `${generateSlug.substring(0, 3).toUpperCase()}_${file.filename}`;
+
+            const secured_url = process.env.NODE_ENV !== 'development'
+                ? await ToSaveCloudStorage(file.path, 'eCommerce/Categories', categoryFileName)
+                : `/public/uploads/${categoryFileName}`;
+
+            categoryData.imageUrl = secured_url;
+        }
+
+        const responseCategory = await Category.create(categoryData);
 
         return res.status(201).json({
             message: 'Category created successfully',
-            data: response._doc,
+            data: responseCategory._doc,
             success: true,
         })
     } catch (error) {

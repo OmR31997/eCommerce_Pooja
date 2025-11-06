@@ -1,6 +1,7 @@
 import express from 'express';
 import './config/env.config.js';
 import cors from 'cors';
+import path from 'path';
 import CorsConfig from '../server-app/config/cors.config.js';
 import { DB_Connect } from './config/db.config.js';
 import { seedDatabase } from './seeds/seed.js';
@@ -21,6 +22,7 @@ const appServer = express();
 appServer.use(express.json());
 appServer.use(express.urlencoded({ extended: true }));
 appServer.use(cors(CorsConfig));
+appServer.use('/public', express.static(path.join(process.cwd(), 'public')))
 
 const db_uri = process.env.DB_URI;
 

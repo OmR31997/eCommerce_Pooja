@@ -1,12 +1,23 @@
 import cloudinary from '../config/cloudStotrage.config.js';
 import fs from 'fs';
 
-export const ToSaveCloudStorage = async (filePath, directoryPath) => {
-    const uniqueName = `LOGO_${Date.now()-Math.floor(Math.random() * 1000)}`;
+export const ToSaveCloudStorage = async (filePath, directoryPath, uniqueName) => {
+    try {
+        const cloudRes = await cloudinary.uploader.upload(
+            filePath, {
+            folder: directoryPath,
+            public_id: uniqueName,
+            resource_type: 'auto',
+        });
+        
+        // Delete local temp file
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+        }
 
-    // LOGO_1762347984046 FROM-SERVICE
-    console.log(uniqueName, 'FROM-SERVICE')
-    const cloudRes = await cloudinary.uploader.upload(filePath, {folder: directoryPath, public_id: uniqueName});
-
-    return cloudRes.secure_url;
+        return cloudRes.secure_url;
+    } catch (error) {
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        throw new Error(`Cloudinary upload failed: ${error.message}`);
+    }
 }

@@ -4,6 +4,7 @@ import { Vendor } from '../models/vendor.model.js';
 import { Order } from '../models/order.model.js';
 import { generateOtp, verifyOtp } from '../services/otp.service.js';
 import { ToSaveCloudStorage } from '../services/cloudUpload.service.js';
+import { DeleteLocalFile, ValidateFileSize, ValidateImageFileType, } from '../utils/fileHelper.js';
 
 /* **vendor_signup logic here** */
 export const vendor_signup = async (req, res) => {
@@ -89,9 +90,8 @@ export const vendor_signup = async (req, res) => {
 /* **confirm_otp logic here** */
 export const confirm_otp = async (req, res) => {
     try {
-        const { otp, businessEmail } = req.body;
+        const { otp, shopName, businessEmail } = req.body;
         const { id } = req.user;
-        const file = req.file;
 
         const errors = [];
 
@@ -120,33 +120,34 @@ export const confirm_otp = async (req, res) => {
             });
         }
 
-        let vendorData = undefined;
+        const vendorData = {
+            ...req.body,
+            userId: id,
+        };
+
         if (file) {
-            // {
-            //   fieldname: 'logoUrl',
-            //   originalname: 'Screenshot 2025-08-24 095918.png',
-            //   encoding: '7bit',
-            //   mimetype: 'image/png',
-            //   destination: 'public\\uploads',
-            //   filename: '1762347984076Screenshot 2025-08-24 095918.png.png',
-            //   path: 'public\\uploads\\1762347984076Screenshot 2025-08-24 095918.png.png',
-            //   size: 26131
-            // } FROM CONTROLLER
-            console.log(req.file, 'FROM CONTROLLER')
 
-            const secure_url = await ToSaveCloudStorage(file.path, '/eCommerce/LogoUrls');
+            if (!ValidateImageFileType(file.mimetype)) {
+                DeleteLocalFile(file.path);
+                return res.status(400).json({
+                    error: 'Invalid file type. Only images allowed.',
+                    success: false,
+                });
+            }
 
-            vendorData = {
-                ...req.body,
-                logoUrl: secure_url,
-                userId: id,
+            if (!ValidateFileSize(file.size, 1)) {
+                DeleteLocalFile(file.path);
+                return res.status(400).json({
+                    error: 'File size exceeds 2MB limit',
+                    success: false,
+                });
             }
-        }
-        else {
-            vendorData = {
-                ...req.body,
-                userId: id,
-            }
+
+            const secured_url = process.env.NODE_ENV !== 'development'
+                ? await ToSaveCloudStorage(file.filePath, `eCommerce/${shopName.replaceAll(' ', '_')}/LogoUrls`, filename)
+                : `/public/uploads/${file.filename}`;
+
+            vendorData.logoUrl = secured_url;
         }
 
         const responseVendor = await Vendor.create(vendorData);
