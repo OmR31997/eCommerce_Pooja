@@ -2,7 +2,7 @@ import express from 'express';
 import './config/env.config.js';
 import cors from 'cors';
 import path from 'path';
-import CorsConfig from '../server-app/config/cors.config.js';
+import CorsConfig from './config/cors.config.js';
 import { DB_Connect } from './config/db.config.js';
 import { seedDatabase } from './seeds/seed.js';
 import mongoose from 'mongoose';
