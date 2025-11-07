@@ -1,6 +1,6 @@
 import { Category } from '../models/category.model.js';
-import { ValidateFileSize, ValidateImageFileType } from '../utils/fileHelper.js';
-import { ToSaveCloudStorage } from '../services/cloudUpload.service.js';
+import { DeleteLocalFile, ValidateFileSize, ValidateImageFileType } from '../utils/fileHelper.js';
+import { ToDeleteFromCloudStorage, ToSaveCloudStorage } from '../services/cloudUpload.service.js';
 
 /* **create_product_category logic here** */
 export const create_product_category = async (req, res) => {
@@ -140,11 +140,12 @@ export const update_category = async (req, res) => {
             success: false,
         });
     }
+
     const category = await Category.findByIdAndUpdate(categoryId, categoryData, { new: true });
 
     if (!category) {
         return res.status(404).json({
-            error: 'Category not found',
+            error: `Category not found for ID: '${categoryId}'`,
             success: true,
         });
     }
@@ -171,6 +172,137 @@ export const view_categories = async (req, res) => {
 
         return res.status(200).json({
             data: categories,
+            success: true,
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            error: error.message,
+            message: 'Internal Server Error',
+            success: false,
+        });
+    }
+}
+
+/* **view_category_byId logic here** */
+export const view_category_byId = async (req, res) => {
+    try {
+        const categoryId = req.params.id;
+
+        const category = await Category.findById(categoryId);
+
+        if (!category) {
+            return res.status(400).json({
+                error: `Category not found for ID: '${categoryId}'`,
+                success: false,
+            });
+        }
+
+        return res.status(200).json({
+            data: category,
+            success: true,
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            error: error.message,
+            message: 'Internal Server Error',
+            success: false,
+        });
+    }
+}
+
+/* **view_category_bySlug logic here** */
+export const view_category_bySlug = async (req, res) => {
+    try {
+        const categorySlug = req.params.slug;
+
+        const category = await Category.findOne({ slug: categorySlug });
+
+        if (!category) {
+            return res.status(400).json({
+                error: `Category not found for slug: '${categorySlug}'`,
+                success: false,
+            });
+        }
+
+        return res.status(200).json({
+            data: category,
+            success: true,
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            error: error.message,
+            message: 'Internal Server Error',
+            success: false,
+        });
+    }
+}
+
+/* **remove_category logic here** */
+export const remove_category = async (req, res) => {
+    try {
+        const categoryId = req.params.id;
+
+        const category = await Category.findOneAndDelete(categoryId);
+
+        if (!category) {
+            return res.status(404).json({
+                error: `Category not found for ID: '${categoryId}'`,
+                success: false,
+            });
+        }
+
+        if (process.env.NODE_ENV !== 'development')
+            await ToDeleteFromCloudStorage('eCommerce/Categories', category.imageUrl);
+        else
+            DeleteLocalFile(category.imageUrl);
+
+        return res.status(200).json({
+            message: 'Category deleted successfully',
+            data: category,
+            success: true,
+        });
+    } catch (error) {
+        return res.status(500).json({
+            error: error.message,
+            message: 'Internal Server Error',
+            success: false,
+        });
+    }
+}
+
+/* **clear_category logic here** */
+export const clear_Category = async (req, res) => {
+    try {
+        const categories = await Category.find();
+
+        if (categories.length === 0) {
+            return res.status(404).json({
+                error: 'No categories found to delete',
+                success: false,
+            });
+        }
+
+        const result = await Category.deleteMany({});
+
+        if (result.deletedCount === 0) {
+            return res.status(404).json({
+                error: 'No categories found to delete',
+                success: false,
+            });
+        }
+
+        for (const category of categories) {
+            if (process.env.NODE_ENV !== 'development')
+                await ToDeleteFromCloudStorage('eCommerce/Categories', category.imageUrl);
+            else
+                DeleteLocalFile(category.imageUrl);
+        }
+
+        return res.status(200).json({
+            message: `All categories cleared successfully (${result.deletedCount} deleted)`,
             success: true,
         });
 

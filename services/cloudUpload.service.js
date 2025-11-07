@@ -27,10 +27,13 @@ export const ToSaveCloudStorage = async (filePath, directoryPath, uniqueName) =>
     }
 }
 
-export const ToDeleteFileFromCloudStorage = async (file) => {
+export const ToDeleteFromCloudStorage = async (directory, fileName) => {
     try {
-        await cloudinary.uploader.destroy(file);
+        
+        const public_id = `${directory}/${fileName.split('/').pop().split('.')[0]}`;
+        await cloudinary.uploader.destroy(public_id); 
+
     } catch (error) {
-        console.warn(`Failed cleanup: ${file}`);
-    }
+        throw new Error(`Cloudinary delete error: ${error.message}`);
+    }   
 }

@@ -1,5 +1,5 @@
 import express from 'express';
-import { create_product_category, update_category, view_categories } from '../controllers/category.controller.js';
+import { clear_Category, create_product_category, remove_category, update_category, view_categories, view_category_byId, view_category_bySlug } from '../controllers/category.controller.js';
 import { authentication, authorizationRoles } from '../middlewares/auth.middleware.js';
 import { Upload } from '../middlewares/upload.middleware.js';
 const router = express.Router()
@@ -17,10 +17,34 @@ router.post('/create', authentication, authorizationRoles(['admin']), Upload('CT
 */
 router.get('/view', view_categories);
 
-/* @description -> To view categories
-   @end-Point -> /api/category/update
+/* @description -> To view category by categoryId
+   @end-Point -> /api/category/:id/view
+   @methtod -> GET 
+*/
+router.get('/:id/view-id', view_category_byId);
+
+/* @description -> To view category bySlug
+   @end-Point -> /api/category/:slug/view-slug
+   @methtod -> GET 
+*/
+router.get('/:slug/view-slug', view_category_bySlug);
+
+/* @description -> To update category by categoryId
+   @end-Point -> /api/category/:id/update
    @methtod -> PATCH 
 */
 router.patch('/:id/update', authentication, authorizationRoles(['admin']), Upload('CTG-').single('imageUrl'), update_category)
+
+/* @description -> To delete category by categoryId
+   @end-Point -> /api/category/:id/delete
+   @methtod -> DELETE 
+*/
+router.delete('/:id/delete', authentication, authorizationRoles(['admin']), Upload('CTG-').single('imageUrl'), remove_category);
+
+/* @description -> To cleared categories
+   @end-Point -> /api/category/clear
+   @methtod -> DELETE 
+*/
+router.delete('/clear', authentication, authorizationRoles(['admin']), clear_Category);
 
 export default router;

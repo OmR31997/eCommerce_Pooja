@@ -264,7 +264,7 @@ export const confirm_signIn_otp = async (req, res) => {
         return res.status(200).json({
             message: 'OTP has been verified successfully',
             accessToken,
-            success: false,
+            success: true,
         });
 
     } catch (error) {
