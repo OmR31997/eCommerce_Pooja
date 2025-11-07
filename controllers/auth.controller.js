@@ -86,7 +86,7 @@ export const sign_up = async (req, res) => {
 
         const userData = {
             ...req.body,
-            password: await bcrypt.hash(password, 10),
+            password: await bcrypt.hash(password, process.env.HASH_SALT ?? 10),
             isVerified: true,
         };
 
@@ -230,16 +230,23 @@ export const confirm_signIn_otp = async (req, res) => {
         }
 
         let payload = undefined;
-        
+
         if (existUser.role === 'admin') {
-            const admin = await Admin.findOne({ userId: existUser._id }).select('_id');
+            const admin = await Admin.findOne({ userId: existUser._id  }).select('_id');
             payload = {
                 id: admin._id,
                 role: existUser.role,
             }
         }
         else if (existUser.role === 'vendor') {
-            const vendor = await Vendor.findOne({ userId: existUser._id }).select('_id shopName');
+            const vendor = await Vendor.findOne({ userId: existUser._id}).select('_id shopName');
+            
+            if(!vendor.isApproved) {
+                return res.status(400).json({
+                    error: `Currently you have't empower to create, & manage the product`,
+                    success: true,
+                })
+            }
             payload = {
                 id: vendor._id,
                 role: existUser.role,
@@ -252,7 +259,8 @@ export const confirm_signIn_otp = async (req, res) => {
             }
         }
 
-        const accessToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' });
+        const accessToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.SIGN_TOKEN_EXPIRE ?? '1d' });
+
         return res.status(200).json({
             message: 'OTP has been verified successfully',
             accessToken,
@@ -391,7 +399,7 @@ export const reset_password = async (req, res) => {
         //     })
         // }
 
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        const hashedPassword = await bcrypt.hash(newPassword, process.env.HASH_SALT ?? 10);
 
         /* *Token-Case* */
         // existUser.password = hashedPassword;

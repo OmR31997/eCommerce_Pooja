@@ -44,7 +44,7 @@ export const add_to_cart = async (req, res) => {
                 item.productId.toString() === productId,
             );
 
-            console.log(existingItemIndex);
+            // console.log(existingItemIndex);
             if (existingItemIndex > -1) {
                 cart.items[existingItemIndex].quantity += quantity;
                 cart.items[existingItemIndex].subtotal =

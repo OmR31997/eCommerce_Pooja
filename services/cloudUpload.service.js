@@ -15,9 +15,22 @@ export const ToSaveCloudStorage = async (filePath, directoryPath, uniqueName) =>
             fs.unlinkSync(filePath);
         }
 
-        return cloudRes.secure_url;
+        return {
+            secure_url: cloudRes.secure_url,
+            public_url: cloudRes.public_id,
+        };
     } catch (error) {
-        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        if (fs.existsSync(filePath)) 
+            fs.unlinkSync(filePath);
+        
         throw new Error(`Cloudinary upload failed: ${error.message}`);
+    }
+}
+
+export const ToDeleteFileFromCloudStorage = async (file) => {
+    try {
+        await cloudinary.uploader.destroy(file);
+    } catch (error) {
+        console.warn(`Failed cleanup: ${file}`);
     }
 }

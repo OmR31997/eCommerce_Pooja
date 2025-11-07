@@ -1,12 +1,23 @@
 import { Vendor } from '../models/vendor.model.js';
 import { Category } from '../models/category.model.js';
 import { Product } from '../models/product.model.js';
+import { DeleteLocalFile, ValidateFileSize, ValidateImageFileType } from '../utils/fileHelper.js';
 
 /* **create_product logic here** */
 export const create_product = async (req, res) => {
+    const sessionFiles = []; // Track uploaded files so we can rollback if needed
+
     try {
-        const { sku, categorySlug } = req.body;
-        const vendorId = req.user.id;
+        const { sku, categorySlug, ...rest } = req.body;
+        const { id: vendorId } = req.user;
+        const files = req.files || [];
+
+        if (rest?.vendorId && rest.vendorId !== vendorId) {
+            return res.status(403).json({
+                error: 'Vendor ID mismatch — unauthorized action',
+                success: false,
+            });
+        }
 
         if (sku) {
             return res.status(400).json({
@@ -33,12 +44,61 @@ export const create_product = async (req, res) => {
 
         const default_sku = `SKU-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-        const responseProduct = await Product.create({
+        const productData = {
             ...req.body,
             vendorId,
             categoryId: category._id,
             sku: default_sku,
-        });
+        }
+
+        let productImages = [];
+        if (files && files.length > 0) {
+            const errors = [];
+            console.log(files);
+
+            for (const file of files) {
+                const { originalname, mimetype, size, path: filePath } = file;
+                if (!ValidateImageFileType(mimetype)) {
+                    errors.push(`Invalid file type: ${mimetype} with this file ${originalname}. Only jpeg, png, webp, jpg allowed.`);
+                }
+
+                if (!ValidateFileSize(size, 1)) {
+                    errors.push(`Each file should be less than 1MB - ${originalname} file is too large`)
+                }
+
+                sessionFiles.push(filePath);
+            }
+
+            if (errors.length > 0) {
+
+                sessionFiles.forEach(file => {
+                    DeleteLocalFile(file);
+                });
+
+                return res.status(400).json({
+                    errors,
+                    success: false,
+                });
+            }
+
+            for (const file of files) {
+                const { path: filePath, filename } = file;
+
+                const productFileName = `${categorySlug.substring(0, 3).toUpperCase()}_${filename}`;
+
+                if (process.env.NODE_ENV !== 'development') {
+                    const { secure_url } = await ToSaveCloudStorage(filePath, `eCommerce/${vendorId}/images`, productFileName);
+
+                    productImages.push(secure_url); //For DB
+                }
+                else {
+                    productImages = [...sessionFiles];  //For Local
+                }
+            }
+        }
+
+        productData.images = productImages;
+        const responseProduct = await Product.create(productData);
 
         return res.status(201).json({
             message: 'Product created successfully',
@@ -198,7 +258,7 @@ export const view_vendor_product = async (req, res) => {
 }
 
 /* **manage_product logic here** */
-export const manage_product = async (req, res) => {
+export const manage_product_byVendor = async (req, res) => {
     try {
         const key = req.params.id;
 
@@ -284,30 +344,7 @@ export const manage_product = async (req, res) => {
         }
         else if (role === 'admin') {
 
-            const extraFields = Object.keys(rest);
-
-            if (extraFields.length > 0) {
-                return res.status(400).json({
-                    error: `Admin can only update 'status' field. Found extra fields: ${extraFields.join(', ')} `
-                })
-            }
-
-            if (!status) {
-                return res.status(400).json({
-                    error: `Please provide 'status' field (e.g., 'pending', 'approved', 'rejected', 'inactive')`,
-                    success: false,
-                });
-            }
-
-            product.status = status;
-
-            const updateRespnse = await product.save();
-
-            return res.status(200).json({
-                message: 'Product status updated successfully',
-                data: updateRespnse,
-                success: true,
-            });
+            
         }
         else {
             return res.status(403).json({

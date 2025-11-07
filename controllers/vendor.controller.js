@@ -90,8 +90,15 @@ export const vendor_signup = async (req, res) => {
 /* **confirm_otp logic here** */
 export const confirm_otp = async (req, res) => {
     try {
-        const { otp, shopName, businessEmail } = req.body;
-        const { id } = req.user;
+        const { otp, shopName, businessEmail, ...rest } = req.body;
+        const { id: vendorId } = req.user;
+
+        if (rest?.vendorId && rest.vendorId !== vendorId) {
+            return res.status(403).json({
+                error: 'Vendor ID mismatch — unauthorized action',
+                success: false,
+            });
+        }
 
         const errors = [];
 
@@ -143,11 +150,13 @@ export const confirm_otp = async (req, res) => {
                 });
             }
 
-            const secured_url = process.env.NODE_ENV !== 'development'
-                ? await ToSaveCloudStorage(file.filePath, `eCommerce/${shopName.replaceAll(' ', '_')}/LogoUrls`, filename)
-                : `/public/uploads/${file.filename}`;
-
-            vendorData.logoUrl = secured_url;
+            if (process.env.NODE_ENV !== 'development') {
+                const { secure_url } = await ToSaveCloudStorage(file.path, 'eCommerce/${vendorId}/LogoUrls', filename);
+                vendorData.logoUrl = secure_url;
+            }
+            else {
+                vendorData.logoUrl = file.path;
+            }
         }
 
         const responseVendor = await Vendor.create(vendorData);

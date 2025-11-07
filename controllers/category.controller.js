@@ -1,10 +1,11 @@
 import { Category } from '../models/category.model.js';
 import { ValidateFileSize, ValidateImageFileType } from '../utils/fileHelper.js';
 import { ToSaveCloudStorage } from '../services/cloudUpload.service.js';
+
 /* **create_product_category logic here** */
 export const create_product_category = async (req, res) => {
     try {
-        const { name, slug } = req.body;
+        const { name, slug, description } = req.body;
 
         const file = req.file;
 
@@ -29,11 +30,11 @@ export const create_product_category = async (req, res) => {
         }
 
         const categoryData = {
-            ...req.body,
+            name,
+            description,
             slug: generateSlug,
         };
 
-        console.log(file)
         if (file) {
             if (!ValidateImageFileType(file.mimetype)) {
                 DeleteLocalFile(file.path);
@@ -53,11 +54,13 @@ export const create_product_category = async (req, res) => {
 
             const categoryFileName = `${generateSlug.substring(0, 3).toUpperCase()}_${file.filename}`;
 
-            const secured_url = process.env.NODE_ENV !== 'development'
-                ? await ToSaveCloudStorage(file.path, 'eCommerce/Categories', categoryFileName)
-                : `/public/uploads/${categoryFileName}`;
-
-            categoryData.imageUrl = secured_url;
+            if (process.env.NODE_ENV !== 'development') {
+                const { secure_url } = await ToSaveCloudStorage(file.path, 'eCommerce/Categories', categoryFileName);
+                categoryData.imageUrl = secure_url;
+            }
+            else {
+                categoryData.imageUrl = file.path;
+            }
         }
 
         const responseCategory = await Category.create(categoryData);
@@ -88,6 +91,69 @@ export const create_product_category = async (req, res) => {
             success: false,
         });
     }
+}
+
+/* **update_category logic here** */
+export const update_category = async (req, res) => {
+    const { slug, ...rest } = req.body;
+    const file = req.file;
+
+    const categoryId = req.params.id;
+
+    const categoryData = { ...rest };
+
+    if (slug) {
+        categoryData.slug = slug.toLowerCase().replace(/\s+/g, '-');
+    }
+
+    if (file) {
+        if (!ValidateImageFileType(file.mimetype)) {
+            DeleteLocalFile(file.path);
+            return res.status(400).json({
+                error: 'Invalid file type. Only images allowed.',
+                success: false,
+            });
+        }
+
+        if (!ValidateFileSize(file.size, 1)) {
+            DeleteLocalFile(file.path);
+            return res.status(400).json({
+                error: 'File size exceeds 2MB limit',
+                success: false,
+            });
+        }
+
+        const categoryFileName = `${generateSlug.substring(0, 3).toUpperCase()}_${file.filename}`;
+
+        if (process.env.NODE_ENV !== 'development') {
+            const { secure_url } = await ToSaveCloudStorage(file.path, 'eCommerce/Categories', categoryFileName);
+            categoryData.imageUrl = secure_url;
+        }
+        else {
+            categoryData.imageUrl = file.path;
+        }
+    }
+
+    if (Object.keys(req.body).length === 0 && !file) {
+        return res.status(400).json({
+            error: 'No field found for update',
+            success: false,
+        });
+    }
+    const category = await Category.findByIdAndUpdate(categoryId, categoryData, { new: true });
+
+    if (!category) {
+        return res.status(404).json({
+            error: 'Category not found',
+            success: true,
+        });
+    }
+
+    return res.status(200).json({
+        message: 'Category updated successdully',
+        data: category,
+        success: true
+    });
 }
 
 /* **view_categories logic here** */

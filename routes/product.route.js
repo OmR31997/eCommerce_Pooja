@@ -1,7 +1,7 @@
 import express from 'express';
-import { create_product, manage_product, rate_product, view_products, view_single_product, view_vendor_product, view_vendor_products, } from '../controllers/product.controller.js';
+import { create_product, manage_product_byVendor, rate_product, view_products, view_single_product, view_vendor_product, view_vendor_products, } from '../controllers/product.controller.js';
 import { authentication, authorizationRoles } from '../middlewares/auth.middleware.js';
-
+import { Upload } from '../middlewares/upload.middleware.js';
 const router = express.Router();
 
 /* @description -> To create a new product via vendor
@@ -9,7 +9,7 @@ const router = express.Router();
    @methtod -> POST
    @access -> Private (vendor) 
 */
-router.post('/create', authentication, authorizationRoles(['vendor']), create_product);
+router.post('/create', authentication, authorizationRoles(['vendor']), Upload('PRODUCT-').array('images', process.env.MAX_PRODUCT_IMAGES || 5), create_product);
 
 /* @description -> To view products
    @end-Point -> /api/product/view
@@ -40,9 +40,9 @@ router.get('/:id/vendor-view', authentication, authorizationRoles(['vendor']), v
 /* @description -> To update product by productId
    @end-Point -> /api/product/:id
    @methtod -> PATCH
-   @access -> Private (vendor/admin) 
+   @access -> Private (vendor) 
 */
-router.patch('/:id', authentication, authorizationRoles(['vendor', 'admin']), manage_product);
+router.patch('/:id', authentication, authorizationRoles(['vendor']), manage_product_byVendor);
 
 /* @description -> To give rating to the product
    @end-Point -> /api/product/:id/rate
