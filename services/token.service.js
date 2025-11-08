@@ -1,6 +1,8 @@
 import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 
 export const resetTokenStore = new Map();
+const imageTokenStore = new Map();
 
 const set_token = (resetToken, id, ttlMs) => {
     resetTokenStore.set(resetToken, {
@@ -24,3 +26,19 @@ export const generateEncryptedToken = (id) => {
         tokenExpiresAt,
     }
 }
+
+export const imageEncryption = (imagePath) => {
+    const token = crypto.randomBytes(32).toString('hex');
+    const apiPath = `/api/image/${token}`
+    imageTokenStore.set(token, {id: imagePath.toString()});
+
+    return apiPath;
+}
+
+export const imageDecryption = (encryptedPath) => {
+    const imageToken = imageTokenStore.get(encryptedPath);
+
+    if (!imageToken) return null;
+
+    return imageToken.id;
+} 

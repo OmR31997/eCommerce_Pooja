@@ -17,6 +17,7 @@ import PaymentRoute from './routes/payment.route.js';
 import OrderRoute from './routes/order.route.js';
 
 import { authentication, authorization, authorizationRoles } from './middlewares/auth.middleware.js';
+import { read_path } from './controllers/image.controller.js';
 
 const appServer = express();
 appServer.use(express.json());
@@ -48,6 +49,8 @@ if (process.env.NODE_ENV === 'production') {
 appServer.get('/api/health', async (req, res) => {
     res.status(200).json({ message: 'API health is good!' });
 });
+
+appServer.get('/api/image/:token', read_path);
 
 appServer.use('/api/auth', AuthRoute);
 appServer.use('/api/admin', authentication, authorizationRoles(['admin']), AdminRoute);

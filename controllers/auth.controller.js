@@ -5,6 +5,7 @@ import { generateOtp, otpStore, verifyOtp } from '../services/otp.service.js';
 import { generateEncryptedToken, resetTokenStore } from '../services/token.service.js';
 import { Admin } from '../models/admin.model.js';
 import { Vendor } from '../models/vendor.model.js';
+import { sendEmail } from '../utils/sendEmail.js';
 
 /* **send_otp logic here** */
 export const send_otp = async (req, res) => {
@@ -25,7 +26,16 @@ export const send_otp = async (req, res) => {
             otp,
             message,
             otpExpiresAt,
-        })
+        });
+
+        const result = phone
+            ? { success: true } // If phone OTP, skip email
+            : await sendEmail(email, "One Time Password", `Your OTP is ${otp}`);
+        await sendEmail(email, 'Out Time Password code', `Your verification code is ${otp}`)
+
+        if (!result.success) {
+            return res.status(500).json({ error: "Failed to send email", success: false });
+        }
 
         return res.status(200).json({
             message: 'OTP generated successfully',
@@ -232,16 +242,16 @@ export const confirm_signIn_otp = async (req, res) => {
         let payload = undefined;
 
         if (existUser.role === 'admin') {
-            const admin = await Admin.findOne({ userId: existUser._id  }).select('_id');
+            const admin = await Admin.findOne({ userId: existUser._id }).select('_id');
             payload = {
                 id: admin._id,
                 role: existUser.role,
             }
         }
         else if (existUser.role === 'vendor') {
-            const vendor = await Vendor.findOne({ userId: existUser._id}).select('_id shopName');
-            
-            if(!vendor.isApproved) {
+            const vendor = await Vendor.findOne({ userId: existUser._id }).select('_id shopName');
+
+            if (!vendor.isApproved) {
                 return res.status(400).json({
                     error: `Currently you have't empower to create, & manage the product`,
                     success: true,
