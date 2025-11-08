@@ -17,7 +17,6 @@ import PaymentRoute from './routes/payment.route.js';
 import OrderRoute from './routes/order.route.js';
 
 import { authentication, authorization, authorizationRoles } from './middlewares/auth.middleware.js';
-import { read_path } from './controllers/image.controller.js';
 
 const appServer = express();
 appServer.use(express.json());
@@ -50,8 +49,6 @@ appServer.get('/api/health', async (req, res) => {
     res.status(200).json({ message: 'API health is good!' });
 });
 
-appServer.get('/api/image/:token', read_path);
-
 appServer.use('/api/auth', AuthRoute);
 appServer.use('/api/admin', authentication, authorizationRoles(['admin']), AdminRoute);
 appServer.use('/api/vendor', VendorRoute);
@@ -62,4 +59,6 @@ appServer.use('/api/payment', PaymentRoute);
 appServer.use('/api/order', OrderRoute);
 
 const port = process.env.PORT;
-appServer.listen(port, () => console.log(`Server is running at http://localhost:${port}/api/health`));
+
+const baseUrl = process.env.NODE_ENV ==='development'? `http://localhost:${port}`: process.env.BASE_URL;
+appServer.listen(port, () => console.log(`Server is running at ${baseUrl}/api/health`));

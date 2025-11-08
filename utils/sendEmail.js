@@ -1,25 +1,35 @@
-import { transporter } from "../config/email.config.js";
+import fetch from "node-fetch";
 
-export const sendEmail = async (to, subject, text, html = null) => {
-    try {
-        const mailOptions = {
-            from: process.env.FROM_EMAIL,
-            to,
-            subject,
-            text,
-            html,
-        };
+export const sendEmail = async (to, subject, htmlContent = null) => {
+  try {
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "api-key": process.env.SMTP_API_KEY_PASS,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        sender: { 
+            name: 'eCommerce-Service', 
+            email: process.env.SENDER_EMAIL },
+        to: [{ email: to }],
+        subject,
+        htmlContent,
+      }),
+    });
 
-        const info = await transporter.sendMail(mailOptions);
-        console.log("Email sent: ", info.messageId);
+    const data = await response.json();
 
-        return {
-            messageId: info.messageId,
-            success:true,
-        }
-
-    } catch (error) {
-        console.error("Email send error:", error.message);
-        return {success: false, error: error.message, status: 500}
+    if (response.ok && data.messageId) {
+      console.log("Brevo Email Sent:", data);
+      return { success: true, messageId: data.messageId };
     }
-}
+
+    console.error("Brevo Email Failed:", data);
+    return { success: false, error: data.message || "Failed to send email" };
+  } catch (error) {
+    console.error("Brevo Email Error:", error);
+    return { success: false, error: error.message };
+  }
+};

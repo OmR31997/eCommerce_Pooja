@@ -9,47 +9,52 @@ import { sendEmail } from '../utils/sendEmail.js';
 
 /* **send_otp logic here** */
 export const send_otp = async (req, res) => {
-    try {
-        const { phone, email } = req.body;
+  try {
+    const { phone, email } = req.body;
 
-        if (!phone && !email) {
-            return res.status(400).json({
-                error: 'Please provide phone or email to send OTP',
-                success: false,
-            });
-        }
-
-        const key = email || phone;
-        const { otp, message, otpExpiresAt } = generateOtp(key)
-
-        console.log({
-            otp,
-            message,
-            otpExpiresAt,
-        });
-
-        const result = phone
-            ? { success: true } // If phone OTP, skip email
-            : await sendEmail(email, "One Time Password", `Your OTP is ${otp}`);
-        await sendEmail(email, 'Out Time Password code', `Your verification code is ${otp}`)
-
-        if (!result.success) {
-            return res.status(500).json({ error: "Failed to send email", success: false });
-        }
-
-        return res.status(200).json({
-            message: 'OTP generated successfully',
-            otpExpiresAt,
-        });
-
-    } catch (error) {
-        return res.status(500).json({
-            error: error.message,
-            message: 'Internal Server Error',
-            success: false
-        });
+    if (!phone && !email) {
+      return res.status(400).json({
+        error: "Please provide phone or email to send OTP",
+        success: false,
+      });
     }
-}
+
+    const key = email || phone;
+    const { otp, message, otpExpiresAt } = generateOtp(key);
+
+    console.log({ otp, message, otpExpiresAt });
+
+    const result = phone
+      ? { success: true, message: "OTP sent to phone " }
+      : await sendEmail(
+          email,
+          "Your OTP for Sign-Up",
+          `<p>Your verification code is <b>${otp}</b>.</p><p>${message}.</p>`
+        );
+
+    if (!result.success) {
+      return res.status(500).json({
+        error: "Failed to send email",
+        details: result.error,
+        success: false,
+      });
+    }
+
+    return res.status(200).json({
+      message: "OTP generated successfully",
+      otpExpiresAt,
+      result,
+      success: true,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: error.message,
+      message: "Internal Server Error",
+      success: false,
+    });
+  }
+};
+
 
 /* **sign_up logic here** */
 export const sign_up = async (req, res) => {
