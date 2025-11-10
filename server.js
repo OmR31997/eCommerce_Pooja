@@ -1,5 +1,6 @@
 import express from 'express';
 import './config/env.config.js';
+import fs from'fs';
 import cors from 'cors';
 import path from 'path';
 import CorsConfig from './config/cors.config.js';
@@ -17,7 +18,7 @@ import PaymentRoute from './routes/payment.route.js';
 import OrderRoute from './routes/order.route.js';
 
 import { authentication, authorization, authorizationRoles } from './middlewares/auth.middleware.js';
-import { swaggerSpec, swaggerUi } from './config/swagger.config.js';
+import swaggerUi from 'swagger-ui-express';
 
 const appServer = express();
 appServer.use(express.json());
@@ -50,7 +51,10 @@ appServer.get('/api/health', async (req, res) => {
     res.status(200).json({ message: 'API health is good!' });
 });
 
-appServer.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec))
+// Mount Swagger UI
+const swaggerDocument = JSON.parse(fs.readFileSync('./swagger-output.json', 'utf-8'));
+appServer.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
 appServer.use('/api/auth', AuthRoute);
 appServer.use('/api/admin', authentication, authorizationRoles(['admin']), AdminRoute);
 appServer.use('/api/vendor', VendorRoute);

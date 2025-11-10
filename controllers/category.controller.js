@@ -246,7 +246,6 @@ export const view_categories = async (req, res) => {
             limit = 10, 
             offset = 0, 
             status = 'active', 
-            search = '', 
             parent, 
             sortBy='-createdAt', 
             order='-1'} = req.query;
@@ -261,11 +260,6 @@ export const view_categories = async (req, res) => {
         if (status) query.status = status;
 
         query.parent = (parent === 'null' || parent === undefined) ? null : parent;
-
-        // Handle Text Search
-        if (search) {
-            query.$text = { $search: search };
-        };
         
         // Count total records
         const total = await Category.countDocuments(query);
@@ -291,7 +285,7 @@ export const view_categories = async (req, res) => {
                 }
             });
 
-            console.log(query)
+            console.log(categories)
         if (categories.length === 0) {
             return res.status(404).json({
                 error: 'Category not found',
@@ -300,7 +294,7 @@ export const view_categories = async (req, res) => {
         }
 
         return res.status(200).json({
-            message: '' ? 'Search results fetched successfully.' : 'Categories fetched successfully.',
+            message: 'Categories fetched successfully.',
             data: categories,
             pagination: {
                 count: total,
@@ -376,50 +370,112 @@ export const view_category_bySlug = async (req, res) => {
     }
 }
 
+
 export const search_category = async (req, res) => {
-    try {
-        const { keyword, status, parent, page = 1, limit = 10 } = req.query;
+  try {
+    const {
+      find,
+      page = 1,
+      limit = 10,
+      sortBy = 'createdAt',
+      order = -1
+    } = req.query;
 
-        const query = {};
-
-        // Text Search 
-        if (keyword) {
-            // query.$text = { $search: keyword }
-            query.name = { $regex: keyword, $options: 'i' }
-        }
-
-        if (status) query.status = status;
-        if (parent) query.parent = parent;
-
-        const skip = (page - 1) * limit;
-
-        const categories = await Category.find(query)
-            .skip(skip)
-            .limit(parseInt(limit))
-            .sort({ createdAt: -1 });
-
-        const total = await Category.countDocuments(query);
-
-        return res.status(200).json({
-            message: search ? 'Search results fetched successfully.' : 'Categories fetched successfully.',
-            success: true,
-            data: categories,
-            pagination: {
-                count: total,
-                page: Number(page),
-                limit: Number(limit),
-                totalPages: Math.ceil(total / limit),
-            }
-        })
-    } catch (error) {
-        console.error('Error in search_category:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Internal Server Error',
-            error: error.message,
-        });
+    if (!find || find.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a search query in '?find=' parameter."
+      });
     }
-}
+
+    const parsedPage = parseInt(page);
+    const parsedLimit = parseInt(limit);
+
+    // 1️⃣ Try text search first
+    let query = { $text: { $search: find } };
+    let projection = { score: { $meta: "textScore" } };
+    let sortOption = { score: { $meta: "textScore" } };
+
+    let total = await Category.countDocuments(query);
+    let { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
+      parsedPage,
+      parsedLimit,
+      0,
+      total,
+      null,
+      `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}?find=${find}`
+    );
+
+    let categories = await Category.find(query, projection)
+      .skip(skip)
+      .limit(parsedLimit)
+      .sort(sortOption);
+
+    // 2️⃣ Fallback to regex if text search finds nothing
+    if (categories.length === 0) {
+      query = {
+        $or: [
+          { name: { $regex: find, $options: "i" } },
+          { description: { $regex: find, $options: "i" } }
+        ]
+      };
+
+      // Sorting for regex fallback
+      const allowedSorts = ['name', 'slug', 'createdAt'];
+      const safeSortBy = allowedSorts.includes(sortBy) ? sortBy : 'createdAt';
+      sortOption = { [safeSortBy]: parseInt(order) };
+
+      total = await Category.countDocuments(query);
+      const pagination = Pagination(
+        parsedPage,
+        parsedLimit,
+        0,
+        total,
+        null,
+        `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}?find=${find}`
+      );
+
+      categories = await Category.find(query)
+        .skip(pagination.skip)
+        .limit(parsedLimit)
+        .sort(sortOption);
+
+      nextUrl = pagination.nextUrl;
+      prevUrl = pagination.prevUrl;
+      totalPages = pagination.totalPages;
+      currentPage = pagination.currentPage;
+    }
+
+    if (!categories.length) {
+      return res.status(404).json({
+        success: false,
+        message: `No categories found matching "${find}".`
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Found ${categories.length} matching categories.`,
+      data: categories,
+      pagination: {
+        count: total,
+        prevUrl,
+        nextUrl,
+        currentPage,
+        totalPages
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in search_category:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal Server Error',
+      error: error.message
+    });
+  }
+};
+
 
 export const view_paginated_categories = async (req, res) => {
     try {

@@ -19,18 +19,13 @@ const router = express.Router()
 */
 router.post('/create', authentication, authorizationRoles(['admin']), Upload('CTG-').single('imageUrl'), create_product_category);
 
+/* @description -> To a create subcategory
+   @end-Point -> /api/category/create/:parent/sub
+   @methtod -> POST
+   @access -> Private (admin) 
+*/
 router.post('/create/:parent/sub', authentication, authorizationRoles(['admin']), Upload('CTG-').single('imageUrl'), create_product_category);
 
-/** 
-   * @swagger
-   * /v1/category/view:
-   *   get:
-   *     summary: Get all product categories
-   *     tags: [Category]
-   *     responses: 
-   *       200: 
-   *         description: List of all active categories.
-*/
 /* @description -> To view categories
    @end-Point -> /api/category/view
    @methtod -> GET 
@@ -48,6 +43,8 @@ router.get('/:id/view-id', view_category_byId);
    @methtod -> GET 
 */
 router.get('/:slug/view-slug', view_category_bySlug);
+
+router.get('/', search_category);
 
 /* @description -> To update category by categoryId
    @end-Point -> /api/category/:id/update
