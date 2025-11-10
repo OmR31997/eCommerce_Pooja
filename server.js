@@ -17,6 +17,7 @@ import PaymentRoute from './routes/payment.route.js';
 import OrderRoute from './routes/order.route.js';
 
 import { authentication, authorization, authorizationRoles } from './middlewares/auth.middleware.js';
+import { swaggerSpec, swaggerUi } from './config/swagger.config.js';
 
 const appServer = express();
 appServer.use(express.json());
@@ -49,6 +50,7 @@ appServer.get('/api/health', async (req, res) => {
     res.status(200).json({ message: 'API health is good!' });
 });
 
+appServer.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec))
 appServer.use('/api/auth', AuthRoute);
 appServer.use('/api/admin', authentication, authorizationRoles(['admin']), AdminRoute);
 appServer.use('/api/vendor', VendorRoute);

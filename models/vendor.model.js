@@ -6,32 +6,39 @@ const VendorSchema = new mongoose.Schema({
         ref: 'User',
         required: [true, `'userId' field must be required`]
     },
-    shopName: {
+    type: {
         type: String,
         trim: true,
-        required: [true, `'shopName' field must be required`],
+        required: [true, `'type' field must be required`],
     },
-    gstNumber: {
+    status: {
         type: String,
         trim: true,
-        required: [true, `'gstNumber' field must be required`],
+        enum: ['approved', 'pending', 'rejected'],
+        default: 'pending',
+    },
+    businessName: {
+        type: String,
+        trim: true,
+        required: [true, `'businessName' field must be required`],
+    },
+    businessDescription: {
+        type: String, 
+        trim: true,
+        required: [true, `'businessDescription' field must be required`]
     },
     businessEmail: {
         type: String,
         unique: true,
         required: [true, `'businessEmail' field must be required`],
     },
+    officeAddress: {
+        type: String,
+        required: [true, `'officeAddress' field must be required`],
+    },
     logoUrl: {
         type: String,
         required: false,
-    },
-    isApproved: {
-        type: Boolean,
-        default: false,
-    },
-    totalEarning: {
-        type: Number,
-        default: 0,
     },
     bankDetails: {
         accountNumber: {
@@ -50,6 +57,9 @@ const VendorSchema = new mongoose.Schema({
             trim: true,
             required: [true, `'bankName' field must be required`]
         }
+    },
+    additionalDoc: {
+        type: [String],
     }
 }, { timestamps: true });
 

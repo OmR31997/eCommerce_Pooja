@@ -6,55 +6,59 @@ import { generateEncryptedToken, resetTokenStore } from '../services/token.servi
 import { Admin } from '../models/admin.model.js';
 import { Vendor } from '../models/vendor.model.js';
 import { sendEmail } from '../utils/sendEmail.js';
+import { OAuth2Client } from 'google-auth-library';
+import axios from 'axios';
+import qs from 'qs';
 
 /* **send_otp logic here** */
 export const send_otp = async (req, res) => {
-  try {
-    const { phone, email } = req.body;
+    try {
+        const { email, phone } = req.body;
 
-    if (!phone && !email) {
-      return res.status(400).json({
-        error: "Please provide phone or email to send OTP",
-        success: false,
-      });
+        if (!email && !phone) {
+            return res.status(400).json({
+                error: 'Please provide phone or email to send OTP',
+                success: false,
+            });
+        }
+
+        const key = phone ?? email;
+
+        const { otp, message, otpExpiresAt } = generateOtp(key);
+
+        console.log({ otp, message, otpExpiresAt });
+
+        const result = phone
+            ? ''
+            : await sendEmail(
+                email,
+                'Your OTP for Sign-Up',
+                `<p>Your verification code is <b>${otp}</b>, ${message}</p>`
+            );
+
+
+        if (!result.success) {
+            return res.status(500).json({
+                error: result.error,
+                success: false,
+            });
+        }
+
+        return res.status(200).json({
+            message: 'OTP generated successfully',
+            otpExpiresAt,
+            result,
+            success: true,
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            error: error.message,
+            message: "Internal Server Error",
+            success: false,
+        });
     }
-
-    const key = email || phone;
-    const { otp, message, otpExpiresAt } = generateOtp(key);
-
-    console.log({ otp, message, otpExpiresAt });
-
-    const result = phone
-      ? { success: true, message: "OTP sent to phone " }
-      : await sendEmail(
-          email,
-          "Your OTP for Sign-Up",
-          `<p>Your verification code is <b>${otp}</b>.</p><p>${message}.</p>`
-        );
-
-    if (!result.success) {
-      return res.status(500).json({
-        error: "Failed to send email",
-        details: result.error,
-        success: false,
-      });
-    }
-
-    return res.status(200).json({
-      message: "OTP generated successfully",
-      otpExpiresAt,
-      result,
-      success: true,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      error: error.message,
-      message: "Internal Server Error",
-      success: false,
-    });
-  }
-};
-
+}
 
 /* **sign_up logic here** */
 export const sign_up = async (req, res) => {
@@ -140,7 +144,6 @@ export const sign_up = async (req, res) => {
 /* **sign_in logic here** */
 export const sign_in = async (req, res) => {
     const { email, phone, password } = req.body;
-
     const errors = [];
 
     if ((email && phone) || !(email || phone)) {
@@ -184,25 +187,152 @@ export const sign_in = async (req, res) => {
             })
         }
 
-        const otpKey = phone || email;
+        const otpKey = phone ?? email;
         const { otp, otpExpiresAt, message } = generateOtp(otpKey);
 
-        console.log({
-            otp,
-            message,
-            otpExpiresAt,
-        });
+        console.log({ otp, message, otpExpiresAt });
+
+        const result = phone
+            ? ''
+            : await sendEmail(
+                email,
+                'Your OTP for Sign-Up',
+                `<p>Your verification code is <b>${otp}</b>, ${message}</p>`
+            );
+
+
+        if (!result.success) {
+            return res.status(500).json({
+                error: result.error,
+                success: false,
+            });
+        }
+
+        if (existUser.role === 'admin') {
+            const admin = await Admin.findOne({ userId: existUser._id });
+            const payload = {
+                id: admin._id,
+                role: existUser.role,
+            }
+
+            const accessToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.SIGN_TOKEN_EXPIRE ?? '1d' });
+
+            return res.status(200).json({
+                accessToken,
+                success: true,
+            });
+        }
 
         return res.status(200).json({
             message: 'OTP has been sent successfully',
-            warning: 'OTP expired in 5 minutes',
-            success: true,
+            warning: message,
+            success: result.success,
         });
 
     } catch (error) {
         return res.status(500).json({
             error: error.message,
             message: 'Internal Server Error',
+            success: false
+        });
+    }
+}
+
+/* **sign_in_withGoogle logic here** */
+export const sign_in_withGoogle = async (req, res) => {
+    try {
+        const scopes = [process.env.GOOGLE_AUTH_EMAIL, process.env.GOOGLE_AUTH_PROFILE].join(' ');
+
+        const GOOGLE_AUTH_URL = process.env.GOOGLE_AUTH_URL;
+        const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+        const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI;
+
+        const authUrl = `${GOOGLE_AUTH_URL}client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${GOOGLE_REDIRECT_URI}&response_type=code&scope=${encodeURIComponent(scopes)}&access_type=offline&prompt=consent`;
+
+        res.status(200).redirect(authUrl);
+
+    } catch (error) {
+        return res.status(500).json({
+            error: error.message,
+            message: 'Internal Server Error',
+            success: false
+        });
+    }
+}
+
+/* **google_Callback logic here** */
+export const google_Callback = async (req, res) => {
+    try {
+        const code = req.query.code;
+
+        const GOOGLE_TOKEN_URL = process.env.GOOGLE_TOKEN_URL;
+        const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+        const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+        const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI;
+
+        // Step 1: Exchange code for tokens
+        const { data } = await axios.post(GOOGLE_TOKEN_URL,
+            qs.stringify({
+                code,
+                client_id: GOOGLE_CLIENT_ID,
+                client_secret: GOOGLE_CLIENT_SECRET,
+                redirect_uri: GOOGLE_REDIRECT_URI,
+                grant_type: 'authorization_code',
+            }),
+            {
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+            }
+        );
+
+        const { id_token } = data;
+
+        if (!id_token) {
+            throw new Error('Failed to obtain id_token from Google');
+        }
+
+        // Step 2: Verify token
+        const client = new OAuth2Client(GOOGLE_CLIENT_ID);
+        const ticket = await client.verifyIdToken({
+            idToken: id_token,
+            audience: GOOGLE_CLIENT_ID,
+        });
+
+        const payload = ticket.getPayload();
+        const { name, email } = payload;
+
+        if (!email) {
+            return res.status(400).json({
+                error: 'Email not provided by Google',
+                success: false,
+            });
+        }
+
+        // Step-3: Updates in DB
+        let user = await User.findOne({ email });
+
+        if (!user) {
+            const newUser = new User({ name, email, isGoogleAuth: true }, { validateBeforeSave: false })
+            await newUser.save({ validateBeforeSave: false });
+            user = newUser;
+        }
+
+        // Step-4: Generate access token
+        const jwtPayload = { id: user._id, role: user.role };
+        const accessToken = jwt.sign(jwtPayload, process.env.JWT_SECRET, { expiresIn: process.env.SIGN_TOKEN_EXPIRE ?? '1h' });
+
+        return res.status(200).json({
+            message: 'Google Auth successful',
+            data: user,
+            accessToken,
+            success: true,
+        });
+
+    } catch (error) {
+        console.log('Internal Server Error', error.message)
+        return res.status(500).json({
+            error: 'Google Auth failed',
             success: false
         });
     }

@@ -48,7 +48,7 @@ export const generateOtp = (key) => {
 
     return {
         otp,
-        message: 'OTP expires in 5 minutes',
+        message: 'OTP valid for 5 minutes.',
         otpExpiresAt,
     }
 }

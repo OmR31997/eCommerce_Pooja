@@ -1,7 +1,15 @@
 import express from 'express';
-import { clear_Category, create_product_category, remove_category, update_category, view_categories, view_category_byId, view_category_bySlug } from '../controllers/category.controller.js';
+import { clear_Category, create_product_category, remove_category, search_category, update_category, view_categories, view_category_byId, view_category_bySlug, view_paginated_categories } from '../controllers/category.controller.js';
 import { authentication, authorizationRoles } from '../middlewares/auth.middleware.js';
 import { Upload } from '../middlewares/upload.middleware.js';
+
+/** 
+   * @swagger
+   * tags: 
+   *   -name: Category
+   *   description: Product category management APIs
+*/
+
 const router = express.Router()
 
 /* @description -> To a new category
@@ -11,6 +19,18 @@ const router = express.Router()
 */
 router.post('/create', authentication, authorizationRoles(['admin']), Upload('CTG-').single('imageUrl'), create_product_category);
 
+router.post('/create/:parent/sub', authentication, authorizationRoles(['admin']), Upload('CTG-').single('imageUrl'), create_product_category);
+
+/** 
+   * @swagger
+   * /v1/category/view:
+   *   get:
+   *     summary: Get all product categories
+   *     tags: [Category]
+   *     responses: 
+   *       200: 
+   *         description: List of all active categories.
+*/
 /* @description -> To view categories
    @end-Point -> /api/category/view
    @methtod -> GET 

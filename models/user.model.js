@@ -43,6 +43,10 @@ const UserSchema = new mongoose.Schema({
     otpExpiresAt: {
         type: Date
     },
+    isGoogleAuth: {
+        type: Boolean,
+        default: false,
+    },
     isVerified: {
         type: Boolean,
         default: false

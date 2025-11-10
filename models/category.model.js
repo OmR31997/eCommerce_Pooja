@@ -3,8 +3,9 @@ import mongoose from 'mongoose';
 const CategorySchema = new mongoose.Schema({
     name: {
         type: String,
-        trim: true,
         required: [true, `'name' field must be required`],
+        trim: true,
+        unique: true,
     },
     slug: {
         type: String,
@@ -25,6 +26,23 @@ const CategorySchema = new mongoose.Schema({
         enum: ['active', 'inactive'],
         default: 'active',
     },
-}, {timestamps: true});
+    parent: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Category',
+        default: null,
+        immutable: true,
+    }
+}, { timestamps: true });
+
+// Virtual field to easily populate children
+CategorySchema.virtual('subcategories', {
+    ref: 'Category',
+    localField: '_id',
+    foreignField: 'parent',
+});
+
+// Ensure virtuals appear in JSON
+CategorySchema.set('toObject', { virtuals: true });
+CategorySchema.set('toJSON', { virtuals: true });
 
 export const Category = mongoose.model('Category', CategorySchema);

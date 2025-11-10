@@ -19,7 +19,7 @@ export const seedDatabase = async (isManual = false) => {
         name: 'admin',
         email: process.env.ADMIN_EMAIL,
         phone: '9009828489',
-        password: await bcrypt.hash(process.env.ADMIN_PASSWORD, 10),
+        password: bcrypt.hash(process.env.ADMIN_PASSWORD, 10),
         role: process.env.ROLE,
         isVerified: true,
         status: 'active',

@@ -40,7 +40,7 @@ const ProductSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['pending', 'approved', 'rejected', 'inactive'],
+        enum: ['pending', 'approved', 'rejected', 'under_process'],
         default: 'pending',
         validate: {
             validator: function (value) {
