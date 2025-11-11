@@ -1,5 +1,13 @@
 import mongoose from 'mongoose';
 
+const ReviewSchema = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    vendorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Vendor', required: true },
+    rating: { type: Number, min: 1, max: 5, required: true },
+    comment: { type: String },
+    createdAt: { type: Date, default: Date.now }
+});
+
 const VendorSchema = new mongoose.Schema({
     userId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -28,7 +36,7 @@ const VendorSchema = new mongoose.Schema({
         required: [true, `'businessName' field must be required`],
     },
     businessDescription: {
-        type: String, 
+        type: String,
         trim: true,
         required: [true, `'businessDescription' field must be required`]
     },
@@ -65,7 +73,48 @@ const VendorSchema = new mongoose.Schema({
     },
     documents: {
         type: [String],
-    }
+    },
+
+    // Additional 
+
+    // sales: {
+    //     type: Number,
+    //     default: 0,
+    // },
+    // commision: {
+    //     type: Number,
+    //     default: 0,
+    // },
+    // totalOrders: {
+    //     type: Number,
+    //     default: 0,
+    // },
+    // failedOrders: {
+    //     type: Number,
+    //     default: 0,
+    // },
+    // recentOrder: {
+    //     type: [mongoose.Schema.Types.ObjectId],
+    //     default: null,
+    // },
+    // totalEarning: {
+    //     type: Number,
+    //     default: 0,
+    // },
+    // rating: {
+    //     type: String,
+    //     default: 0,
+    // },
+
+    // avgDispatchTime: {
+    //     type: String,
+    //     trim: true,
+    // },
+    // onTimeDelivery: {
+    //     type: Boolean,
+    //     default: false,
+    // },
+    // review: [ReviewSchema],
 }, { timestamps: true });
 
 VendorSchema.index({
@@ -79,7 +128,8 @@ VendorSchema.index({
         businessDescription: 3,
         address: 1,
     },
-    default_language: 'english', 
+    default_language: 'english',
 });
 
 export const Vendor = mongoose.model('Vendor', VendorSchema);
+export const Review = mongoose.model('Review', ReviewSchema);

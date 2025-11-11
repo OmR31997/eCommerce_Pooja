@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import slugify from 'slugify';
 import { Category } from '../models/category.model.js';
-import { Product } from '../models/product.model.js';
+// import { Product } from '../models/product.model.js';
 
 export const GenerateSlug = async (name) => {
     if (!name) {
@@ -83,13 +83,11 @@ export const BuildProductQuery = (filters) => {
         const query = {};
 
         if (filters.search) {
-  query.$or = [
-    { name: { $regex: filters.search, $options: "i" } },
-    { description: { $regex: filters.search, $options: "i" } },
-  ];
-}
-
-
+            query.$or = [
+                { name: { $regex: filters.search, $options: "i" } },
+                { description: { $regex: filters.search, $options: "i" } },
+            ];
+        }
 
         if (filters.category) {
             query.categoryId = filters.category;
@@ -130,6 +128,67 @@ export const BuildProductQuery = (filters) => {
             query.status = filters.status;
         }
 
+        return query;
+    } catch (error) {
+        throw new Error(`Error building product query: ${error.message}`);
+    }
+}
+
+export const BuildVendorQuery = (filters) => {
+    try {
+
+        const query = {};
+
+        if (filters.search) {
+            query.$or = [
+                { businessName: { $regex: filters.search, $options: "i" } },
+                { description: { $regex: filters.search, $options: "i" } },
+                { businessEmail: { $regex: filters.search, $options: "i" } },
+            ];
+        }
+
+        if (filters.address) {
+            query.address = filters.address;
+        }
+
+        if (filters.joinRange) {
+            query.createdAt = {
+                $gte: new Date(filters.joinRange[0]),
+                $lte: new Date(filters.joinRange[1]),
+            }
+        }
+        return query;
+    } catch (error) {
+        throw new Error(`Error building product query: ${error.message}`);
+    }
+}
+
+export const BuildUserQuery = (filters) => {
+    try {
+
+        const query = {};
+
+        if (filters.search) {
+            query.$or = [
+                { name: { $regex: filters.search, $options: "i" } },
+                { description: { $regex: filters.search, $options: "i" } },
+                { email: { $regex: filters.search, $options: "i" } },
+                { phone: { $regex: filters.search, $options: "i" } },
+                { address: { $regex: filters.search, $options: "i" } },
+            ];
+        }
+
+        if(filters.segment) {
+            query.segment = filters.segment;
+        }
+
+        if (filters.joinRange) {
+            query.createdAt = {
+                $gte: new Date(filters.joinRange[0]),
+                $lte: new Date(filters.joinRange[1]),
+            }
+        }
+        
         return query;
     } catch (error) {
         throw new Error(`Error building product query: ${error.message}`);

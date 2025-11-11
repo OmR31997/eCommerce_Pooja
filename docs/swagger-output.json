@@ -5,7 +5,7 @@
     "description": "Automatically generated Swagger documentation",
     "version": "1.0.0"
   },
-  "host": "ecommerce-pooja.onrender.com",
+  "host": "localhost:9000",
   "basePath": "/",
   "tags": [
     {
@@ -50,7 +50,7 @@
     }
   ],
   "schemes": [
-    "https"
+    "http"
   ],
   "securityDefinitions": {
     "bearerAuth": {
@@ -838,7 +838,7 @@
             "type": "string"
           },
           {
-            "name": "businessName",
+            "name": "status",
             "in": "query",
             "type": "string"
           },
@@ -848,7 +848,12 @@
             "type": "string"
           },
           {
-            "name": "status",
+            "name": "joinRange",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "updateRange",
             "in": "query",
             "type": "string"
           },
@@ -2503,6 +2508,11 @@
             "type": "string"
           },
           {
+            "name": "joinRange",
+            "in": "query",
+            "type": "string"
+          },
+          {
             "name": "address",
             "in": "query",
             "type": "string"
@@ -2519,11 +2529,6 @@
           },
           {
             "name": "limit",
-            "in": "query",
-            "type": "string"
-          },
-          {
-            "name": "offset",
             "in": "query",
             "type": "string"
           },

@@ -4,7 +4,8 @@ import { Vendor } from '../models/vendor.model.js';
 import { Order } from '../models/order.model.js';
 import { generateOtp, verifyOtp } from '../services/otp.service.js';
 import { ToDeleteFromCloudStorage, ToSaveCloudStorage } from '../services/cloudUpload.service.js';
-import { BuildProductQuery, DeleteLocalFile, Pagination, ValidateFileSize, ValidateImageFileType, } from '../utils/fileHelper.js';
+import { BuildVendorQuery, DeleteLocalFile, Pagination, ValidateFileSize, ValidateImageFileType, } from '../utils/fileHelper.js';
+import { getVendorDetails } from '../services/vendor.service.js';
 
 /* **vendor_signup logic here** */
 export const vendor_signup = async (req, res) => {
@@ -289,18 +290,11 @@ export const get_vendor_byId = async (req, res) => {
             });
         }
 
-        const vendor = await Vendor.findById(vendorId).populate({ path: 'userId' });
-
-        if (!vendor) {
-            return res.status(400).json({
-                error: `Vendo not found for ID: '${vendorId}'`,
-                success: false,
-            });
-        }
-
+        const vendor = await getVendorDetails(vendorId);
+        
         return res.status(200).json({
-            data: vendor,
-            success: true,
+            data: vendor.data,
+            success: vendor.status,
         });
 
     } catch (error) {
@@ -544,10 +538,10 @@ export const get_revenue_via_duration = async (req, res) => {
 export const vendor_filters = async (req, res) => {
   try {
     const {
-      search, businessName, 
-      address, status,
-      page, limit,
-      offset, sortBy = 'createdAt', order = 'desc'
+      search, status, address, 
+      joinRange, updateRange,
+      page, limit, offset, 
+      sortBy = 'createdAt', order = 'desc'
     } = req.query;
 
     // Build Filters 
@@ -555,13 +549,15 @@ export const vendor_filters = async (req, res) => {
       search: search || '',
       address: address || '',
       status: status || 'approved',
+      joinRange: joinRange? joinRange.split(','):'',
+      joinRange: updateRange? updateRange.split(','):'',
       page: parseInt(page) || 1,
       limit: parseInt(limit) || 10,
       offset: parseInt(offset) || 0,
     };
 
     // Build Mongo query
-    const query = BuildProductQuery(filters);
+    const query = BuildVendorQuery(filters);
 
     // Count Total Docs
     const total = await Vendor.countDocuments(query);

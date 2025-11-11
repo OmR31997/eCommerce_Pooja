@@ -1,7 +1,7 @@
 import { User } from '../models/user.model.js';
 import { Vendor } from '../models/vendor.model.js';
 import bcrypt from 'bcryptjs'
-import { BuildProductQuery, Pagination } from '../utils/fileHelper.js';
+import { BuildUserQuery, Pagination } from '../utils/fileHelper.js';
 
 /* **get_users logic here** */
 export const get_users = async (req, res) => {
@@ -273,10 +273,9 @@ export const customer_filters = async (req, res) => {
   try {
     const {
       search, 
-      name, email, phone, segment, 
-      address, status,
-      page, limit,
-      offset, sortBy = 'createdAt', order = 'desc'
+      name, email, phone, segment, joinRange, address, status,
+      page, limit, 
+      sortBy = 'createdAt', order = 'desc'
     } = req.query;
 
     // Build Filters 
@@ -287,14 +286,14 @@ export const customer_filters = async (req, res) => {
       phone: phone || '',
       segment: segment || '',
       address: address || '',
+      joinRange: joinRange? joinRange.split(',') : undefined,
       status: status || 'active',
       page: parseInt(page) || 1,
-      limit: parseInt(limit) || 10,
-      offset: parseInt(offset) || 0,
+      limit: parseInt(limit) || 10
     };
 
     // Build Mongo query
-    const query = BuildProductQuery(filters);
+    const query = BuildUserQuery(filters);
 
     // Count Total Docs
     const total = await User.countDocuments(query);
@@ -302,7 +301,6 @@ export const customer_filters = async (req, res) => {
     const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
       filters.page,
       filters.limit,
-      filters.offset,
       total,
       filters.status,
       `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`

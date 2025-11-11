@@ -78,4 +78,4 @@ appServer.use('/api/user', UserRoute);
 const port = process.env.PORT;
 
 const baseUrl = process.env.NODE_ENV ==='development'? `http://localhost:${port}`: process.env.BASE_URL;
-appServer.listen(port, () => console.log(`Server is running at ${baseUrl}/api/health`));
+appServer.listen(port, () => console.log(`Server is running at ${baseUrl}`));
