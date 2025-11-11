@@ -1,7 +1,7 @@
 import { Vendor } from '../models/vendor.model.js';
 import { Category } from '../models/category.model.js';
 import { Product } from '../models/product.model.js';
-import { DeleteLocalFile, ValidateFileSize, ValidateImageFileType } from '../utils/fileHelper.js';
+import { BuildProductQuery, DeleteLocalFile, Pagination, ValidateFileSize, ValidateImageFileType } from '../utils/fileHelper.js';
 
 /* **create_product logic here** */
 export const create_product = async (req, res) => {
@@ -135,10 +135,41 @@ export const create_product = async (req, res) => {
 /* **view_products logic here** */
 export const view_products = async (req, res) => {
     try {
-        const products = await Product.find({ status: 'approved' })
-            .populate({ path: 'vendorId', select: 'shopName -_id' })
-            .populate('categoryId', 'name slug -_id')
-            .select('-vendorId -categoryId');
+        const {
+            page = 1, limit = 10, offset,
+            status = 'approved',
+            sortBy = 'createdAt', order = 'desc' } = req.query;
+
+        const parsedPage = parseInt(page);
+        const parsedLimit = parseInt(limit);
+
+        // Build Query
+        const query = {};
+
+        // Handle Status
+        if (status) query.status = status;
+
+        // Count total records
+        const total = await Product.countDocuments(query);
+
+        const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
+            parsedPage,
+            parsedLimit,
+            offset,
+            total,
+            status,
+            `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`);
+
+            const sortField = ['name', 'price', 'createdAt'].includes(sortBy) ? sortBy : 'createdAt';
+            const sortDirection = order === 'asc' ? 1 : -1;
+            const sortOption = { [sortField]: sortDirection };
+
+        const products = await Product.find(query)
+            .populate({ path: 'vendorId' })
+            .populate({ path: 'categoryId' })
+            .skip(skip)
+            .limit(parsedLimit)
+            .sort(sortOption)
 
         if (products.length === 0) {
             return res.status(404).json({
@@ -148,9 +179,18 @@ export const view_products = async (req, res) => {
         }
 
         return res.status(200).json({
+            message: 'Products fetched successfully.',
             data: products,
-            success: true,
+            pagination: {
+                count: total,
+                prevUrl,
+                nextUrl,
+                currentPage,
+                totalPages,
+                success: true,
+            }
         });
+
     } catch (error) {
         return res.status(500).json({
             error: error.message,
@@ -344,7 +384,7 @@ export const manage_product_byVendor = async (req, res) => {
         }
         else if (role === 'admin') {
 
-            
+
         }
         else {
             return res.status(403).json({
@@ -409,3 +449,80 @@ export const rate_product = async (req, res) => {
         });
     }
 }
+
+/* **product_filters logic here** */
+export const product_filters = async (req, res) => {
+  try {
+    const {
+      search, category,
+      stockStatus, priceRange,
+      vendor, rating,
+      discount, status,
+      page, limit,
+      offset, sortBy = 'createdAt', order = 'desc'
+    } = req.query;
+
+    // Build Filters 
+    const filters = {
+      search: search || '',
+      category: category || '',
+      stockStatus: stockStatus || '',
+      priceRange: priceRange ? priceRange.split(',').map(Number) : undefined,
+      vendor: vendor || '',
+      rating: rating ? Number(rating) : undefined,
+      discount: discount ? Number(discount) : undefined,
+      status: status || 'approved',
+      page: parseInt(page) || 1,
+      limit: parseInt(limit) || 10,
+      offset: parseInt(offset) || 0,
+    };
+
+    // Build Mongo query
+    const query = BuildProductQuery(filters);
+
+    // Count Total Docs
+    const total = await Product.countDocuments(query);
+
+    const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
+      filters.page,
+      filters.limit,
+      filters.offset,
+      total,
+      filters.status,
+      `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`
+    );
+
+    // Sorting
+    const sortField = ['name', 'price', 'createdAt'].includes(sortBy) ? sortBy : 'createdAt';
+    const sortDirection = order === 'asc' ? 1 : -1;
+    const sortOption = { [sortField]: sortDirection };
+
+    const products = await Product.find(query)
+      .skip(skip)
+      .limit(filters.limit)
+      .sort(sortOption)
+      .populate({ path: 'vendorId', select: 'name businessName' })
+      .populate({ path: 'categoryId', select: 'name' });
+
+    return res.status(200).json({
+      message: 'Products fetched successfully',
+      data: products,
+      pagination: {
+        count: total,
+        prevUrl,
+        nextUrl,
+        currentPage,
+        totalPages,
+      },
+      success: true,
+    });
+
+  } catch (error) {
+    console.error('Error in product_filters:', error);
+    return res.status(500).json({
+      error: error.message,
+      message: 'Internal Server Error',
+      success: false,
+    });
+  }
+};

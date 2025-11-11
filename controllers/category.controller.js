@@ -285,7 +285,6 @@ export const view_categories = async (req, res) => {
                 }
             });
 
-            console.log(categories)
         if (categories.length === 0) {
             return res.status(404).json({
                 error: 'Category not found',
@@ -302,8 +301,8 @@ export const view_categories = async (req, res) => {
                 nextUrl,
                 currentPage,
                 totalPages,
-                success: true,
-            }
+            },
+            success: true,
         });
 
     } catch (error) {
@@ -370,7 +369,7 @@ export const view_category_bySlug = async (req, res) => {
     }
 }
 
-
+/* **search_category logic here** */
 export const search_category = async (req, res) => {
   try {
     const {
@@ -475,46 +474,6 @@ export const search_category = async (req, res) => {
     });
   }
 };
-
-
-export const view_paginated_categories = async (req, res) => {
-    try {
-        const { page = 1, limit = 10, offset, status } = req.query;
-
-        const skip = Pagination(page, limit, offset);
-
-        const categories = await Category.find({ status })
-            .skip(skip)
-            .limit(parseInt(limit))
-            .sort({ createdAt: -1 });
-
-        if (categories.length === 0) {
-            return res.status(404).json({
-                error: 'Category not found',
-                success: false,
-            });
-        }
-
-        const total = await Category.countDocuments({ status });
-        const currentPage = parseInt(page);
-        return res.status(200).json({
-            data: categories,
-            success: true,
-            total,
-            totalPages: Math.ceil(total / limit),
-            next: currentPage < totalPages ? currentPage + 1 : null,
-            prev: currentPage > 1 ? currentPage - 1 : null,
-            current: currentPage,
-        })
-    } catch (error) {
-        console.error('Error in search_category:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Internal Server Error',
-            error: error.message,
-        });
-    }
-}
 
 /* **remove_category logic here** */
 export const remove_category = async (req, res) => {

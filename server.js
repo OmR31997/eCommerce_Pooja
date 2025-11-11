@@ -7,6 +7,7 @@ import CorsConfig from './config/cors.config.js';
 import { DB_Connect } from './config/db.config.js';
 import { seedDatabase } from './seeds/seed.js';
 import mongoose from 'mongoose';
+import swaggerUi from 'swagger-ui-express';
 
 import AuthRoute from './routes/auth.route.js';
 import AdminRoute from './routes/admin.route.js';
@@ -16,9 +17,10 @@ import ProductRoute from './routes/product.route.js';
 import CartRoute from './routes/cart.route.js';
 import PaymentRoute from './routes/payment.route.js';
 import OrderRoute from './routes/order.route.js';
+import UserRoute from './routes/user.route.js';
 
 import { authentication, authorization, authorizationRoles } from './middlewares/auth.middleware.js';
-import swaggerUi from 'swagger-ui-express';
+
 
 const appServer = express();
 appServer.use(express.json());
@@ -52,7 +54,15 @@ appServer.get('/api/health', async (req, res) => {
 });
 
 // Mount Swagger UI
-const swaggerDocument = JSON.parse(fs.readFileSync('./swagger-output.json', 'utf-8'));
+const swaggerPath = path.join(process.cwd(), 'docs', 'swagger-output.json');
+let swaggerDocument = {};
+try {
+  swaggerDocument = JSON.parse(fs.readFileSync(swaggerPath, 'utf8'));
+} catch (err) {
+  console.warn('⚠️ swagger-output.json missing. Run `npm run build:swagger` first.');
+}
+
+// Serve Swagger UI
 appServer.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 appServer.use('/api/auth', AuthRoute);
@@ -63,8 +73,9 @@ appServer.use('/api/product', ProductRoute);
 appServer.use('/api/cart', CartRoute);
 appServer.use('/api/payment', PaymentRoute);
 appServer.use('/api/order', OrderRoute);
+appServer.use('/api/user', UserRoute);
 
 const port = process.env.PORT;
 
-const baseUrl = process.env.NODE_ENV ==='development'? `http://localhost:${port}`: process.env.BASE_URL;
-appServer.listen(port, () => console.log(`Server is running at ${baseUrl}/api/health`));
+// const baseUrl = process.env.NODE_ENV ==='development'? `http://localhost:${port}`: process.env.BASE_URL;
+appServer.listen(port, () => console.log(`Server is running at http://localhost:${port}/api/health`));

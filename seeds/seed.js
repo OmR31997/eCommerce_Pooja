@@ -23,6 +23,7 @@ export const seedDatabase = async (isManual = false) => {
         role: process.env.ROLE,
         isVerified: true,
         status: 'active',
+        address: 'India',
       });
 
       adminRecord.allowAdminSeed = true;

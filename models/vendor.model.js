@@ -4,22 +4,27 @@ const VendorSchema = new mongoose.Schema({
     userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: [true, `'userId' field must be required`]
+        immutable: true,
+        required: [true, `'userId' field must be required`],
+        index: true,
     },
     type: {
         type: String,
         trim: true,
         required: [true, `'type' field must be required`],
+        index: true,
     },
     status: {
         type: String,
         trim: true,
         enum: ['approved', 'pending', 'rejected'],
         default: 'pending',
+        index: true,
     },
     businessName: {
         type: String,
         trim: true,
+        unique: true,
         required: [true, `'businessName' field must be required`],
     },
     businessDescription: {
@@ -32,9 +37,9 @@ const VendorSchema = new mongoose.Schema({
         unique: true,
         required: [true, `'businessEmail' field must be required`],
     },
-    officeAddress: {
+    address: {
         type: String,
-        required: [true, `'officeAddress' field must be required`],
+        required: [true, `'address' field must be required`],
     },
     logoUrl: {
         type: String,
@@ -58,9 +63,23 @@ const VendorSchema = new mongoose.Schema({
             required: [true, `'bankName' field must be required`]
         }
     },
-    additionalDoc: {
+    documents: {
         type: [String],
     }
 }, { timestamps: true });
+
+VendorSchema.index({
+    businessName: 'text',
+    businessDescription: 'text',
+    address: 'text'
+}, {
+    name: 'vendor_text_index',
+    weights: {
+        businessName: 5,
+        businessDescription: 3,
+        address: 1,
+    },
+    default_language: 'english', 
+});
 
 export const Vendor = mongoose.model('Vendor', VendorSchema);

@@ -43,9 +43,9 @@ const OrderSchema = new mongoose.Schema({
     paymentStatus: {
         type: String,
         enum: ['pending', 'initiated', 'paid', 'failed'],
-        required: [true, `'paymentStatus' field must be required`],
+        default: 'pending',
     },
-    orderStatus: {
+    status: {
         type: String,
         enum: ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'],
         default: 'pending'

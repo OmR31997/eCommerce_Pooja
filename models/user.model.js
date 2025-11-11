@@ -6,14 +6,20 @@ const UserSchema = new mongoose.Schema({
         trim: true,
         required: [true, `'name' field must be required`],
     },
+    segment: {
+        type: String,
+        default: null,
+    },
     email: {
         type: String,
         unique: true,
+        sparse: true,
         required: [true, `'email' field must be required`],
     },
     phone: {
         type: String,
         unique: true,
+        sparse: true,
         required: [true, `'phone' field must be required`],
     },
     password: {
@@ -56,6 +62,26 @@ const UserSchema = new mongoose.Schema({
         enum: ['active', 'blocked'],
         default: 'active'
     },
+    address: {
+        type: String,
+        index: true,
+        required: [true, `'address' field must be required`],
+    }
 }, { timestamps: true });
+
+UserSchema.index({
+    name: 'text',
+    address: 'text'
+}, {
+    name: 'user_text_index',
+    weights: {
+        name: 3,
+        address: 1,
+    },
+    default_language: 'english', 
+});
+
+/* Compound Index for Admin Filters */
+UserSchema.index({ role: 1, status: 1 });
 
 export const User = mongoose.model('User', UserSchema);

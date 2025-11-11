@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import slugify from 'slugify';
 import { Category } from '../models/category.model.js';
+import { Product } from '../models/product.model.js';
 
 export const GenerateSlug = async (name) => {
     if (!name) {
@@ -29,17 +30,17 @@ export const GenerateUniqueFileName = (prefix = '', originalname = '') => {
     }
 }
 
-export const Pagination = (page, limit, offset, total, status, baseUrl, extraParams = {}) => {
+export const Pagination = (page, limit, offset, total, status, baseUrl) => {
     const skip = offset || (page - 1) * limit;
     const nextOffset = skip + limit < total ? skip + limit : null;
     const prevOffset = skip - limit >= 0 ? skip - limit : null;
     const totalPages = Math.ceil(total / limit);
-    const extraFields = ``
+
     const buildUrl = (offSetVal, track) => {
         if (offSetVal === null) return null;
 
         const query = new URLSearchParams({
-            page: track ,
+            page: track,
             limit,
             offset: offSetVal,
             status,
@@ -74,4 +75,63 @@ export const DeleteLocalFile = (filePath) => {
     } catch (error) {
         throw new Error(`Error deleting file:`, error.message);
     }
-} 
+}
+
+export const BuildProductQuery = (filters) => {
+    try {
+
+        const query = {};
+
+        if (filters.search) {
+  query.$or = [
+    { name: { $regex: filters.search, $options: "i" } },
+    { description: { $regex: filters.search, $options: "i" } },
+  ];
+}
+
+
+
+        if (filters.category) {
+            query.categoryId = filters.category;
+        }
+
+        if (filters.vendor) {
+            query.vendorId = filters.vendor;
+        }
+
+        if (filters.priceRange && Array.isArray(filters.priceRange) && filters.priceRange.length === 2) {
+            const [min, max] = filters.priceRange;
+            query.price = { $gte: min, $lte: max };
+        }
+
+        if (filters.stockStatus) {
+            switch (filters.stockStatus) {
+                case 'in_stock':
+                    query.stock = { $gt: 0 };
+                    break;
+                case 'low_stock':
+                    query.stock = { $gt: 0, $lt: 5 };
+                    break;
+                case 'out_of_stock':
+                    query.stock = { $lte: 0 };
+                    break;
+            }
+        }
+
+        if (filters.rating !== undefined) {
+            query['rating.average'] = { $gte: filters.rating };
+        }
+
+        if (filters.discount !== undefined) {
+            query.discount = { $gte: filters.discount };
+        }
+
+        if (filters.status) {
+            query.status = filters.status;
+        }
+
+        return query;
+    } catch (error) {
+        throw new Error(`Error building product query: ${error.message}`);
+    }
+}

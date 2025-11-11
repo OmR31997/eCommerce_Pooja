@@ -105,7 +105,7 @@ export const sign_up = async (req, res) => {
 
         const userData = {
             ...req.body,
-            password: await bcrypt.hash(password, process.env.HASH_SALT ?? 10),
+            password: await bcrypt.hash(password, Number(process.env.HASH_SALT) ?? 10),
             isVerified: true,
         };
 
@@ -226,7 +226,7 @@ export const sign_in = async (req, res) => {
         return res.status(200).json({
             message: 'OTP has been sent successfully',
             warning: message,
-            success: result.success,
+            // success: result.success,
         });
 
     } catch (error) {
@@ -384,11 +384,10 @@ export const confirm_signIn_otp = async (req, res) => {
             }
         }
         else if (existUser.role === 'vendor') {
-            const vendor = await Vendor.findOne({ userId: existUser._id }).select('_id shopName');
-
-            if (!vendor.isApproved) {
+            const vendor = await Vendor.findOne({ userId: existUser._id }).select('_id businessName status');
+            if (vendor.status !=='approved') {
                 return res.status(400).json({
-                    error: `Currently you have't empower to create, & manage the product`,
+                    error: `Currently you have't empower to create, & manage the product because profile is status: ${vendor.status}`,
                     success: true,
                 })
             }

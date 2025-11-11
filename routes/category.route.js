@@ -1,14 +1,7 @@
 import express from 'express';
-import { clear_Category, create_product_category, remove_category, search_category, update_category, view_categories, view_category_byId, view_category_bySlug, view_paginated_categories } from '../controllers/category.controller.js';
+import { clear_Category, create_product_category, remove_category, search_category, update_category, view_categories, view_category_byId, view_category_bySlug } from '../controllers/category.controller.js';
 import { authentication, authorizationRoles } from '../middlewares/auth.middleware.js';
 import { Upload } from '../middlewares/upload.middleware.js';
-
-/** 
-   * @swagger
-   * tags: 
-   *   -name: Category
-   *   description: Product category management APIs
-*/
 
 const router = express.Router()
 
@@ -44,8 +37,6 @@ router.get('/:id/view-id', view_category_byId);
 */
 router.get('/:slug/view-slug', view_category_bySlug);
 
-router.get('/', search_category);
-
 /* @description -> To update category by categoryId
    @end-Point -> /api/category/:id/update
    @methtod -> PATCH 
@@ -63,5 +54,11 @@ router.delete('/:id/delete', authentication, authorizationRoles(['admin']), Uplo
    @methtod -> DELETE 
 */
 router.delete('/clear', authentication, authorizationRoles(['admin']), clear_Category);
+
+/* @description -> To search
+   @end-Point -> /api/category/?find=
+   @methtod -> GET 
+*/
+router.get('/', search_category);
 
 export default router;

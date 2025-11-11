@@ -40,7 +40,7 @@ const ProductSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['pending', 'approved', 'rejected', 'under_process'],
+        enum: ['approved', 'pending', 'rejected', 'under_process'],
         default: 'pending',
         validate: {
             validator: function (value) {
@@ -50,6 +50,10 @@ const ProductSchema = new mongoose.Schema({
                 return true;
             }
         }
+    },
+    sales: {
+        type: Number,
+        default: 0,
     },
     discount: {
         type: Number,
@@ -70,5 +74,17 @@ const ProductSchema = new mongoose.Schema({
         }
     }
 }, { timestamps: true });
+
+ProductSchema.index({ name: 'text', description: 'text' }, {
+  name: 'product_text_index',
+  weights: { name: 3, description: 1 },
+  default_language: 'english'
+});
+
+ProductSchema.index({ price: 1 });
+ProductSchema.index({ stock: 1 });
+ProductSchema.index({ 'rating.average': 1 });
+ProductSchema.index({ discount: 1 });
+ProductSchema.index({ status: 1 });
 
 export const Product = mongoose.model('Product', ProductSchema);

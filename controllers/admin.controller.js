@@ -28,8 +28,8 @@ export const get_admin_dashboard = async (req, res) => {
 /* **manage_vendor logic here** */
 export const manage_vendor = async (req, res) => {
     try {
+        const { status } = req.body;
         const vendorId = req.params.id;
-
         if (req.user.role !== 'admin') {
             return res.status(403).json({
                 error: 'Access denied. Only admin can perform this action.',
@@ -47,7 +47,7 @@ export const manage_vendor = async (req, res) => {
         }
 
         // Toggle Approval Status
-        vendor.isApproved = !vendor.isApproved;
+        vendor.status = status;
 
         const responseUpdate = await vendor.save();
 

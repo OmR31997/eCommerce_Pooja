@@ -1,6 +1,6 @@
 import express from 'express';
-import { authentication, authorization, authorizationRoles} from '../middlewares/auth.middleware.js';
-import { confirm_otp, get_dashboard, update_profile, vendor_signup } from '../controllers/vendor.controller.js';
+import { authentication, authorizationRoles } from '../middlewares/auth.middleware.js';
+import { confirm_otp, get_dashboard, get_vendor_byId, get_vendors, remove_vendor_profile, search_vendors, update_vendor_profile, vendor_signup } from '../controllers/vendor.controller.js';
 import { Upload } from '../middlewares/upload.middleware.js';
 const router = express.Router();
 
@@ -18,6 +18,20 @@ router.post('/sign-up', authentication, authorizationRoles(['user']), vendor_sig
 */
 router.post('/confirm-otp', authentication, authorizationRoles(['user']), Upload('LOGO-').single('logoUrl'), confirm_otp);
 
+/* @description -> To read all vendors records
+   @end-Point -> /api/vendor/view
+   @methtod -> GET
+   @access -> Private (admin) 
+*/
+router.get('/view', get_vendors);
+
+/* @description -> To get vedor record byId
+   @end-Point -> /api/vendor/view/:id
+   @methtod -> GET
+   @access -> Private (admin) 
+*/
+router.get('/view/:id', authentication, authorizationRoles(['admin']), get_vendor_byId);
+
 /* @description -> To view dashboard data of vendor 
    @end-Point -> /api/vendor/dashboard
    @methtod -> GET
@@ -25,6 +39,31 @@ router.post('/confirm-otp', authentication, authorizationRoles(['user']), Upload
 */
 router.get('/dashboard', authentication, authorizationRoles(['vendor']), get_dashboard);
 
-router.patch('/:id', authentication, authorizationRoles(['vendor']), update_profile);
+/* @description -> To update vedor record byId
+   @end-Point -> /api/vendor/view/:id
+   @methtod -> PATCH
+   @access -> Private (vendor/admin) 
+*/
+router.patch('/:id/update', authentication, authorizationRoles(['vendor', 'admin']), Upload('LOGO-').fields([{ name: 'logoUrl', maxCount: 1 }, { name: 'documents', maxCount: Number(process.env.MAX_VENDOR_DOCUMENTS) ?? 2 }]), update_vendor_profile);
+
+/* @description -> To delete vendor record byId
+   @end-Point -> /api/vendor/:id/delete
+   @methtod -> DELETE
+   @access -> Private (vendor/admin) 
+*/
+router.delete('/:id/delete', authentication, authorizationRoles(['vendor', 'admin']), remove_vendor_profile);
+
+/* @description -> To clear vendors
+   @end-Point -> /api/vendor/clear
+   @methtod -> DELETE
+   @access -> Private (admin) 
+*/
+router.delete('/:id/delete', authentication, authorizationRoles(['vendor', 'admin']), remove_vendor_profile);
+
+/* @description -> To search
+   @end-Point -> /api/vendor/?find=
+   @methtod -> GET 
+*/
+router.get('/', search_vendors);
 
 export default router;
