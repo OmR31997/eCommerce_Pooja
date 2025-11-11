@@ -543,7 +543,7 @@ export const reset_password = async (req, res) => {
         //     })
         // }
 
-        const hashedPassword = await bcrypt.hash(newPassword, process.env.HASH_SALT ?? 10);
+        const hashedPassword = await bcrypt.hash(newPassword, Number(process.env.HASH_SALT) ?? 10);
 
         /* *Token-Case* */
         // existUser.password = hashedPassword;
