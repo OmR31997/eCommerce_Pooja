@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
     "build:swagger": "node ./config/swagger.config.js",
-    "build": "npm run build:swagger", 
+    "build": "npm run build:swagger",
     "seed:dev": "node ./seeds/seed.js",
     "start:dev": "cross-env NODE_ENV=development npm run build:swagger && nodemon server.js",
     "start:prod": "cross-env NODE_ENV=production npm run build:swagger && node server.js"
@@ -23,6 +23,7 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "glob": "^11.0.3",
     "google-auth-library": "^10.5.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.19.2",

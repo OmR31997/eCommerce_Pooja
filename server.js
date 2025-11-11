@@ -1,6 +1,6 @@
 import express from 'express';
 import './config/env.config.js';
-import fs from'fs';
+import fs from 'fs';
 import cors from 'cors';
 import path from 'path';
 import CorsConfig from './config/cors.config.js';
@@ -57,13 +57,13 @@ appServer.get('/api/health', async (req, res) => {
 const swaggerPath = path.join(process.cwd(), 'docs', 'swagger-output.json');
 let swaggerDocument = {};
 try {
-  swaggerDocument = JSON.parse(fs.readFileSync(swaggerPath, 'utf8'));
+    swaggerDocument = JSON.parse(fs.readFileSync(swaggerPath, 'utf8'));
 } catch (err) {
-  console.warn('⚠️ swagger-output.json missing. Run `npm run build:swagger` first.');
+    console.warn('⚠️ swagger-output.json missing. Run `npm run build:swagger` first.');
 }
 
 // Serve Swagger UI
-appServer.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+appServer.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, { swaggerOptions: { persistAuthorization: true } }));
 
 appServer.use('/api/auth', AuthRoute);
 appServer.use('/api/admin', authentication, authorizationRoles(['admin']), AdminRoute);
@@ -77,5 +77,5 @@ appServer.use('/api/user', UserRoute);
 
 const port = process.env.PORT;
 
-// const baseUrl = process.env.NODE_ENV ==='development'? `http://localhost:${port}`: process.env.BASE_URL;
-appServer.listen(port, () => console.log(`Server is running at http://localhost:${port}/api/health`));
+const baseUrl = process.env.NODE_ENV ==='development'? `http://localhost:${port}`: process.env.BASE_URL;
+appServer.listen(port, () => console.log(`Server is running at ${baseUrl}/api/health`));

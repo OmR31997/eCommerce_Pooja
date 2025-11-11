@@ -1,6 +1,6 @@
 import express from 'express';
 import { authentication, authorizationRoles } from '../middlewares/auth.middleware.js';
-import { clear_users, get_user_byId, get_users, remove_user_profile, search_users, update_user_profile, } from '../controllers/user.controller.js';
+import { clear_users, customer_filters, get_user_byId, get_users, remove_user_profile, update_user_profile, } from '../controllers/user.controller.js';
 
 const router = express.Router();
 
@@ -39,10 +39,10 @@ router.delete('/:id/delete', authentication, authorizationRoles(['vendor', 'admi
 */
 router.delete('/clear', authentication, authorizationRoles(['admin']), clear_users);
 
-/* @description -> To search
-   @end-Point -> /api/user/?find=
+/* @description -> To filteration
+   @end-Point -> /api/user/filter
    @methtod -> GET 
 */
-router.get('/', search_users);
+router.get('/filter', authentication, authorizationRoles(['admin']), customer_filters);
 
 export default router;

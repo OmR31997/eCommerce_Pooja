@@ -4,7 +4,7 @@ import { Vendor } from '../models/vendor.model.js';
 import { Order } from '../models/order.model.js';
 import { generateOtp, verifyOtp } from '../services/otp.service.js';
 import { ToDeleteFromCloudStorage, ToSaveCloudStorage } from '../services/cloudUpload.service.js';
-import { DeleteLocalFile, Pagination, ValidateFileSize, ValidateImageFileType, } from '../utils/fileHelper.js';
+import { BuildProductQuery, DeleteLocalFile, Pagination, ValidateFileSize, ValidateImageFileType, } from '../utils/fileHelper.js';
 
 /* **vendor_signup logic here** */
 export const vendor_signup = async (req, res) => {
@@ -541,109 +541,178 @@ export const get_revenue_via_duration = async (req, res) => {
 
 }
 
-/* **search_vendors logic here** */
-export const search_vendors = async (req, res) => {
+export const vendor_filters = async (req, res) => {
   try {
     const {
-      find,
-      page = 1,
-      limit = 10,
-      sortBy = 'createdAt',
-      order = -1,
+      search, businessName, 
+      address, status,
+      page, limit,
+      offset, sortBy = 'createdAt', order = 'desc'
     } = req.query;
 
-    if (!find || find.trim() === '') {
-      return res.status(400).json({
-        success: false,
-        message: "Please provide a search query in '?find=' parameter."
-      });
-    }
+    // Build Filters 
+    const filters = {
+      search: search || '',
+      address: address || '',
+      status: status || 'approved',
+      page: parseInt(page) || 1,
+      limit: parseInt(limit) || 10,
+      offset: parseInt(offset) || 0,
+    };
 
-    const parsedPage = parseInt(page);
-    const parsedLimit = parseInt(limit);
+    // Build Mongo query
+    const query = BuildProductQuery(filters);
 
-    // Try Text Search First
-    let query = { $text: { $search: find } };
-    let projection = { score: { $meta: "textScore" } };
-    let sortOption = { score: { $meta: "textScore" } };
+    // Count Total Docs
+    const total = await Vendor.countDocuments(query);
 
-    let total = await Vendor.countDocuments(query);
-    let { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
-      parsedPage,
-      parsedLimit,
-      0,
+    const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
+      filters.page,
+      filters.limit,
+      filters.offset,
       total,
-      null,
-      `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}?find=${find}`
+      filters.status,
+      `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`
     );
 
-    let vendors = await Vendor.find(query, projection)
+    // Sorting
+    const sortField = ['businessName', 'address', 'createdAt'].includes(sortBy) ? sortBy : 'createdAt';
+    const sortDirection = order === 'asc' ? 1 : -1;
+    const sortOption = { [sortField]: sortDirection };
+
+    const vendors = await Vendor.find(query)
       .skip(skip)
-      .limit(parsedLimit)
-      .sort(sortOption);
-
-    // Fallback To Regex If Text Search Finds Nothing
-    if (vendors.length === 0) {
-      query = {
-        $or: [
-          { businessName: { $regex: find, $options: "i" } },
-          { businessDescription: { $regex: find, $options: "i" } },
-          { businessEmail: { $regex: find, $options: "i" } }
-        ]
-      };
-
-      // Sorting for regex fallback
-      const allowedSorts = ['businessName', 'businessEmail', 'createdAt'];
-      const safeSortBy = allowedSorts.includes(sortBy) ? sortBy : 'createdAt';
-      sortOption = { [safeSortBy]: parseInt(order) };
-
-      total = await Vendor.countDocuments(query);
-      const pagination = Pagination(
-        parsedPage,
-        parsedLimit,
-        0,
-        total,
-        null,
-        `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}?find=${find}`
-      );
-
-      vendors = await Vendor.find(query)
-        .skip(pagination.skip)
-        .limit(parsedLimit)
-        .sort(sortOption);
-
-      nextUrl = pagination.nextUrl;
-      prevUrl = pagination.prevUrl;
-      totalPages = pagination.totalPages;
-      currentPage = pagination.currentPage;
-    }
-
-    if (!vendors.length) {
-      return res.status(404).json({
-        success: false,
-        message: `No vendors found matching "${find}".`
-      });
-    }
+      .limit(filters.limit)
+      .sort(sortOption)
+      .populate({ path: 'userId', select: 'name' })
 
     return res.status(200).json({
-      success: true,
-      message: `Found ${vendors.length} matching vendors.`,
+      message: 'Vendors fetched successfully',
       data: vendors,
       pagination: {
         count: total,
         prevUrl,
         nextUrl,
         currentPage,
-        totalPages
-      }
+        totalPages,
+      },
+      success: true,
     });
 
   } catch (error) {
-    console.error('Error in search_vendor:', error);
+    console.error('Error in vendor_filters:', error);
     return res.status(500).json({
-      success: false,
+      error: error.message,
       message: 'Internal Server Error',
-      error: error.message
+      success: false,
     });
   }
 };
+
+
+/* **search_vendors logic here** */
+// export const search_vendors = async (req, res) => {
+//   try {
+//     const {
+//       find,
+//       page = 1,
+//       limit = 10,
+//       sortBy = 'createdAt',
+//       order = -1,
+//     } = req.query;
+
+//     if (!find || find.trim() === '') {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Please provide a search query in '?find=' parameter."
+//       });
+//     }
+
+//     const parsedPage = parseInt(page);
+//     const parsedLimit = parseInt(limit);
+
+//     // Try Text Search First
+//     let query = {};
+//     let projection = { score: { $meta: "textScore" } };
+//     let sortOption = { score: { $meta: "textScore" } };
+
+//     let total = await Vendor.countDocuments(query);
+//     let { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
+//       parsedPage,
+//       parsedLimit,
+//       0,
+//       total,
+//       null,
+//       `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}?find=${find}`
+//     );
+
+//     let vendors = await Vendor.find(query, projection)
+//       .skip(skip)
+//       .limit(parsedLimit)
+//       .sort(sortOption);
+
+//     // Fallback To Regex If Text Search Finds Nothing
+//     if (vendors.length === 0) {
+//       query = {
+//         $or: [
+//           { businessName: { $regex: find, $options: "i" } },
+//           { businessDescription: { $regex: find, $options: "i" } },
+//           { businessEmail: { $regex: find, $options: "i" } }
+//         ]
+//       };
+
+//       // Sorting for regex fallback
+//       const allowedSorts = ['businessName', 'businessEmail', 'createdAt'];
+//       const safeSortBy = allowedSorts.includes(sortBy) ? sortBy : 'createdAt';
+//       sortOption = { [safeSortBy]: parseInt(order) };
+
+//       total = await Vendor.countDocuments(query);
+//       const pagination = Pagination(
+//         parsedPage,
+//         parsedLimit,
+//         0,
+//         total,
+//         null,
+//         `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}?find=${find}`
+//       );
+
+//       vendors = await Vendor.find(query)
+//         .skip(pagination.skip)
+//         .limit(parsedLimit)
+//         .sort(sortOption);
+
+//       nextUrl = pagination.nextUrl;
+//       prevUrl = pagination.prevUrl;
+//       totalPages = pagination.totalPages;
+//       currentPage = pagination.currentPage;
+//     }
+
+//     if (!vendors.length) {
+//       return res.status(404).json({
+//         success: false,
+//         message: `No vendors found matching "${find}".`
+//       });
+//     }
+
+//     return res.status(200).json({
+//       success: true,
+//       message: `Found ${vendors.length} matching vendors.`,
+//       data: vendors,
+//       pagination: {
+//         count: total,
+//         prevUrl,
+//         nextUrl,
+//         currentPage,
+//         totalPages
+//       }
+//     });
+
+//   } catch (error) {
+//     console.error('Error in search_vendor:', error);
+//     return res.status(500).json({
+//       success: false,
+//       message: 'Internal Server Error',
+//       error: error.message
+//     });
+//   }
+// };

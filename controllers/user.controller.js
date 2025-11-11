@@ -1,7 +1,7 @@
 import { User } from '../models/user.model.js';
 import { Vendor } from '../models/vendor.model.js';
 import bcrypt from 'bcryptjs'
-import { Pagination } from '../utils/fileHelper.js';
+import { BuildProductQuery, Pagination } from '../utils/fileHelper.js';
 
 /* **get_users logic here** */
 export const get_users = async (req, res) => {
@@ -269,110 +269,182 @@ export const clear_users = async (req, res) => {
     }
 }
 
-/* **search_users logic here** */
-export const search_users = async (req, res) => {
-    try {
-        const {
-            find,
-            page = 1,
-            limit = 10,
-            sortBy = 'createdAt',
-            order = -1,
-        } = req.query;
+export const customer_filters = async (req, res) => {
+  try {
+    const {
+      search, 
+      name, email, phone, segment, 
+      address, status,
+      page, limit,
+      offset, sortBy = 'createdAt', order = 'desc'
+    } = req.query;
 
-        if (!find || find.trim() === '') {
-            return res.status(400).json({
-                success: false,
-                message: "Please provide a search query in '?find=' parameter."
-            });
-        }
+    // Build Filters 
+    const filters = {
+      search: search || '',
+      name: name || '',
+      email: email || '',
+      phone: phone || '',
+      segment: segment || '',
+      address: address || '',
+      status: status || 'active',
+      page: parseInt(page) || 1,
+      limit: parseInt(limit) || 10,
+      offset: parseInt(offset) || 0,
+    };
 
-        const parsedPage = parseInt(page);
-        const parsedLimit = parseInt(limit);
+    // Build Mongo query
+    const query = BuildProductQuery(filters);
 
-        // Try Text Search First
-        let query = { $text: { $search: find } };
-        let projection = { score: { $meta: "textScore" } };
-        let sortOption = { score: { $meta: "textScore" } };
+    // Count Total Docs
+    const total = await User.countDocuments(query);
 
-        let total = await User.countDocuments(query);
-        let { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
-            parsedPage,
-            parsedLimit,
-            0,
-            total,
-            null,
-            `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}?find=${find}`
-        );
+    const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
+      filters.page,
+      filters.limit,
+      filters.offset,
+      total,
+      filters.status,
+      `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`
+    );
 
-        let users = await User.find(query, projection)
-            .skip(skip)
-            .limit(parsedLimit)
-            .sort(sortOption);
+    // Sorting
+    const sortField = ['name', 'address', 'createdAt'].includes(sortBy) ? sortBy : 'createdAt';
+    const sortDirection = order === 'asc' ? 1 : -1;
+    const sortOption = { [sortField]: sortDirection };
 
-        // Fallback To Regex If Text Search Finds Nothing
-        if (users.length === 0) {
-            query = {
-                $or: [
-                    { name: { $regex: find, $options: "i" } },
-                    { email: { $regex: find, $options: "i" } },
-                    { phone: { $regex: find, $options: "i" } },
-                    { address: { $regex: find, $options: "i" } },
-                ]
-            };
+    const customers = await User.find(query)
+      .skip(skip)
+      .limit(filters.limit)
+      .sort(sortOption)
 
-            // Sorting for regex fallback
-            const allowedSorts = ['name', 'createdAt'];
-            const safeSortBy = allowedSorts.includes(sortBy) ? sortBy : 'createdAt';
-            sortOption = { [safeSortBy]: parseInt(order) };
+    return res.status(200).json({
+      message: 'Customers fetched successfully',
+      data: customers,
+      pagination: {
+        count: total,
+        prevUrl,
+        nextUrl,
+        currentPage,
+        totalPages,
+      },
+      success: true,
+    });
 
-            total = await User.countDocuments(query);
-            const pagination = Pagination(
-                parsedPage,
-                parsedLimit,
-                0,
-                total,
-                null,
-                `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}?find=${find}`
-            );
-
-            users = await User.find(query)
-                .skip(pagination.skip)
-                .limit(parsedLimit)
-                .sort(sortOption);
-
-            nextUrl = pagination.nextUrl;
-            prevUrl = pagination.prevUrl;
-            totalPages = pagination.totalPages;
-            currentPage = pagination.currentPage;
-        }
-
-        if (!users.length) {
-            return res.status(404).json({
-                success: false,
-                message: `No users found matching "${find}".`
-            });
-        }
-
-        return res.status(200).json({
-            success: true,
-            message: `Found ${users.length} matching users.`,
-            data: users,
-            pagination: {
-                count: total,
-                prevUrl,
-                nextUrl,
-                currentPage,
-                totalPages
-            }
-        });
-
-    } catch (error) {
-        console.error('Error in search_user:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Internal Server Error',
-            error: error.message
-        });
-    }
+  } catch (error) {
+    console.error('Error in customer_filters:', error);
+    return res.status(500).json({
+      error: error.message,
+      message: 'Internal Server Error',
+      success: false,
+    });
+  }
 };
+
+/* **search_users logic here** */
+// export const search_users = async (req, res) => {
+//     try {
+//         const {
+//             find,
+//             page = 1,
+//             limit = 10,
+//             sortBy = 'createdAt',
+//             order = -1,
+//         } = req.query;
+
+//         if (!find || find.trim() === '') {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Please provide a search query in '?find=' parameter."
+//             });
+//         }
+
+//         const parsedPage = parseInt(page);
+//         const parsedLimit = parseInt(limit);
+
+//         // Try Text Search First
+//         let query = { $text: { $search: find } };
+//         let projection = { score: { $meta: "textScore" } };
+//         let sortOption = { score: { $meta: "textScore" } };
+
+//         let total = await User.countDocuments(query);
+//         let { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
+//             parsedPage,
+//             parsedLimit,
+//             0,
+//             total,
+//             null,
+//             `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}?find=${find}`
+//         );
+
+//         let users = await User.find(query, projection)
+//             .skip(skip)
+//             .limit(parsedLimit)
+//             .sort(sortOption);
+
+//         // Fallback To Regex If Text Search Finds Nothing
+//         if (users.length === 0) {
+//             query = {
+//                 $or: [
+//                     { name: { $regex: find, $options: "i" } },
+//                     { email: { $regex: find, $options: "i" } },
+//                     { phone: { $regex: find, $options: "i" } },
+//                     { address: { $regex: find, $options: "i" } },
+//                 ]
+//             };
+
+//             // Sorting for regex fallback
+//             const allowedSorts = ['name', 'createdAt'];
+//             const safeSortBy = allowedSorts.includes(sortBy) ? sortBy : 'createdAt';
+//             sortOption = { [safeSortBy]: parseInt(order) };
+
+//             total = await User.countDocuments(query);
+//             const pagination = Pagination(
+//                 parsedPage,
+//                 parsedLimit,
+//                 0,
+//                 total,
+//                 null,
+//                 `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}?find=${find}`
+//             );
+
+//             users = await User.find(query)
+//                 .skip(pagination.skip)
+//                 .limit(parsedLimit)
+//                 .sort(sortOption);
+
+//             nextUrl = pagination.nextUrl;
+//             prevUrl = pagination.prevUrl;
+//             totalPages = pagination.totalPages;
+//             currentPage = pagination.currentPage;
+//         }
+
+//         if (!users.length) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: `No users found matching "${find}".`
+//             });
+//         }
+
+//         return res.status(200).json({
+//             success: true,
+//             message: `Found ${users.length} matching users.`,
+//             data: users,
+//             pagination: {
+//                 count: total,
+//                 prevUrl,
+//                 nextUrl,
+//                 currentPage,
+//                 totalPages
+//             }
+//         });
+
+//     } catch (error) {
+//         console.error('Error in search_user:', error);
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal Server Error',
+//             error: error.message
+//         });
+//     }
+// };

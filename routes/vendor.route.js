@@ -1,6 +1,6 @@
 import express from 'express';
 import { authentication, authorizationRoles } from '../middlewares/auth.middleware.js';
-import { confirm_otp, get_dashboard, get_vendor_byId, get_vendors, remove_vendor_profile, search_vendors, update_vendor_profile, vendor_signup } from '../controllers/vendor.controller.js';
+import { confirm_otp, get_dashboard, get_vendor_byId, get_vendors, remove_vendor_profile, update_vendor_profile, vendor_filters, vendor_signup } from '../controllers/vendor.controller.js';
 import { Upload } from '../middlewares/upload.middleware.js';
 const router = express.Router();
 
@@ -60,10 +60,10 @@ router.delete('/:id/delete', authentication, authorizationRoles(['vendor', 'admi
 */
 router.delete('/:id/delete', authentication, authorizationRoles(['vendor', 'admin']), remove_vendor_profile);
 
-/* @description -> To search
-   @end-Point -> /api/vendor/?find=
+/* @description -> To filter
+   @end-Point -> /api/vendor/filter
    @methtod -> GET 
 */
-router.get('/', search_vendors);
+router.get('/filters', authentication, authorizationRoles(['admin']), vendor_filters);
 
 export default router;
