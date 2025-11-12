@@ -136,9 +136,9 @@ export const create_product = async (req, res) => {
 export const view_products = async (req, res) => {
     try {
         const {
-            page = 1, limit = 10, offset,
+            page = 1, limit = 10,
             status = 'approved',
-            sortBy = 'createdAt', order = 'desc' } = req.query;
+            sortBy = 'createdAt', orderSequence = 'desc' } = req.query;
 
         const parsedPage = parseInt(page);
         const parsedLimit = parseInt(limit);
@@ -155,13 +155,12 @@ export const view_products = async (req, res) => {
         const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
             parsedPage,
             parsedLimit,
-            offset,
             total,
             status,
             `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`);
 
             const sortField = ['name', 'price', 'createdAt'].includes(sortBy) ? sortBy : 'createdAt';
-            const sortDirection = order === 'asc' ? 1 : -1;
+            const sortDirection = orderSequence === 'asc' ? 1 : -1;
             const sortOption = { [sortField]: sortDirection };
 
         const products = await Product.find(query)
@@ -459,7 +458,7 @@ export const product_filters = async (req, res) => {
       vendor, rating,
       discount, status,
       page, limit,
-      offset, sortBy = 'createdAt', order = 'desc'
+      sortBy = 'createdAt', orderSequence = 'desc'
     } = req.query;
 
     // Build Filters 
@@ -474,7 +473,6 @@ export const product_filters = async (req, res) => {
       status: status || 'approved',
       page: parseInt(page) || 1,
       limit: parseInt(limit) || 10,
-      offset: parseInt(offset) || 0,
     };
 
     // Build Mongo query
@@ -486,7 +484,6 @@ export const product_filters = async (req, res) => {
     const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
       filters.page,
       filters.limit,
-      filters.offset,
       total,
       filters.status,
       `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`
@@ -494,7 +491,7 @@ export const product_filters = async (req, res) => {
 
     // Sorting
     const sortField = ['name', 'price', 'createdAt'].includes(sortBy) ? sortBy : 'createdAt';
-    const sortDirection = order === 'asc' ? 1 : -1;
+    const sortDirection = orderSequence === 'asc' ? 1 : -1;
     const sortOption = { [sortField]: sortDirection };
 
     const products = await Product.find(query)

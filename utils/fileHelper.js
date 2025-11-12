@@ -30,8 +30,8 @@ export const GenerateUniqueFileName = (prefix = '', originalname = '') => {
     }
 }
 
-export const Pagination = (page, limit, offset, total, status, baseUrl) => {
-    const skip = offset || (page - 1) * limit;
+export const Pagination = (page, limit, offset, total, baseUrl, filter) => {
+    const skip = offset ? parseInt(offset) : (page - 1) * limit;
     const nextOffset = skip + limit < total ? skip + limit : null;
     const prevOffset = skip - limit >= 0 ? skip - limit : null;
     const totalPages = Math.ceil(total / limit);
@@ -42,8 +42,7 @@ export const Pagination = (page, limit, offset, total, status, baseUrl) => {
         const query = new URLSearchParams({
             page: track,
             limit,
-            offset: offSetVal,
-            status,
+            ...filter,
         }).toString();
 
         return `${baseUrl}?${query}`;
@@ -53,7 +52,7 @@ export const Pagination = (page, limit, offset, total, status, baseUrl) => {
         skip,
         currentPage: page,
         totalPages,
-        nextUrl: buildUrl(nextOffset, page + 2),
+        nextUrl: buildUrl(nextOffset, page + 1),
         prevUrl: buildUrl(prevOffset, page - 1),
     };
 }
@@ -178,7 +177,7 @@ export const BuildUserQuery = (filters) => {
             ];
         }
 
-        if(filters.segment) {
+        if (filters.segment) {
             query.segment = filters.segment;
         }
 
@@ -188,7 +187,7 @@ export const BuildUserQuery = (filters) => {
                 $lte: new Date(filters.joinRange[1]),
             }
         }
-        
+
         return query;
     } catch (error) {
         throw new Error(`Error building product query: ${error.message}`);

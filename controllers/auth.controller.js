@@ -63,7 +63,11 @@ export const send_otp = async (req, res) => {
 /* **sign_up logic here** */
 export const sign_up = async (req, res) => {
     try {
-        const { email, phone, otp, password } = req.body;
+        const {  
+            name, segment=null, address,
+            email, phone, 
+            otp, password 
+        } = req.body;
 
         if (!otp) {
             return res.status(400).json({
@@ -104,7 +108,7 @@ export const sign_up = async (req, res) => {
         }
 
         const userData = {
-            ...req.body,
+            name, email, phone, address, segment,
             password: await bcrypt.hash(password, Number(process.env.HASH_SALT) ?? 10),
             isVerified: true,
         };

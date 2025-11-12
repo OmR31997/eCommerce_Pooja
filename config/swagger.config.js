@@ -1,11 +1,9 @@
-// ./config/swagger.config.js
 import swaggerAutogen from 'swagger-autogen';
 import path from 'path';
 import fs from 'fs';
 
-const outputFile = './docs/swagger-output.json';   // generated file path
-const endpointsFiles = ['./server.js', './routes/*.js'];           // file that loads all routes
-
+const outputFile = './docs/swagger-output.json';         // generated file path
+const endpointsFiles = ['./server.js', './routes/*.js']; // file that loads all routes
 
 const isProd = process.env.NODE_ENV === 'production';
 const host = isProd ? 'ecommerce-pooja.onrender.com' : 'localhost:9000';
@@ -20,6 +18,7 @@ const doc = {
   host,
   basePath: '/',
   schemes,
+  consumes: ['application/json', 'multipart/form-data'],
   tags: [
     { name: 'Auth', description: 'Authentication routes' },
     { name: 'Admin', description: 'Admin routes' },
@@ -30,14 +29,14 @@ const doc = {
     { name: 'Cart', description: 'Cart management routes' },
     { name: 'Order', description: 'Order management routes' },
     { name: 'Payment', description: 'Payment management routes' },
-    { name: 'API Testing', description: 'To testing end-point'}
+    { name: 'API Testing', description: 'To testing end-point' }
   ],
   securityDefinitions: {
     bearerAuth: {
       type: 'apiKey',
       name: 'Authorization',
       in: 'header',
-      description:  `Enter JWT token as: **Bearer &lt;your_token&gt;**`,
+      description: `Enter JWT token as: **Bearer &lt;your_token&gt;**`,
     },
   },
   security: [{ bearerAuth: [] }],
@@ -60,7 +59,7 @@ swaggerAutogen()(outputFile, endpointsFiles, doc).then(() => {
   });
 
   fs.writeFileSync(jsonPath, JSON.stringify(swagger, null, 2));
-  console.log('✅ Tags assigned successfully with name & description globally!');
+  console.log('Tags assigned successfully with name & description globally!');
 });
 
 const getTagsFromRoute = (route) => {

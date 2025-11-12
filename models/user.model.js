@@ -28,6 +28,8 @@ const UserSchema = new mongoose.Schema({
     },
     role: {
         type: String,
+        trim: true,
+        lowercase: true,
         enum: ['user', 'vendor', 'admin'],
         default: 'user',
         validate: {
@@ -42,6 +44,19 @@ const UserSchema = new mongoose.Schema({
             }
         },
         message: `'role' must be 'user' at creation time `
+    },
+    orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
+    totalSpents: {
+        type: Number,
+        default: 0,
+    },
+    shippedOrders: {
+        type: Number,
+        default: 0,
+    },
+    rejectedOrders: {
+        type: Number,
+        default: 0,
     },
     otp: {
         type: String
@@ -59,7 +74,9 @@ const UserSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['active', 'blocked'],
+        trim: true,
+        lowercase: true,
+        enum: ['active', 'inactive', 'blocked', 'vip', 'new', 'at_risk'],
         default: 'active'
     },
     address: {
@@ -78,7 +95,7 @@ UserSchema.index({
         name: 3,
         address: 1,
     },
-    default_language: 'english', 
+    default_language: 'english',
 });
 
 /* Compound Index for Admin Filters */

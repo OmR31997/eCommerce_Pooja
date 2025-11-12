@@ -7,7 +7,7 @@ import { Vendor } from "../models/vendor.model.js";
 export const get_admin_dashboard = async (req, res) => {
     try {
         const totalUsers = await User.countDocuments({ role: 'user' });
-        const totalVendors = await User.countDocuments({ role: 'vendor' });
+        const totalVendors = await Vendor.countDocuments();
         const pendingVendors = await Vendor.countDocuments({ isApproved: false });
         const blockedUsers = await User.countDocuments({ status: 'blocked' });
         const inactiveCategory = await Category.countDocuments({ status: 'inactive' });

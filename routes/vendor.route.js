@@ -1,6 +1,6 @@
 import express from 'express';
 import { authentication, authorizationRoles } from '../middlewares/auth.middleware.js';
-import { confirm_otp, get_dashboard, get_vendor_byId, get_vendors, remove_vendor_profile, update_vendor_profile, vendor_filters, vendor_signup } from '../controllers/vendor.controller.js';
+import { clear_vendors, confirm_otp, get_dashboard, get_vendor_byId, get_vendors, remove_vendor_profile, update_vendor_profile, vendor_filters, vendor_signup } from '../controllers/vendor.controller.js';
 import { Upload } from '../middlewares/upload.middleware.js';
 const router = express.Router();
 
@@ -58,7 +58,7 @@ router.delete('/:id/delete', authentication, authorizationRoles(['vendor', 'admi
    @methtod -> DELETE
    @access -> Private (admin) 
 */
-router.delete('/:id/delete', authentication, authorizationRoles(['vendor', 'admin']), remove_vendor_profile);
+router.delete('/clear', authentication, authorizationRoles(['vendor', 'admin']), clear_vendors);
 
 /* @description -> To filter
    @end-Point -> /api/vendor/filter

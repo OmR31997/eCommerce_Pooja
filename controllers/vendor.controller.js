@@ -91,7 +91,7 @@ export const vendor_signup = async (req, res) => {
 /* **confirm_otp logic here** */
 export const confirm_otp = async (req, res) => {
     try {
-        const { otp, shopName, businessEmail, ...rest } = req.body;
+        const { otp, businessName, businessEmail, ...rest } = req.body;
         const file = req.file;
         const { id, role } = req.user;
 
@@ -214,34 +214,35 @@ export const get_vendors = async (req, res) => {
         const {
             page = 1,
             limit = 10,
-            offset = 0,
-            status = 'approved',
-            sortBy = '-createdAt',
-            order = '-1' } = req.query;
+            offset,
+            status = '',
+            sortBy = 'createdAt',
+            orderSequence = 'desc' } = req.query;
 
-        const parsedPage = parseInt(page);
         const parsedLimit = parseInt(limit);
 
         // Build Query
-        const query = {};
+        const filter = {};
 
         // Handle Status
-        if (status) query.status = status;
+        if (status) filter.status = status;
 
         // Count total records
-        const total = await User.countDocuments(query);
+        const total = await Vendor.countDocuments(filter);
+
         const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
-            parsedPage,
+            parseInt(page),
             parsedLimit,
             offset,
             total,
-            status,
-            `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`);
+            `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`, filter);
 
+        // Sorting
         const sortField = ['businessName', 'businessDescription', 'createdAt'].includes(sortBy) ? sortBy : 'createdAt';
-        const sortOption = { [sortField]: Number(order) };
+        const sortDirection = orderSequence === 'asc' ? 1 : -1;
+        const sortOption = { [sortField]: sortDirection };
 
-        const vendors = await Vendor.find(query)
+        const vendors = await Vendor.find(filter)
             .skip(skip)
             .limit(parsedLimit)
             .sort(sortOption)
@@ -256,8 +257,6 @@ export const get_vendors = async (req, res) => {
         }
 
         return res.status(200).json({
-            message: 'Vendors fetched successfully.',
-            data: vendors,
             pagination: {
                 count: total,
                 prevUrl,
@@ -265,7 +264,9 @@ export const get_vendors = async (req, res) => {
                 currentPage,
                 totalPages,
                 success: true,
-            }
+            },
+            message: 'Vendors fetched successfully.',
+            data: vendors,
         });
 
     } catch (error) {
@@ -291,7 +292,7 @@ export const get_vendor_byId = async (req, res) => {
         }
 
         const vendor = await getVendorDetails(vendorId);
-        
+
         return res.status(200).json({
             data: vendor.data,
             success: vendor.status,
@@ -309,8 +310,28 @@ export const get_vendor_byId = async (req, res) => {
 /* **update_vendor_profile logic here** */
 export const update_vendor_profile = async (req, res) => {
     try {
-        const { id } = req.params;
-        const vendor = await Vendor.findById(id);
+        const vendorId = req.params.id;
+        const {
+            businessName,
+            businessEmail,
+            businessPhone,
+            businessDescription,
+            type,
+            gstNumber,
+            bankDetails,
+        } = req.body;
+
+        const { id, role } = req.user;
+
+        if (role === 'vendor') {
+            if (vendorId !== id)
+                return res.status(400).json({
+                    error: 'You can update only own profile',
+                    success: false,
+                });
+        }
+
+        const vendor = await Vendor.findById(vendorId);
 
         if (!vendor) {
             return res.status(404).json({
@@ -319,7 +340,15 @@ export const update_vendor_profile = async (req, res) => {
             });
         }
 
-        const { ...rest } = req.body;
+        const updateField = {};
+        if (businessName) updateField.businessName = businessName;
+        if (businessEmail) updateField.businessEmail = businessEmail;
+        if (businessPhone) updateField.businessPhone = businessPhone;
+        if (businessDescription) updateField.businessDescription = businessDescription;
+        if (type) updateField.type = type;
+        if (gstNumber) updateField.gstNumber = gstNumber;
+        if (bankDetails) updateField.bankDetails = bankDetails;
+        
         const files = req.files || {};
 
         // Handle logo upload
@@ -350,9 +379,9 @@ export const update_vendor_profile = async (req, res) => {
                     'eCommerce/Vendors/LogoUrls',
                     filename
                 );
-                rest.logoUrl = secure_url;
+                updateField.logoUrl = secure_url;
             } else {
-                rest.logoUrl = logoFile.path;
+                updateField.logoUrl = logoFile.path;
             }
 
             // Delete Old file from the Local/Cloud Storage
@@ -369,7 +398,7 @@ export const update_vendor_profile = async (req, res) => {
         // Handle documents upload
         const documents = files.documents || [];
         if (documents.length > 0) {
-            rest.documents = [];
+            updateField.documents = [];
 
             for (const doc of documents) {
                 if (!ValidateFileSize(doc.size, 5)) {
@@ -389,9 +418,9 @@ export const update_vendor_profile = async (req, res) => {
                         'eCommerce/Vendors/Documents',
                         docName
                     );
-                    rest.documents.push(secure_url);
+                    updateField.documents.push(secure_url);
                 } else {
-                    rest.documents.push(doc.path);
+                    updateField.documents.push(doc.path);
                 }
             }
 
@@ -409,11 +438,7 @@ export const update_vendor_profile = async (req, res) => {
         }
 
         // Apply updating into the db.collection
-        const updatedVendor = await Vendor.findByIdAndUpdate(
-            id,
-            { $set: rest },
-            { new: true }
-        );
+        const updatedVendor = await Vendor.findByIdAndUpdate(vendorId, { $set: updateField }, { new: true });
 
         return res.status(200).json({
             message: 'Vendor profile updated successfully',
@@ -536,73 +561,69 @@ export const get_revenue_via_duration = async (req, res) => {
 }
 
 export const vendor_filters = async (req, res) => {
-  try {
-    const {
-      search, status, address, 
-      joinRange, updateRange,
-      page, limit, offset, 
-      sortBy = 'createdAt', order = 'desc'
-    } = req.query;
+    try {
+        const {
+            search, status, address,
+            joinRange, updateRange,
+            page = 1, limit = 10, offset,
+            sortBy = 'createdAt', orderSequence = 'desc'
+        } = req.query;
 
-    // Build Filters 
-    const filters = {
-      search: search || '',
-      address: address || '',
-      status: status || 'approved',
-      joinRange: joinRange? joinRange.split(','):'',
-      joinRange: updateRange? updateRange.split(','):'',
-      page: parseInt(page) || 1,
-      limit: parseInt(limit) || 10,
-      offset: parseInt(offset) || 0,
-    };
+        // Build Filters 
+        const filters = {
+            search: search || '',
+            address: address || '',
+            status: status || 'approved',
+            joinRange: joinRange ? joinRange.split(',') : undefined,
+            joinRange: updateRange ? updateRange.split(',') : undefined,
+        };
 
-    // Build Mongo query
-    const query = BuildVendorQuery(filters);
+        const parsedLimit = parseInt(limit);
 
-    // Count Total Docs
-    const total = await Vendor.countDocuments(query);
+        // Build Mongo query
+        const query = BuildVendorQuery(filters);
 
-    const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
-      filters.page,
-      filters.limit,
-      filters.offset,
-      total,
-      filters.status,
-      `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`
-    );
+        // Count Total Docs
+        const total = await Vendor.countDocuments(query);
 
-    // Sorting
-    const sortField = ['businessName', 'address', 'createdAt'].includes(sortBy) ? sortBy : 'createdAt';
-    const sortDirection = order === 'asc' ? 1 : -1;
-    const sortOption = { [sortField]: sortDirection };
+        const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
+            parseInt(page),
+            parsedLimit,
+            total,
+            `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`, query,
+        );
 
-    const vendors = await Vendor.find(query)
-      .skip(skip)
-      .limit(filters.limit)
-      .sort(sortOption)
-      .populate({ path: 'userId', select: 'name' })
+        // Sorting
+        const sortField = ['businessName', 'address', 'createdAt'].includes(sortBy) ? sortBy : 'createdAt';
+        const sortDirection = orderSequence === 'asc' ? 1 : -1;
+        const sortOption = { [sortField]: sortDirection };
+        const vendors = await Vendor.find(query)
+            .skip(skip)
+            .limit(parsedLimit)
+            .sort(sortOption)
+            .populate({ path: 'userId', select: 'name' })
 
-    return res.status(200).json({
-      message: 'Vendors fetched successfully',
-      data: vendors,
-      pagination: {
-        count: total,
-        prevUrl,
-        nextUrl,
-        currentPage,
-        totalPages,
-      },
-      success: true,
-    });
+        return res.status(200).json({
+            message: 'Vendors fetched successfully',
+            pagination: {
+                count: total,
+                prevUrl,
+                nextUrl,
+                currentPage,
+                totalPages,
+            },
+            data: vendors,
+            success: true,
+        });
 
-  } catch (error) {
-    console.error('Error in vendor_filters:', error);
-    return res.status(500).json({
-      error: error.message,
-      message: 'Internal Server Error',
-      success: false,
-    });
-  }
+    } catch (error) {
+        console.error('Error in vendor_filters:', error);
+        return res.status(500).json({
+            error: error.message,
+            message: 'Internal Server Error',
+            success: false,
+        });
+    }
 };
 
 

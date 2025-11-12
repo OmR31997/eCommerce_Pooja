@@ -19,12 +19,13 @@ const VendorSchema = new mongoose.Schema({
     type: {
         type: String,
         trim: true,
-        required: [true, `'type' field must be required`],
+        // required: [true, `'type' field must be required`],
         index: true,
     },
     status: {
         type: String,
         trim: true,
+        lowercase: true,
         enum: ['approved', 'pending', 'rejected'],
         default: 'pending',
         index: true,
@@ -40,10 +41,18 @@ const VendorSchema = new mongoose.Schema({
         trim: true,
         required: [true, `'businessDescription' field must be required`]
     },
+    businessPhone: {
+        type: String,
+        default: null,
+    },
     businessEmail: {
         type: String,
         unique: true,
         required: [true, `'businessEmail' field must be required`],
+    },
+    gstNumber: {
+        type: String,
+        default: null,
     },
     address: {
         type: String,

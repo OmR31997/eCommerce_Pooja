@@ -2,6 +2,7 @@ import { User } from '../models/user.model.js';
 import { Vendor } from '../models/vendor.model.js';
 import bcrypt from 'bcryptjs'
 import { BuildUserQuery, Pagination } from '../utils/fileHelper.js';
+import { getUserDetails } from '../services/user.service.js';
 
 /* **get_users logic here** */
 export const get_users = async (req, res) => {
@@ -9,37 +10,35 @@ export const get_users = async (req, res) => {
         const {
             page = 1,
             limit = 10,
-            offset = 0,
+            offset,
             status = 'active',
-            parent,
-            sortBy = '-createdAt',
-            order = '-1' } = req.query;
+            sortBy = 'createdAt',
+            orderSequence = 'desc' } = req.query;
 
-        const parsedPage = parseInt(page);
         const parsedLimit = parseInt(limit);
 
         // Build Query
-        const query = { role: { $nin: ['admin', 'vendor'] } };
+        const filter = {};
 
         // Handle Status
-        if (status) query.status = status;
-
-        query.parent = (parent === 'null' || parent === undefined) ? null : parent;
+        if (status) filter.status = status;
 
         // Count total records
-        const total = await User.countDocuments(query);
+        const total = await User.countDocuments({ ...filter, role: { $nin: ['admin', 'vendor'] } });
+
         const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
-            parsedPage,
+            parseInt(page),
             parsedLimit,
             offset,
             total,
-            status,
-            `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`);
+            `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`, filter);
 
-        const sortField = ['businessName', 'businessDescription', 'createdAt'].includes(sortBy) ? sortBy : 'createdAt';
-        const sortOption = { [sortField]: Number(order) };
+        // Sorting
+        const sortField = ['name', 'totalSpents', 'createdAt'].includes(sortBy) ? sortBy : 'createdAt';
+        const sortDirection = orderSequence === 'asc' ? 1 : -1;
+        const sortOption = { [sortField]: sortDirection };
 
-        const users = await User.find(query)
+        const users = await User.find({ ...filter, role: { $nin: ['admin', 'vendor'] } })
             .skip(skip)
             .limit(parsedLimit)
             .sort(sortOption)
@@ -53,7 +52,6 @@ export const get_users = async (req, res) => {
 
         return res.status(200).json({
             message: 'Users fetched successfully.',
-            data: users,
             pagination: {
                 count: total,
                 prevUrl,
@@ -61,7 +59,8 @@ export const get_users = async (req, res) => {
                 currentPage,
                 totalPages,
                 success: true,
-            }
+            },
+            data: users,
         });
 
     } catch (error) {
@@ -86,18 +85,11 @@ export const get_user_byId = async (req, res) => {
             });
         }
 
-        const user = await User.findById(userId);
+        const user = await getUserDetails(userId);
 
-        if (!user) {
-            return res.status(400).json({
-                error: `User not found for ID: '${userId}'`,
-                success: false,
-            });
-        }
-
-        return res.status(200).json({
-            data: user,
-            success: true,
+        return res.status(user.status).json({
+            data: user.data,
+            success: user.success,
         });
 
     } catch (error) {
@@ -270,73 +262,74 @@ export const clear_users = async (req, res) => {
 }
 
 export const customer_filters = async (req, res) => {
-  try {
-    const {
-      search, 
-      name, email, phone, segment, joinRange, address, status,
-      page, limit, 
-      sortBy = 'createdAt', order = 'desc'
-    } = req.query;
+    try {
+        const {
+            search,
+            name, email, phone, segment, joinRange, address, status = 'active',
+            page = 1, limit = 10, offset,
+            sortBy = 'createdAt', orderSequence = 'desc'
+        } = req.query;
 
-    // Build Filters 
-    const filters = {
-      search: search || '',
-      name: name || '',
-      email: email || '',
-      phone: phone || '',
-      segment: segment || '',
-      address: address || '',
-      joinRange: joinRange? joinRange.split(',') : undefined,
-      status: status || 'active',
-      page: parseInt(page) || 1,
-      limit: parseInt(limit) || 10
-    };
+        // Build Filters 
+        const filters = {
+            search: search || '',
+            name: name || '',
+            email: email || '',
+            phone: phone || '',
+            segment: segment || '',
+            address: address || '',
+            joinRange: joinRange ? joinRange.split(',') : undefined,
+            status: status,
+        };
 
-    // Build Mongo query
-    const query = BuildUserQuery(filters);
+        const parsedLimit = parseInt(limit);
 
-    // Count Total Docs
-    const total = await User.countDocuments(query);
+        // Build Mongo query
+        const query = BuildUserQuery(filters);
 
-    const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
-      filters.page,
-      filters.limit,
-      total,
-      filters.status,
-      `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`
-    );
+        // Count Total Docs
+        const total = await User.countDocuments(query);
 
-    // Sorting
-    const sortField = ['name', 'address', 'createdAt'].includes(sortBy) ? sortBy : 'createdAt';
-    const sortDirection = order === 'asc' ? 1 : -1;
-    const sortOption = { [sortField]: sortDirection };
+        const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
+            parseInt(page),
+            parsedLimit,
+            offset,
+            total,
+            `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`,
+            filters,
+        );
 
-    const customers = await User.find(query)
-      .skip(skip)
-      .limit(filters.limit)
-      .sort(sortOption)
+        // Sorting
+        const sortField = ['name', 'address', 'createdAt'].includes(sortBy) ? sortBy : 'createdAt';
+        const sortDirection = orderSequence === 'asc' ? 1 : -1;
+        const sortOption = { [sortField]: sortDirection };
 
-    return res.status(200).json({
-      message: 'Customers fetched successfully',
-      data: customers,
-      pagination: {
-        count: total,
-        prevUrl,
-        nextUrl,
-        currentPage,
-        totalPages,
-      },
-      success: true,
-    });
+        const customers = await User.find(query)
+            .skip(skip)
+            .limit(parsedLimit)
+            .sort(sortOption)
 
-  } catch (error) {
-    console.error('Error in customer_filters:', error);
-    return res.status(500).json({
-      error: error.message,
-      message: 'Internal Server Error',
-      success: false,
-    });
-  }
+        return res.status(200).json({
+            message: 'Customers fetched successfully',
+            pagination: {
+                count: total,
+                prevUrl,
+                nextUrl,
+                currentPage,
+                totalPages,
+            },
+            data: customers,
+            success: true,
+        });
+
+    } catch (error) {
+        console.error('Error in customer_filters:', error);
+        return res.status(500).json({
+            error: error.message,
+            message: 'Internal Server Error',
+            success: false,
+        });
+    }
 };
 
 /* **search_users logic here** */

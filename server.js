@@ -11,16 +11,16 @@ import swaggerUi from 'swagger-ui-express';
 
 import AuthRoute from './routes/auth.route.js';
 import AdminRoute from './routes/admin.route.js';
+import StaffRoute from './routes/staff.route.js';
 import VendorRoute from './routes/vendor.route.js';
+import UserRoute from './routes/user.route.js';
 import CategoryRoute from './routes/category.route.js';
 import ProductRoute from './routes/product.route.js';
 import CartRoute from './routes/cart.route.js';
 import PaymentRoute from './routes/payment.route.js';
 import OrderRoute from './routes/order.route.js';
-import UserRoute from './routes/user.route.js';
 
-import { authentication, authorization, authorizationRoles } from './middlewares/auth.middleware.js';
-
+import { authentication, authorizationRoles } from './middlewares/auth.middleware.js';
 
 const appServer = express();
 appServer.use(express.json());
@@ -74,8 +74,10 @@ appServer.use('/api/cart', CartRoute);
 appServer.use('/api/payment', PaymentRoute);
 appServer.use('/api/order', OrderRoute);
 appServer.use('/api/user', UserRoute);
+appServer.use('/api/staff', StaffRoute);
 
 const port = process.env.PORT;
 
 const baseUrl = process.env.NODE_ENV ==='development'? `http://localhost:${port}`: process.env.BASE_URL;
+console.log(process.env.NODE_ENV)
 appServer.listen(port, () => console.log(`Server is running at ${baseUrl}`));
