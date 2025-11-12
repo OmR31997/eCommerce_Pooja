@@ -265,7 +265,7 @@ export const customer_filters = async (req, res) => {
     try {
         const {
             search,
-            name, email, phone, segment, joinRange, address, status = 'active',
+            name, email, phone, segment, joinRange, updatedRange, address, status = 'active',
             page = 1, limit = 10, offset,
             sortBy = 'createdAt', orderSequence = 'desc'
         } = req.query;
@@ -278,7 +278,8 @@ export const customer_filters = async (req, res) => {
             phone: phone || '',
             segment: segment || '',
             address: address || '',
-            joinRange: joinRange ? joinRange.split(',') : undefined,
+            joinRange: joinRange ? joinRange.split(',').map(i => i.trim()) : undefined,
+            updatedRange: updatedRange ? updatedRange.split(',').map(i => i.trim()) : undefined,
             status: status,
         };
 
@@ -288,7 +289,7 @@ export const customer_filters = async (req, res) => {
         const query = BuildUserQuery(filters);
 
         // Count Total Docs
-        const total = await User.countDocuments(query);
+        const total = await User.countDocuments({ role: 'user', ...query });
 
         const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
             parseInt(page),
@@ -304,7 +305,7 @@ export const customer_filters = async (req, res) => {
         const sortDirection = orderSequence === 'asc' ? 1 : -1;
         const sortOption = { [sortField]: sortDirection };
 
-        const customers = await User.find(query)
+        const customers = await User.find({ role: 'user', ...query })
             .skip(skip)
             .limit(parsedLimit)
             .sort(sortOption)

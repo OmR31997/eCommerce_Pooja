@@ -151,11 +151,25 @@ export const BuildVendorQuery = (filters) => {
         }
 
         if (filters.joinRange) {
+            const start = new Date(filters.joinRange[0])
+            const end = new Date(filters.joinRange[1])
+            
+            start.setHours(0, 0, 0, 0);
+            end.setHours(23, 59, 59, 999);
+
             query.createdAt = {
-                $gte: new Date(filters.joinRange[0]),
-                $lte: new Date(filters.joinRange[1]),
+                $gte: start,
+                $lte: end,
             }
         }
+
+        if (filters.updatedRange) {
+            query.updatedAt = {
+                $gte: new Date(filters.updatedRange[0]),
+                $lte: new Date(filters.updatedRange[1]),
+            }
+        }
+
         return query;
     } catch (error) {
         throw new Error(`Error building product query: ${error.message}`);
@@ -185,6 +199,27 @@ export const BuildUserQuery = (filters) => {
             query.createdAt = {
                 $gte: new Date(filters.joinRange[0]),
                 $lte: new Date(filters.joinRange[1]),
+            }
+        }
+
+        if (filters.joinRange) {
+
+            const start = new Date(filters.joinRange[0])
+            const end = new Date(filters.joinRange[1])
+            
+            start.setHours(0, 0, 0, 0);
+            end.setHours(23, 59, 59, 999);
+
+            query.createdAt = {
+                $gte: start,
+                $lte: end,
+            }
+        }
+
+        if (filters.updatedRange) {
+            query.updatedRange = {
+                $gte: new Date(filters.updatedRange[0]),
+                $lte: new Date(filters.updatedRange[1]),
             }
         }
 

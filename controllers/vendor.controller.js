@@ -564,7 +564,7 @@ export const vendor_filters = async (req, res) => {
     try {
         const {
             search, status, address,
-            joinRange, updateRange,
+            joinRange, updatedRange,
             page = 1, limit = 10, offset,
             sortBy = 'createdAt', orderSequence = 'desc'
         } = req.query;
@@ -574,8 +574,8 @@ export const vendor_filters = async (req, res) => {
             search: search || '',
             address: address || '',
             status: status || 'approved',
-            joinRange: joinRange ? joinRange.split(',') : undefined,
-            joinRange: updateRange ? updateRange.split(',') : undefined,
+            joinRange: joinRange ? joinRange.split(',').map(i => i.trim()) : undefined,
+            joinRange: updatedRange ? updatedRange.split(',').map(i => i.trim()) : undefined,
         };
 
         const parsedLimit = parseInt(limit);
@@ -589,6 +589,7 @@ export const vendor_filters = async (req, res) => {
         const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
             parseInt(page),
             parsedLimit,
+            offset,
             total,
             `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`, query,
         );
@@ -625,7 +626,6 @@ export const vendor_filters = async (req, res) => {
         });
     }
 };
-
 
 /* **search_vendors logic here** */
 // export const search_vendors = async (req, res) => {
