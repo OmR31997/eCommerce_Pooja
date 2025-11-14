@@ -136,34 +136,34 @@ export const create_product = async (req, res) => {
 export const view_products = async (req, res) => {
     try {
         const {
-            page = 1, limit = 10,
+            page = 1, limit = 10, offset,
             status = 'approved',
             sortBy = 'createdAt', orderSequence = 'desc' } = req.query;
 
-        const parsedPage = parseInt(page);
         const parsedLimit = parseInt(limit);
 
         // Build Query
-        const query = {};
+        const filter = {};
 
         // Handle Status
-        if (status) query.status = status;
+        if (status) filter.status = status;
 
         // Count total records
-        const total = await Product.countDocuments(query);
+        const total = await Product.countDocuments(filter);
 
         const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
-            parsedPage,
+            parseInt(page),
             parsedLimit,
+            offset,
             total,
             status,
-            `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`);
+            `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`, filter);
 
-            const sortField = ['name', 'price', 'createdAt'].includes(sortBy) ? sortBy : 'createdAt';
-            const sortDirection = orderSequence === 'asc' ? 1 : -1;
-            const sortOption = { [sortField]: sortDirection };
+        const sortField = ['name', 'price', 'createdAt'].includes(sortBy) ? sortBy : 'createdAt';
+        const sortDirection = orderSequence === 'asc' ? 1 : -1;
+        const sortOption = { [sortField]: sortDirection };
 
-        const products = await Product.find(query)
+        const products = await Product.find(filter)
             .populate({ path: 'vendorId' })
             .populate({ path: 'categoryId' })
             .skip(skip)
@@ -179,7 +179,6 @@ export const view_products = async (req, res) => {
 
         return res.status(200).json({
             message: 'Products fetched successfully.',
-            data: products,
             pagination: {
                 count: total,
                 prevUrl,
@@ -187,7 +186,8 @@ export const view_products = async (req, res) => {
                 currentPage,
                 totalPages,
                 success: true,
-            }
+            },
+            data: products,
         });
 
     } catch (error) {
@@ -451,75 +451,76 @@ export const rate_product = async (req, res) => {
 
 /* **product_filters logic here** */
 export const product_filters = async (req, res) => {
-  try {
-    const {
-      search, category,
-      stockStatus, priceRange,
-      vendor, rating,
-      discount, status,
-      page, limit,
-      sortBy = 'createdAt', orderSequence = 'desc'
-    } = req.query;
+    try {
+        const {
+            search, category,
+            stockStatus, priceRange,
+            vendor, rating,
+            discount, status,
+            page = 1, limit =2, offset,
+            sortBy = 'createdAt', orderSequence = 'desc'
+        } = req.query;
 
-    // Build Filters 
-    const filters = {
-      search: search || '',
-      category: category || '',
-      stockStatus: stockStatus || '',
-      priceRange: priceRange ? priceRange.split(',').map(Number) : undefined,
-      vendor: vendor || '',
-      rating: rating ? Number(rating) : undefined,
-      discount: discount ? Number(discount) : undefined,
-      status: status || 'approved',
-      page: parseInt(page) || 1,
-      limit: parseInt(limit) || 10,
-    };
+        // Build Filters 
+        const filters = {
+            search: search || '',
+            category: category || '',
+            stockStatus: stockStatus || '',
+            priceRange: priceRange ? priceRange.split(',').map(Number) : undefined,
+            vendorId: vendor || '',
+            rating: rating ? Number(rating) : undefined,
+            discount: discount ? Number(discount) : undefined,
+            status: status || 'approved',
+        };
 
-    // Build Mongo query
-    const query = BuildProductQuery(filters);
+        const parsedLimit = parseInt(limit);
 
-    // Count Total Docs
-    const total = await Product.countDocuments(query);
+        // Build Mongo query
+        const query = BuildProductQuery(filters);
 
-    const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
-      filters.page,
-      filters.limit,
-      total,
-      filters.status,
-      `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`
-    );
+        // Count Total Docs
+        const total = await Product.countDocuments(query);
 
-    // Sorting
-    const sortField = ['name', 'price', 'createdAt'].includes(sortBy) ? sortBy : 'createdAt';
-    const sortDirection = orderSequence === 'asc' ? 1 : -1;
-    const sortOption = { [sortField]: sortDirection };
+        const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
+            parseInt(page),
+            parsedLimit,
+            offset,
+            total,
+            `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`,
+            filters,
+        );
 
-    const products = await Product.find(query)
-      .skip(skip)
-      .limit(filters.limit)
-      .sort(sortOption)
-      .populate({ path: 'vendorId', select: 'name businessName' })
-      .populate({ path: 'categoryId', select: 'name' });
+        // Sorting
+        const sortField = ['name', 'price', 'createdAt'].includes(sortBy) ? sortBy : 'createdAt';
+        const sortDirection = orderSequence === 'asc' ? 1 : -1;
+        const sortOption = { [sortField]: sortDirection };
 
-    return res.status(200).json({
-      message: 'Products fetched successfully',
-      data: products,
-      pagination: {
-        count: total,
-        prevUrl,
-        nextUrl,
-        currentPage,
-        totalPages,
-      },
-      success: true,
-    });
+        const products = await Product.find(query)
+            .skip(skip)
+            .limit(limit)
+            .sort(sortOption)
+            .populate({ path: 'vendorId', select: 'name businessName' })
+            .populate({ path: 'categoryId', select: 'name slug' });
 
-  } catch (error) {
-    console.error('Error in product_filters:', error);
-    return res.status(500).json({
-      error: error.message,
-      message: 'Internal Server Error',
-      success: false,
-    });
-  }
+        return res.status(200).json({
+            message: 'Products fetched successfully',
+            data: products,
+            pagination: {
+                count: total,
+                prevUrl,
+                nextUrl,
+                currentPage,
+                totalPages,
+            },
+            success: true,
+        });
+
+    } catch (error) {
+        console.error('Error in product_filters:', error);
+        return res.status(500).json({
+            error: error.message,
+            message: 'Internal Server Error',
+            success: false,
+        });
+    }
 };

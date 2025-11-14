@@ -1,5 +1,5 @@
 import express from 'express';
-import { authentication, authorization } from '../middlewares/auth.middleware.js';
+import { authentication, authorizationRoles} from '../middlewares/auth.middleware.js';
 import { create_payment_order, verify_payment } from '../controllers/payment.controller.js';
 
 const router = express.Router();
@@ -9,13 +9,13 @@ const router = express.Router();
    @methtod -> POST
    @access -> Private (user) 
 */
-router.post('/create-order', authentication, authorization.CUSTOMER, create_payment_order);
+router.post('/create-order', authentication, authorizationRoles(['user']), create_payment_order);
 
 /* @description -> After /create-order hit this - For verify payment
    @end-Point -> /api/payment/verify
    @methtod -> POST
    @access -> Private (user) 
 */
-router.post('/verify', authentication, authorization.CUSTOMER, verify_payment);
+router.post('/verify', authentication, authorizationRoles(['user']), verify_payment);
 
 export default router;

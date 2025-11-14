@@ -208,7 +208,7 @@ export const update_order_status = async (req, res) => {
 
         if (!orderStatus) {
             return res.status(400).json({
-                error: `Please provide 'orderStatus' field (e.g., confirmed, shipped, delivered, cancelled)`,
+                error: `Please provide 'orderStatus' field & value should be 'confirmed', 'shipped', 'delivered', or 'cancelled')`,
                 success: false,
             });
         }

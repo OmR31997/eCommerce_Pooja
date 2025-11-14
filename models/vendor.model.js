@@ -19,7 +19,7 @@ const VendorSchema = new mongoose.Schema({
     type: {
         type: String,
         trim: true,
-        // required: [true, `'type' field must be required`],
+        required: [true, `'type' field must be required`],
         index: true,
     },
     status: {
@@ -35,6 +35,11 @@ const VendorSchema = new mongoose.Schema({
         trim: true,
         unique: true,
         required: [true, `'businessName' field must be required`],
+    },
+    password: {
+        type: String,
+        required: [true, `'password' field must be required`],
+        select: false,
     },
     businessDescription: {
         type: String,

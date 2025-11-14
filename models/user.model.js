@@ -24,13 +24,14 @@ const UserSchema = new mongoose.Schema({
     },
     password: {
         type: String,
+        select: false,
         required: [true, `'password' field must be required`],
     },
     role: {
         type: String,
         trim: true,
         lowercase: true,
-        enum: ['user', 'vendor', 'admin'],
+        enum: ['user', 'vendor'],
         default: 'user',
         validate: {
             validator: function (value) {

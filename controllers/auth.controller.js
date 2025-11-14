@@ -5,10 +5,12 @@ import { generateOtp, otpStore, verifyOtp } from '../services/otp.service.js';
 import { generateEncryptedToken, resetTokenStore } from '../services/token.service.js';
 import { Admin } from '../models/admin.model.js';
 import { Vendor } from '../models/vendor.model.js';
+import { Staff } from '../models/staff.model.js';
 import { sendEmail } from '../utils/sendEmail.js';
 import { OAuth2Client } from 'google-auth-library';
 import axios from 'axios';
 import qs from 'qs';
+import { identifyRoleFromEmail } from '../utils/fileHelper.js';
 
 /* **send_otp logic here** */
 export const send_otp = async (req, res) => {
@@ -63,10 +65,10 @@ export const send_otp = async (req, res) => {
 /* **sign_up logic here** */
 export const sign_up = async (req, res) => {
     try {
-        const {  
-            name, segment=null, address,
-            email, phone, 
-            otp, password 
+        const {
+            name, segment = null, address,
+            email, phone,
+            otp, password
         } = req.body;
 
         if (!otp) {
@@ -166,32 +168,57 @@ export const sign_in = async (req, res) => {
     }
 
     try {
-        const existUser = await User.findOne({ $or: [{ email }, { phone }] });
 
-        if (!existUser) {
+        const { role, collection } = identifyRoleFromEmail(email);
+
+        // const existUser = await User.findOne({ $or: [{ email }, { phone }] });
+
+        const Models = { Admin, Staff, Vendor, User };
+        const Model = Models[collection];
+
+        const query = email ? { email } : { phone };
+
+        const existing = await Model.findOne(query).select('+password');
+
+        if (!existing) {
             return res.status(404).json({
-                error: 'Invalid Email/Phone',
+                error: 'Invalid credentials - user',
                 success: false
             });
         }
 
-        if (existUser.status === 'blocked') {
-            return res.status(403).json({
-                error: 'Account has been blocked. Please contact support team',
-                success: false
-            })
-        }
+        // if (existing.status === 'blocked' || !existing.isActive) {
+        //     return res.status(403).json({
+        //         error: 'Account has been blocked. Please contact support team',
+        //         success: false
+        //     })
+        // }
 
-        const isValidPassword = await bcrypt.compare(password, existUser.password);
+        const isMatch = await bcrypt.compare(password, existing.password);
 
-        if (!isValidPassword) {
+        if (!isMatch) {
             return res.status(401).json({
                 error: 'Invalid Password',
                 success: false,
             })
         }
 
+        if (role !== 'user') {
+            const payload = {
+                id: existing._id,
+                role,
+            };
+
+            const accessToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.SIGN_TOKEN_EXPIRE ?? '1d' });
+
+            return res.status(200).json({
+                accessToken,
+                success: true,
+            });
+        }
+
         const otpKey = phone ?? email;
+
         const { otp, otpExpiresAt, message } = generateOtp(otpKey);
 
         console.log({ otp, message, otpExpiresAt });
@@ -209,21 +236,6 @@ export const sign_in = async (req, res) => {
             return res.status(500).json({
                 error: result.error,
                 success: false,
-            });
-        }
-
-        if (existUser.role === 'admin') {
-            const admin = await Admin.findOne({ userId: existUser._id });
-            const payload = {
-                id: admin._id,
-                role: existUser.role,
-            }
-
-            const accessToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.SIGN_TOKEN_EXPIRE ?? '1d' });
-
-            return res.status(200).json({
-                accessToken,
-                success: true,
             });
         }
 
@@ -389,7 +401,7 @@ export const confirm_signIn_otp = async (req, res) => {
         }
         else if (existUser.role === 'vendor') {
             const vendor = await Vendor.findOne({ userId: existUser._id }).select('_id businessName status');
-            if (vendor.status !=='approved') {
+            if (vendor.status !== 'approved') {
                 return res.status(400).json({
                     error: `Currently you have't empower to create, & manage the product because profile is status: ${vendor.status}`,
                     success: true,

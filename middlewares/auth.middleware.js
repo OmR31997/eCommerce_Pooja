@@ -1,4 +1,10 @@
 import jwt from 'jsonwebtoken';
+import { User } from '../models/user.model.js';
+import { Vendor } from '../models/vendor.model.js';
+import { Staff } from '../models/staff.model.js';
+import { Admin } from '../models/admin.model.js';
+import { getModelByRole } from '../utils/fileHelper.js';
+
 
 export const authentication = async (req, res, next) => {
     let authHeader = req.headers.authorization;
@@ -6,6 +12,7 @@ export const authentication = async (req, res, next) => {
     if (!authHeader) {
         return res.status(401).json({
             error: 'Unauthorized: Token not provided',
+            success: false,
         });
     }
 
@@ -13,6 +20,7 @@ export const authentication = async (req, res, next) => {
     if (!authHeader.startsWith("Bearer ")) {
         authHeader = `Bearer ${authHeader}`;
     }
+
     const token = authHeader?.split(' ')[1];
 
     try {
@@ -52,35 +60,68 @@ export const authorizationRoles = (allowedRoles = []) => {
     }
 }
 
-// Static Authorization
-export const authorization = {
-    ADMIN: (req, res, next) => {
-        if (req.user?.role === 'admin') {
-            return next();
+export const authorizationAccess = (moduleName, actionKey, options = {}) => {
+    return async (req, res, next) => {
+        try {
+            const authId = req.user.id;
+            const authRole = req.user.role;
+
+            const { collection } = getModelByRole(authRole);
+            const Models = { Admin, Staff, Vendor, User }
+            const Model = Models[collection];
+
+            const existing = await Model.findById(authId).populate('role').populate('permissions');
+
+            if (!existing) {
+                return res.status(401).json({ error: "Unauthorized" });
+            }
+
+            const roleName = existing.role?.name || '';
+
+            // Super Admin / Admin Override
+            if (['super_admin', 'admin'].includes(roleName)) {
+                return next();
+            }
+
+            // Self Access Rule (Reusable)
+            if (options.allowSelf && req.params.id === authId.toString()) {
+                return next();
+            }
+
+            // Permission Check
+            const hasAccess = existing.permissions.some((perm) => {
+                const moduleMatch = Array.isArray(perm.module)
+                    ? perm.module.includes(moduleName)
+                    : perm.module === moduleName;
+                const acctionAllowed = perm.actions?.[actionKey] === true;
+                return moduleMatch && acctionAllowed;
+
+            });
+
+            if (!hasAccess) {
+                return res.status(403).json({
+                    error: `Access denied: You don't have permission to ${actionKey} on ${moduleName}`,
+                    success: false,
+                });
+            }
+
+            next();
+        } catch (error) {
+            console.error("Authorization error:", error);
+            res.status(500).json({ error: "Authorization check failed" });
         }
-
-        return res.status(403).json({
-            error: 'Access denied: Admin Only Authorized'
-        })
-    },
-
-    VENDOR: (req, res, next) => {
-        if (req.user?.role === 'vendor') {
-            return next();
-        }
-
-        return res.status(403).json({
-            error: 'Access denied: Vendor Only Authorized'
-        })
-    },
-
-    CUSTOMER: (req, res, next) => {
-        if (req.user?.role === 'user') {
-            return next();
-        }
-
-        return res.status(403).json({
-            error: 'Access denied: Customer Only Authorized'
-        })
     }
+}
+
+export const filterRestrictedStaffFields = (req, res, next) => {
+
+    const { role, permissions, isActive, status } = req.body;
+
+    // Self-Update Restrictions
+    delete req.body.role;
+    delete req.body.permissions;
+    delete req.body.isActive;
+    delete req.body.status;
+
+    next()
 }

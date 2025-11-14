@@ -106,3 +106,45 @@ export const manage_product = async (req, res) => {
         });
     }
 }
+
+/* **manage_staff logic here** */
+export const manage_staff = async (req, res) => {
+    try {
+        const key = req.params.id;
+        const { status } = req.body;
+
+
+        const filter = key.startsWith('SKU-') ? { sku: key } : { _id: key };
+
+        const product = await Product.findOne(filter);
+        if (!product) {
+            return res.status(404).json({
+                error: 'Product not found',
+                success: false,
+            });
+        }
+
+        if (!status) {
+            return res.status(400).json({
+                error: `Please provide 'status' field (e.g., 'pending', 'approved', 'rejected', 'inactive')`,
+                success: false,
+            });
+        }
+
+        product.status = status;
+
+        const updateRespnse = await product.save();
+
+        return res.status(200).json({
+            message: 'Product status updated successfully',
+            data: updateRespnse,
+            success: true,
+        });
+    } catch (error) {
+        return res.status(500).json({
+            error: error.message,
+            message: 'Internal Server Error',
+            success: false,
+        });
+    }
+}

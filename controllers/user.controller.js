@@ -197,7 +197,7 @@ export const remove_user_profile = async (req, res) => {
     try {
         const userId = req.params.id;
 
-        const user = await User.findById(userId);
+        const user = await User.findByIdAndDelete(userId);
 
         if (!user) {
             return res.status(404).json({
@@ -206,7 +206,7 @@ export const remove_user_profile = async (req, res) => {
             });
         }
 
-        await Vendor.findOneAndDelete({ userId: userId });
+        await Vendor.findOneAndDelete({ userId });
 
         return res.status(200).json({
             message: 'User deleted successfully',
@@ -280,7 +280,7 @@ export const customer_filters = async (req, res) => {
             address: address || '',
             joinRange: joinRange ? joinRange.split(',').map(i => i.trim()) : undefined,
             updatedRange: updatedRange ? updatedRange.split(',').map(i => i.trim()) : undefined,
-            status: status,
+            status: status || 'active',
         };
 
         const parsedLimit = parseInt(limit);

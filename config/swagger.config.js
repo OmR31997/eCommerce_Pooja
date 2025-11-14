@@ -22,10 +22,11 @@ const doc = {
   tags: [
     { name: 'Auth', description: 'Authentication routes' },
     { name: 'Admin', description: 'Admin routes' },
-    { name: 'Vendor', description: 'Vendor routes' },
+    { name: 'Staff', description: 'Staff management routes' },
+    { name: 'Vendor', description: 'Vendor management routes' },
     { name: 'Customer', description: 'Customer/User management routes' },
-    { name: 'Category', description: 'Product category routes' },
-    { name: 'Product', description: 'Product routes' },
+    { name: 'Category', description: 'Product category management routes' },
+    { name: 'Product', description: 'Product management routes' },
     { name: 'Cart', description: 'Cart management routes' },
     { name: 'Order', description: 'Order management routes' },
     { name: 'Payment', description: 'Payment management routes' },
@@ -65,6 +66,7 @@ swaggerAutogen()(outputFile, endpointsFiles, doc).then(() => {
 const getTagsFromRoute = (route) => {
   if (route.includes('/auth')) return 'Auth';
   if (route.includes('/admin')) return 'Admin';
+  if (route.includes('/staff')) return 'Staff';
   if (route.includes('/vendor')) return 'Vendor';
   if (route.includes('/user')) return 'Customer';
   if (route.includes('/category')) return 'Category';

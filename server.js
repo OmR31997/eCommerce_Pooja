@@ -67,6 +67,7 @@ appServer.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, { s
 
 appServer.use('/api/auth', AuthRoute);
 appServer.use('/api/admin', authentication, authorizationRoles(['admin']), AdminRoute);
+appServer.use('/api/staff', StaffRoute);
 appServer.use('/api/vendor', VendorRoute);
 appServer.use('/api/category', CategoryRoute);
 appServer.use('/api/product', ProductRoute);
@@ -74,7 +75,6 @@ appServer.use('/api/cart', CartRoute);
 appServer.use('/api/payment', PaymentRoute);
 appServer.use('/api/order', OrderRoute);
 appServer.use('/api/user', UserRoute);
-appServer.use('/api/staff', StaffRoute);
 
 const port = process.env.PORT;
 

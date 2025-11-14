@@ -478,7 +478,7 @@ export const remove_vendor_profile = async (req, res) => {
                     DeleteLocalFile(vendor.logoUrl);
                 }
             } catch (error) {
-                console.warn(`Failed to delete logo for vendor ${id}:`, error.message);
+                console.warn(`Failed to delete logo for vendor ${vendorId}:`, error.message);
             }
         }
 
@@ -498,7 +498,7 @@ export const remove_vendor_profile = async (req, res) => {
         }
 
         // Delete Vendor Record
-        const deletedVendor = await Vendor.findByIdAndDelete(id);
+        const deletedVendor = await Vendor.findByIdAndDelete(vendorId);
 
         await User.findByIdAndUpdate(deletedVendor.userId, { role: 'user' });
 
@@ -556,10 +556,6 @@ export const clear_vendors = async (req, res) => {
     }
 }
 
-export const get_revenue_via_duration = async (req, res) => {
-
-}
-
 export const vendor_filters = async (req, res) => {
     try {
         const {
@@ -575,7 +571,7 @@ export const vendor_filters = async (req, res) => {
             address: address || '',
             status: status || 'approved',
             joinRange: joinRange ? joinRange.split(',').map(i => i.trim()) : undefined,
-            joinRange: updatedRange ? updatedRange.split(',').map(i => i.trim()) : undefined,
+            updatedRange: updatedRange ? updatedRange.split(',').map(i => i.trim()) : undefined,
         };
 
         const parsedLimit = parseInt(limit);

@@ -4,7 +4,7 @@ import { Product } from '../models/product.model.js';
 /* **create_cart logic here** */
 export const add_to_cart = async (req, res) => {
     try {
-        const { productId, quantity = 1 } = req.body;
+        const { productId, userId, quantity = 1 } = req.body;
         const { id } = req.user;
 
         if (!productId) {
@@ -29,7 +29,7 @@ export const add_to_cart = async (req, res) => {
 
         if (!cart) {
             cart = new Cart({
-                userId: id,
+                user: userId ,
                 items: [{
                     productId,
                     price: product.price,

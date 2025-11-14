@@ -2,7 +2,60 @@ import fs from 'fs';
 import path from 'path';
 import slugify from 'slugify';
 import { Category } from '../models/category.model.js';
-// import { Product } from '../models/product.model.js';
+
+export const ErrorHandle = async (error, serviceMethod) => {
+    if (error.name === 'CastError') {
+
+        console.log(`Errorr in '${serviceMethod}'`, error.message);
+
+        return {
+            status: 400,
+            success: false,
+            error: `Invalid ID format for field '${error.path}'`,
+        }
+    }
+
+    if (error.name === 'ValidationError') {
+        const errors = {};
+        Object.keys(error.errors).forEach(key => {
+            errors[key] = error.errors[key].message
+        });
+
+        console.log({ message: `Errorr in '${serviceMethod}'`, errors });
+        return { status: 400, success: false, errors, message: 'Validation failed', };
+    }
+
+    if (error.code === 11000) {
+        const field = Object.keys(error.keyValue)[0];
+        return { status: 409, success: false, message: `${field} already exists` };
+    }
+
+    console.log(`Errorr in '${serviceMethod}'`, error.message);
+}
+
+export const identifyRoleFromEmail = (email) => {
+    const [prefix, domain] = email.split("@");
+    //   const orgPart = domain?.split(".")[0]?.toLowerCase(); // e.g. supprt/gmail/org
+
+    const prefixLower = prefix.toLowerCase();
+
+    if (prefixLower.startsWith("super")) return { role: "super_admin", collection: "Admin" };
+    if (prefixLower.startsWith("admin")) return { role: "admin", collection: "Admin" };
+    if (prefixLower.startsWith("staff")) return { role: "staff", collection: "Staff" };
+    if (prefixLower.startsWith("vendor")) return { role: "vendor", collection: "Vendor" };
+
+    return {role: 'user', collection: 'User'}
+};
+
+// Free Mail Case
+export const getModelByRole = (role) => {
+    if (role.includes('admin')) return { collection: 'Admin' };
+    if (role.includes('staff')) return { collection: 'Admin' };
+    if (role.includes('vendor')) return { collection: 'Vendor' };
+    if (role.includes('user')) return { collection: 'User' };
+
+    return { role: 'user', collection: 'User' }
+}
 
 export const GenerateSlug = async (name) => {
     if (!name) {
@@ -153,7 +206,7 @@ export const BuildVendorQuery = (filters) => {
         if (filters.joinRange) {
             const start = new Date(filters.joinRange[0])
             const end = new Date(filters.joinRange[1])
-            
+
             start.setHours(0, 0, 0, 0);
             end.setHours(23, 59, 59, 999);
 
@@ -206,7 +259,7 @@ export const BuildUserQuery = (filters) => {
 
             const start = new Date(filters.joinRange[0])
             const end = new Date(filters.joinRange[1])
-            
+
             start.setHours(0, 0, 0, 0);
             end.setHours(23, 59, 59, 999);
 

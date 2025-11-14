@@ -9,7 +9,7 @@ const router = express.Router();
    @methtod -> POST
    @access -> Private (vendor) 
 */
-router.post('/create', authentication, authorizationRoles(['vendor']), Upload('PRODUCT-').array('images', Number(process.env.MAX_PRODUCT_IMAGES) || 5), create_product);
+router.post('/create', authentication, Upload('PRODUCT-').array('images', Number(process.env.MAX_PRODUCT_IMAGES) || 5), create_product);
 
 /* @description -> To view products
    @end-Point -> /api/product/view
