@@ -5,18 +5,58 @@ import { Admin } from "../models/admin.model.js";
 import bcrypt from 'bcryptjs';
 import { Permission } from '../models/permission.model.js';
 import { Staff } from '../models/staff.model.js';
-import { Role } from '../models/staff.model.js';
+import { Role } from '../models/role.model.js';
 import { User } from '../models/user.model.js';
 import { Vendor } from '../models/vendor.model.js';
+import mongoose from 'mongoose';
 
 const additionalUser = async () => {
   const users = [
+    {
+      name: 'Namrata Devi',
+      email: 'namrata@gmail.com',
+      phone: '9000456741',
+      password: await bcrypt.hash('Namrata@123', 10),
+      roles: [new mongoose.Types.ObjectId('69175dae4f4955165e9e2184')],
+      permissions: [ new mongoose.Types.ObjectId('691783835b82d6a8d9ceef7d') ],
+      address: 'India',
+      otp: '123'
+    },
+    {
+      name: 'Krishna Sigh',
+      email: 'krishna@gmail.com',
+      phone: '9000456742',
+      password: await bcrypt.hash('Krishna@123', 10),
+      roles: [new mongoose.Types.ObjectId('69175dae4f4955165e9e2184')],
+      permissions: [ new mongoose.Types.ObjectId('691783835b82d6a8d9ceef7d') ],
+      address: 'India',
+      otp: '123'
+    },{
+      name: 'Ankush Kumar',
+      email: 'ankush@gmail.com',
+      phone: '9000456743',
+      password: await bcrypt.hash('Ankush@123', 10),
+      roles: [new mongoose.Types.ObjectId('69175dae4f4955165e9e2184')],
+      permissions: [ new mongoose.Types.ObjectId('691783835b82d6a8d9ceef7d') ],
+      address: 'India',
+      otp: '123'
+    },{
+      name: 'Vijay Kumar Singh',
+      email: 'vijay@gmail.com',
+      phone: '9000456744',
+      password: await bcrypt.hash('vijay@123', 10),
+      roles: [new mongoose.Types.ObjectId('69175dae4f4955165e9e2184')],
+      permissions: [ new mongoose.Types.ObjectId('691783835b82d6a8d9ceef7d') ],
+      address: 'India',
+      otp: '123'
+    },
     {
       name: 'Amar Singh',
       email: 'amar@gmail.com',
       phone: '9000000123',
       password: await bcrypt.hash('Amar@123', 10),
-      permissions: ['69175dae4f4955165e9e2184'],
+      roles: [new mongoose.Types.ObjectId('69175dae4f4955165e9e2184')],
+      permissions: [ new mongoose.Types.ObjectId('691783835b82d6a8d9ceef7d') ],
       address: 'India',
       otp: '123'
     },
@@ -25,7 +65,8 @@ const additionalUser = async () => {
       email: 'bhanu@gmail.com',
       phone: '9000000456',
       password: await bcrypt.hash('Bhanu@123', 10),
-      permissions: ['69175dae4f4955165e9e2184'],
+      roles: [new mongoose.Types.ObjectId('69175dae4f4955165e9e2184')],
+      permissions: [ new mongoose.Types.ObjectId('691783835b82d6a8d9ceef7d') ],
       address: 'India',
       otp: '12443'
     },
@@ -34,7 +75,8 @@ const additionalUser = async () => {
       email: 'cathe@gmail.com',
       phone: '9000000147',
       password: await bcrypt.hash('Cathe@123', 10),
-      permissions: ['69175dae4f4955165e9e2184'],
+      roles: [new mongoose.Types.ObjectId('69175dae4f4955165e9e2184')],
+      permissions: [ new mongoose.Types.ObjectId('691783835b82d6a8d9ceef7d') ],
       address: 'India',
       otp: '123'
     },
@@ -43,7 +85,8 @@ const additionalUser = async () => {
       email: 'anjalee@gmail.com',
       phone: '9000000741',
       password: await bcrypt.hash('Anjalee@123', 10),
-      permissions: ['69175dae4f4955165e9e2184'],
+      roles: [new mongoose.Types.ObjectId('69175dae4f4955165e9e2184')],
+      permissions: [ new mongoose.Types.ObjectId('691783835b82d6a8d9ceef7d') ],
       address: 'India',
       otp: '123454'
     },
@@ -52,11 +95,12 @@ const additionalUser = async () => {
       email: 'ganesh@gmail.com',
       phone: '9000004444',
       password: await bcrypt.hash('Ganesh@123', 10),
-      permissions: ['69175dae4f4955165e9e2184'],
+      roles: [new mongoose.Types.ObjectId('69175dae4f4955165e9e2184')],
+      permissions: [ new mongoose.Types.ObjectId('691783835b82d6a8d9ceef7d') ],
       address: 'India',
       otp: '1234441'
     }
-  ]
+  ];
 
   for (const user of users) {
     await User.create(user);
@@ -66,13 +110,14 @@ const additionalUser = async () => {
 }
 
 const additionalVendor = async () => {
-  const users = [
+  const vendors = [
     {
       userId: '6917631b583cd5a1e3f6edd3',
       type: 'FM55SS',
       businessName: 'AMAR SERVICE LTD',
-      businessEmail: 'amar@gmail.com',
+      businessEmail: 'amar_vendor@gmail.com',
       businessDescription: 'Automobile Services',
+      roles: new mongoose.Types.ObjectId(),
       phone: '90009454545',
       password: await bcrypt.hash('Amar@123', 10),
       gstNumber: 'GST4478787878',
@@ -88,8 +133,9 @@ const additionalVendor = async () => {
       userId: '6917631b583cd5a1e3f6edd3',
       type: 'FM55SS',
       businessName: 'VIJAY SERVICE LTD',
-      businessEmail: 'vijay@gmail.com',
+      businessEmail: 'vijay_vendor@gmail.com',
       businessDescription: 'EV Services',
+      roles: new mongoose.Types.ObjectId(),
       phone: '90009454445',
       password: await bcrypt.hash('Vijay@123', 10),
       gstNumber: 'GST4478787878',
@@ -105,8 +151,9 @@ const additionalVendor = async () => {
       userId: '6917631b583cd5a1e3f6edd3',
       type: 'FM55SS',
       businessName: 'KRISHNA SERVICE LTD',
-      businessEmail: 'krishna@gmail.com',
+      businessEmail: 'krishna_vendor@gmail.com',
       businessDescription: 'Mobile Services',
+      roles: new mongoose.Types.ObjectId(),
       phone: '90009454564',
       password: await bcrypt.hash('Krishna@123', 10),
       gstNumber: 'GST4478787878',
@@ -121,9 +168,10 @@ const additionalVendor = async () => {
     {
       userId: '6917631b583cd5a1e3f6edd3',
       type: 'FM55SS',
-      businessName: 'JWELERY SERVICE LTD',
-      businessEmail: 'ankush@gmail.com',
-      businessDescription: 'Jwelery',
+      businessName: 'JEWELLERY LTD',
+      businessEmail: 'ankush_vendor@gmail.com',
+      businessDescription: 'Jewellery',
+      roles: new mongoose.Types.ObjectId(),
       phone: '90009445466',
       password: await bcrypt.hash('Ankush@123', 10),
       gstNumber: 'GST4478787878',
@@ -138,11 +186,12 @@ const additionalVendor = async () => {
     {
       userId: '6917631b583cd5a1e3f6edd3',
       type: 'FM55SS',
-      businessName: 'NAMRTA SERVICE LTD',
-      businessEmail: 'namrta@gmail.com',
-      businessDescription: 'EV Services',
+      businessName: 'NAMRATA SERVICE LTD',
+      businessEmail: 'namrata_vendor@gmail.com',
+      businessDescription: 'Electronic Services',
+      roles: new mongoose.Types.ObjectId(),
       phone: '900094545454',
-      password: await bcrypt.hash('NAMRTA@123', 10),
+      password: await bcrypt.hash('Namrata@123', 10),
       gstNumber: 'GST4478787878',
       bankDetails: {
         accountNumber: '2220110789544',
@@ -154,7 +203,7 @@ const additionalVendor = async () => {
     }
   ]
 
-  for (const user of users) {
+  for (const user of vendors) {
     await Vendor.create(user);
   }
 
@@ -334,7 +383,7 @@ export const seedDatabase = async (isManual = false) => {
     await permissionsSeed();
     await rolesSeed();
     await adminSeed();
-    // await additionalUser();
+    await additionalUser();
     // await additionalVendor();
 
   } catch (error) {

@@ -1,6 +1,6 @@
 import express from 'express';
 import { clear_Category, create_product_category, remove_category, search_category, update_category, view_categories, view_category_byId, view_category_bySlug } from '../controllers/category.controller.js';
-import { authentication, authorizationAccess} from '../middlewares/auth.middleware.js';
+import { authentication, authorizationAccess } from '../middlewares/auth.middleware.js';
 import { Upload } from '../middlewares/upload.middleware.js';
 
 const router = express.Router()

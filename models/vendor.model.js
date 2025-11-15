@@ -61,6 +61,11 @@ const VendorSchema = new mongoose.Schema({
             ref: 'Permission',
         },
     ],
+    role: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Role',
+        required: [true, `'role' field must be provided`],
+    },
     gstNumber: {
         type: String,
         default: null,

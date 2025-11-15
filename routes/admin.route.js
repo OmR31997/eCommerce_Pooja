@@ -1,8 +1,20 @@
 import express from 'express';
-import { get_admin_dashboard, manage_product, manage_vendor } from '../controllers/admin.controller.js';
+import { delete_admin, get_admin, get_admin_dashboard, manage_permissions, manage_product, manage_roles, manage_vendor, update_admin_profile, update_super_admin_profile } from '../controllers/admin.controller.js';
 import { authentication, authorizationAccess } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
+
+router.get('/view', authentication, authorizationAccess('Admin', 'isRead'), get_admin);
+
+router.patch('/update', authentication, authorizationAccess('Admin', 'isUpdate'), update_admin_profile);
+
+router.patch('/update/super_admin', authentication, authorizationAccess('Admin', 'isUpdate'), update_super_admin_profile);
+
+router.delete('/:id/delete', authentication, authorizationAccess('Admin', 'isUpdate'), delete_admin);
+
+router.patch('/:id/manage-permission', authentication, authorizationAccess('Permission', 'isUpdate'), manage_permissions);
+
+router.patch('/:id/manage-roles', authentication, authorizationAccess('Role', 'isUpdate'), manage_roles);
 
 /* @description -> To access admin dashboard data
    @end-Point -> /api/admin/dashboard

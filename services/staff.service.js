@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import bcrypt from "bcryptjs";
-import { Role, Staff } from "../models/staff.model.js";
+import { Staff } from "../models/staff.model.js";
+import { Role } from '../models/role.model.js';
 import { Permission } from '../models/permission.model.js';
 import { ErrorHandle } from '../utils/fileHelper.js';
 
@@ -56,7 +57,7 @@ export const UpdateStaff = async (staffData, staffId) => {
 
         let permissionIds = [];
         if (permissions && permissions.length > 0) {
-            
+
             const invalidIds = permissions.filter((id) => !mongoose.Types.ObjectId.isValid(id));
 
             if (invalidIds.length > 0) {
@@ -80,7 +81,7 @@ export const UpdateStaff = async (staffData, staffId) => {
         }
 
         const updatedStaff = await Staff.findByIdAndUpdate(staffId, staffData);
-        
+
         if (!updatedStaff)
             return {
                 status: 404,
@@ -88,7 +89,7 @@ export const UpdateStaff = async (staffData, staffId) => {
                 success: false,
             }
 
-        return { status: 200, message: 'Staff updated Successfully', success: true, data: {staffId, ...staffData} };
+        return { status: 200, message: 'Staff updated Successfully', success: true, data: { staffId, ...staffData } };
 
     } catch (error) {
 
