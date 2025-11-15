@@ -1,6 +1,6 @@
 import express from 'express';
 import { clear_Category, create_product_category, remove_category, search_category, update_category, view_categories, view_category_byId, view_category_bySlug } from '../controllers/category.controller.js';
-import { authentication, authorizationRoles } from '../middlewares/auth.middleware.js';
+import { authentication, authorizationAccess} from '../middlewares/auth.middleware.js';
 import { Upload } from '../middlewares/upload.middleware.js';
 
 const router = express.Router()
@@ -10,14 +10,14 @@ const router = express.Router()
    @methtod -> POST
    @access -> Private (admin) 
 */
-router.post('/create', authentication, authorizationRoles(['admin']), Upload('CTG-').single('imageUrl'), create_product_category);
+router.post('/create', authentication, authorizationAccess('Category', 'isCreate'), Upload('CTG-').single('imageUrl'), create_product_category);
 
 /* @description -> To a create subcategory
    @end-Point -> /api/category/create/:parent/sub
    @methtod -> POST
    @access -> Private (admin) 
 */
-router.post('/create/:parent/sub', authentication, authorizationRoles(['admin']), Upload('CTG-').single('imageUrl'), create_product_category);
+router.post('/create/:parent/sub', authentication, authorizationAccess('Category', 'isCreate'), Upload('CTG-').single('imageUrl'), create_product_category);
 
 /* @description -> To view categories
    @end-Point -> /api/category/view
@@ -41,19 +41,19 @@ router.get('/:slug/view-slug', view_category_bySlug);
    @end-Point -> /api/category/:id/update
    @methtod -> PATCH 
 */
-router.patch('/:id/update', authentication, authorizationRoles(['admin']), Upload('CTG-').single('imageUrl'), update_category)
+router.patch('/:id/update', authentication, authorizationAccess('Category', 'isUpdate'), Upload('CTG-').single('imageUrl'), update_category)
 
 /* @description -> To delete category by categoryId
    @end-Point -> /api/category/:id/delete
    @methtod -> DELETE 
 */
-router.delete('/:id/delete', authentication, authorizationRoles(['admin']), Upload('CTG-').single('imageUrl'), remove_category);
+router.delete('/:id/delete', authentication, authorizationAccess('Category', 'isDelete'), Upload('CTG-').single('imageUrl'), remove_category);
 
 /* @description -> To cleared categories
    @end-Point -> /api/category/clear
    @methtod -> DELETE 
 */
-router.delete('/clear', authentication, authorizationRoles(['admin']), clear_Category);
+router.delete('/clear', authentication, authorizationAccess('Category', 'isDelete'), clear_Category);
 
 /* @description -> To search
    @end-Point -> /api/category/?find=

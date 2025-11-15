@@ -1,6 +1,6 @@
 import express from 'express';
 import { get_admin_dashboard, manage_product, manage_vendor } from '../controllers/admin.controller.js';
-import { authentication, authorizationRoles } from '../middlewares/auth.middleware.js';
+import { authentication, authorizationAccess } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
@@ -9,14 +9,14 @@ const router = express.Router();
    @methtod -> GET
    @access -> Private (admin) 
 */
-router.get('/dashboard', get_admin_dashboard);
+router.get('/dashboard', authentication, authorizationAccess('Admin', 'isRead'), get_admin_dashboard);
 
 /* @description -> To give approval to vendor for sale
    @end-Point -> /api/admin/:id/vendor-approval
    @methtod -> POST
    @access -> Private (admin) 
 */
-router.patch('/:id/vendor-approval', authentication, authorizationRoles(['admin']), manage_vendor);
+router.patch('/:id/vendor-approval', authentication, authorizationAccess('Vendor', 'isUpdate'), manage_vendor);
 
 /* @description -> To set the status of the product
    @end-Point -> /api/admin/:id/product-approval            
@@ -24,6 +24,6 @@ router.patch('/:id/vendor-approval', authentication, authorizationRoles(['admin'
    @access -> Private (admin) 
    @id -> sku/_id
 */
-router.patch('/:id/product-approval', authentication, authorizationRoles(['admin']), manage_product)
+router.patch('/:id/product-approval', authentication, authorizationAccess('Product', 'isUpdate'), manage_product)
 
 export default router;

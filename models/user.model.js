@@ -27,26 +27,22 @@ const UserSchema = new mongoose.Schema({
         select: false,
         required: [true, `'password' field must be required`],
     },
-    role: {
-        type: String,
-        trim: true,
-        lowercase: true,
-        enum: ['user', 'vendor'],
-        default: 'user',
-        validate: {
-            validator: function (value) {
-                if (this.allowAdminSeed)
-                    return true
-
-                if (this.isNew && value !== 'user')
-                    throw new Error(`'role' must be 'user' at the creation time`);
-
-                return true
-            }
+    permissions: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Permission',
         },
-        message: `'role' must be 'user' at creation time `
+    ],
+    role: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Role',
+        required: [true, `'role' field must be provided`],
     },
-    orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
+    orders: [
+        { 
+            type: mongoose.Schema.Types.ObjectId, ref: 'Order' 
+        }
+    ],
     totalSpents: {
         type: Number,
         default: 0,

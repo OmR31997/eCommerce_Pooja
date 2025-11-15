@@ -4,11 +4,20 @@ import { Order } from "../models/order.model.js";
 /* **checkout logic here** */
 export const checkout = async (req, res) => {
     try {
-        const { paymentMethod = "COD" } = req.body;
-        const { id } = req.user;
+        const { 
+            userId,
+            shippingAddress,
+            paymentMethod = "COD" 
+        } = req.body;
 
-        const cart = await Cart.findOne({ userId: id })
-            .populate({ path: 'items.productId', populate: { path: "vendorId", select: "shopName" } });
+        const orderData = {
+            userId: req.user.role === 'user' ? req.user.id : userId || undefined,
+            shippingAddress: shippingAddress || undefined,
+            paymentMethod: paymentMethod,
+        }
+
+        const cart = await Cart.findOne({ userId: orderData.userId })
+            .populate('items.productId');
 
         if (!cart || cart.items.length === 0) {
             return res.status(404).json({
@@ -16,11 +25,12 @@ export const checkout = async (req, res) => {
                 success: false,
             });
         }
-
+        
         const vendorGroups = {};
 
         cart.items.forEach(item => {
-            const vendorId = item.productId.vendorId._id.toString();
+            
+            const vendorId = item.productId.vendorId.toString();
 
             if (!vendorGroups[vendorId])
                 vendorGroups[vendorId] = [];
@@ -34,15 +44,14 @@ export const checkout = async (req, res) => {
             const totalAmount = items.reduce((accume, currentItem) => accume + currentItem.price * currentItem.quantity, 0);
 
             const orderItems = items.map(item => ({
-                productId: item.productId._id,
+                productId: item.productId._id.toString(),
                 quantity: item.quantity,
                 price: item.price,
                 subtotal: item.price * item.quantity
             }));
 
             const order = await Order.create({
-                ...req.body,
-                userId: id,
+                ...orderData,
                 vendorId,
                 items: orderItems,
                 totalAmount,
@@ -53,7 +62,7 @@ export const checkout = async (req, res) => {
         }
 
         // Clear cart 
-        await Cart.findOneAndUpdate({ userId: id }, { items: [], totalAmount: 0 });
+        await Cart.findOneAndUpdate({ userId: orderData.userId }, { items: [], totalAmount: 0 });
 
         return res.status(201).json({
             message: 'Orders created successfully',

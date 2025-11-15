@@ -1,7 +1,7 @@
 import mongoose from "mongoose"
 
 const OrderItemSchema = new mongoose.Schema({
-    product: {
+    productId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Product',
         required: [true, `'productId' field must be required`],
@@ -54,13 +54,13 @@ const ShippingSchema = new mongoose.Schema({
 }, { _id: false });
 
 const OrderSchema = new mongoose.Schema({
-    user: {
+    userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: [true, `'userId' field must be required`],
         index: true,
     },
-    vendor: {
+    vendorId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Vendor',
         required: [true, `'vendorId' field must be required`],

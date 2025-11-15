@@ -2381,6 +2381,12 @@
             "schema": {
               "type": "object",
               "properties": {
+                "userId": {
+                  "example": "any"
+                },
+                "shippingAddress": {
+                  "example": "any"
+                },
                 "paymentMethod": {
                   "example": "any"
                 }

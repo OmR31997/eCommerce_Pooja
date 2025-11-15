@@ -34,28 +34,50 @@ export const ErrorHandle = async (error, serviceMethod) => {
 }
 
 export const identifyRoleFromEmail = (email) => {
-    const [prefix, domain] = email.split("@");
-    //   const orgPart = domain?.split(".")[0]?.toLowerCase(); // e.g. supprt/gmail/org
+    const lower = email.toLowerCase();
 
-    const prefixLower = prefix.toLowerCase();
+    // --- Admin & Super Admin ---
+    if (lower === "super_admin@support.com") {
+        return { role: "super_admin", collection: "Admin" };
+    }
 
-    if (prefixLower.startsWith("super")) return { role: "super_admin", collection: "Admin" };
-    if (prefixLower.startsWith("admin")) return { role: "admin", collection: "Admin" };
-    if (prefixLower.startsWith("staff")) return { role: "staff", collection: "Staff" };
-    if (prefixLower.startsWith("vendor")) return { role: "vendor", collection: "Vendor" };
+    if (lower === "admin@support.com") {
+        return { role: "admin", collection: "Admin" };
+    }
 
-    return {role: 'user', collection: 'User'}
+    // --- Staff ---
+    if (lower.includes("_staff@")) {
+        return { role: "staff", collection: "Staff" };
+    }
+
+    // --- Vendor ---
+    if (lower.includes("_vendor@")) {
+        return { role: "vendor", collection: "Vendor" };
+    }
+
+    // --- Default USER ---
+    return { role: "user", collection: "User" };
 };
+
 
 // Free Mail Case
 export const getModelByRole = (role) => {
-    if (role.includes('admin')) return { collection: 'Admin' };
-    if (role.includes('staff')) return { collection: 'Admin' };
-    if (role.includes('vendor')) return { collection: 'Vendor' };
-    if (role.includes('user')) return { collection: 'User' };
+    switch (role) {
+        case "super_admin":
+        case "admin":
+            return { role, collection: "Admin" };
 
-    return { role: 'user', collection: 'User' }
-}
+        case "staff":
+            return { role, collection: "Staff" };
+
+        case "vendor":
+            return { role, collection: "Vendor" };
+
+        case "user":
+        default:
+            return { role: "user", collection: "User" };
+    }
+};
 
 export const GenerateSlug = async (name) => {
     if (!name) {

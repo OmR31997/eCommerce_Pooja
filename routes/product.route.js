@@ -1,6 +1,6 @@
 import express from 'express';
 import { create_product, manage_product_byVendor, product_filters, rate_product, view_products, view_single_product, view_vendor_product, view_vendor_products, } from '../controllers/product.controller.js';
-import { authentication, authorizationRoles } from '../middlewares/auth.middleware.js';
+import { authentication, authorizationAccess, filterRestrictedStaffFields } from '../middlewares/auth.middleware.js';
 import { Upload } from '../middlewares/upload.middleware.js';
 const router = express.Router();
 
@@ -9,7 +9,7 @@ const router = express.Router();
    @methtod -> POST
    @access -> Private (vendor) 
 */
-router.post('/create', authentication, Upload('PRODUCT-').array('images', Number(process.env.MAX_PRODUCT_IMAGES) || 5), create_product);
+router.post('/create', authentication, authorizationAccess('Product', 'isCreate'), Upload('PRODUCT-').array('images', Number(process.env.MAX_PRODUCT_IMAGES) || 5), create_product);
 
 /* @description -> To view products
    @end-Point -> /api/product/view
@@ -22,7 +22,7 @@ router.get('/view', view_products);
    @methtod -> GET
    @access -> Private (vendor) 
 */
-router.get('/vendor-view', authentication, authorizationRoles(['vendor']), view_vendor_products);
+router.get('/vendor-view', authentication, authorizationAccess('Product', 'isRead'), view_vendor_products);
 
 /* @description -> To view single product by _id/sku
    @end-Point -> /api/product/view/:id
@@ -35,21 +35,21 @@ router.get('/view/:id', view_single_product);
    @methtod -> GET
    @access -> Private (vendor) 
 */
-router.get('/:id/vendor-view', authentication, authorizationRoles(['vendor']), view_vendor_product);
+router.get('/:id/vendor-view', authentication, authorizationAccess('Product', 'isRead'), view_vendor_product);
 
 /* @description -> To update product by productId
    @end-Point -> /api/product/:id
    @methtod -> PATCH
    @access -> Private (vendor) 
 */
-router.patch('/:id', authentication, authorizationRoles(['vendor']), manage_product_byVendor);
+router.patch('/:id', authentication, filterRestrictedStaffFields,  authorizationAccess('Product', 'isUpdate'), manage_product_byVendor);
 
 /* @description -> To give rating to the product
    @end-Point -> /api/product/:id/rate
    @methtod -> PATCH
    @access -> Private (user) 
 */
-router.patch('/:id/rate', authentication, authorizationRoles(['user']), rate_product);
+router.patch('/:id/rate', authentication, filterRestrictedStaffFields, authorizationAccess('Product', 'isUpdate'), rate_product);
 
 /* @description -> To give rating to the product
    @end-Point -> /api/product/:id/rate

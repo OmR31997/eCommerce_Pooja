@@ -204,13 +204,13 @@ export const sign_in = async (req, res) => {
         }
 
         if (role !== 'user') {
+            
             const payload = {
                 id: existing._id,
                 role,
             };
 
             const accessToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.SIGN_TOKEN_EXPIRE ?? '1d' });
-
             return res.status(200).json({
                 accessToken,
                 success: true,
@@ -390,34 +390,37 @@ export const confirm_signIn_otp = async (req, res) => {
             });
         }
 
-        let payload = undefined;
+        const payload = {
+            id: existUser._id,
+            role: 'user',
+        };
 
-        if (existUser.role === 'admin') {
-            const admin = await Admin.findOne({ userId: existUser._id }).select('_id');
-            payload = {
-                id: admin._id,
-                role: existUser.role,
-            }
-        }
-        else if (existUser.role === 'vendor') {
-            const vendor = await Vendor.findOne({ userId: existUser._id }).select('_id businessName status');
-            if (vendor.status !== 'approved') {
-                return res.status(400).json({
-                    error: `Currently you have't empower to create, & manage the product because profile is status: ${vendor.status}`,
-                    success: true,
-                })
-            }
-            payload = {
-                id: vendor._id,
-                role: existUser.role,
-            }
-        }
-        else if (existUser.role === 'user') {
-            payload = {
-                id: existUser._id,
-                role: existUser.role,
-            }
-        }
+        // if (existUser.role === 'admin') {
+        //     const admin = await Admin.findOne({ userId: existUser._id }).select('_id');
+        //     payload = {
+        //         id: admin._id,
+        //         role: existUser.role,
+        //     }
+        // }
+        // else if (existUser.role === 'vendor') {
+        //     const vendor = await Vendor.findOne({ userId: existUser._id }).select('_id businessName status');
+        //     if (vendor.status !== 'approved') {
+        //         return res.status(400).json({
+        //             error: `Currently you have't empower to create, & manage the product because profile is status: ${vendor.status}`,
+        //             success: true,
+        //         })
+        //     }
+        //     payload = {
+        //         id: vendor._id,
+        //         role: existUser.role,
+        //     }
+        // }
+        // else if (existUser.role === 'user') {
+        //     payload = {
+        //         id: existUser._id,
+        //         role: existUser.role,
+        //     }
+        // }
 
         const accessToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.SIGN_TOKEN_EXPIRE ?? '1d' });
 

@@ -55,6 +55,12 @@ const VendorSchema = new mongoose.Schema({
         unique: true,
         required: [true, `'businessEmail' field must be required`],
     },
+    permissions: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Permission',
+        },
+    ],
     gstNumber: {
         type: String,
         default: null,

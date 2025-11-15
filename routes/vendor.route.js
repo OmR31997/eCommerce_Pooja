@@ -1,5 +1,5 @@
 import express from 'express';
-import { authentication, authorizationRoles } from '../middlewares/auth.middleware.js';
+import { authentication, authorizationAccess, filterRestrictedStaffFields } from '../middlewares/auth.middleware.js';
 import { clear_vendors, confirm_otp, get_dashboard, get_vendor_byId, get_vendors, remove_vendor_profile, update_vendor_profile, vendor_filters, vendor_signup } from '../controllers/vendor.controller.js';
 import { Upload } from '../middlewares/upload.middleware.js';
 const router = express.Router();
@@ -9,61 +9,61 @@ const router = express.Router();
    @methtod -> POST
    @access -> Private (user) 
 */
-router.post('/sign-up', authentication, authorizationRoles(['user']), vendor_signup);
+router.post('/sign-up', authentication, authorizationAccess('Vendor', 'isCreate'), vendor_signup);
 
 /* @description -> To confirm-otp and update in vendor & user records
    @end-Point -> /api/vendor/confirm-otp
    @methtod -> POST
    @access -> Private (user) 
 */
-router.post('/confirm-otp', authentication, authorizationRoles(['user']), Upload('LOGO-').single('logoUrl'), confirm_otp);
+router.post('/confirm-otp', authentication, authorizationAccess('Vendor', 'isCreate'), Upload('LOGO-').single('logoUrl'), confirm_otp);
 
 /* @description -> To read all vendors records
    @end-Point -> /api/vendor/view
    @methtod -> GET
    @access -> Private (admin) 
 */
-router.get('/view', get_vendors);
+router.get('/view', authentication, authorizationAccess('Vendor', 'isRead'), get_vendors);
 
 /* @description -> To get vedor record byId
    @end-Point -> /api/vendor/view/:id
    @methtod -> GET
    @access -> Private (admin) 
 */
-router.get('/view/:id', authentication, authorizationRoles(['admin']), get_vendor_byId);
+router.get('/view/:id', authentication, authorizationAccess('Vendor', 'isRead'), get_vendor_byId);
 
 /* @description -> To view dashboard data of vendor 
    @end-Point -> /api/vendor/dashboard
    @methtod -> GET
    @access -> Private (vendor) 
 */
-router.get('/dashboard', authentication, authorizationRoles(['vendor']), get_dashboard);
+router.get('/dashboard', authentication, authorizationAccess('Vendor', 'isRead'), get_dashboard);
 
 /* @description -> To update vedor record byId
    @end-Point -> /api/vendor/view/:id
    @methtod -> PATCH
    @access -> Private (vendor/admin) 
 */
-router.patch('/:id/update', authentication, authorizationRoles(['vendor', 'admin']), Upload('LOGO-').fields([{ name: 'logoUrl', maxCount: 1 }, { name: 'documents', maxCount: Number(process.env.MAX_VENDOR_DOCUMENTS) ?? 2 }]), update_vendor_profile);
+router.patch('/:id/update', authentication, authorizationAccess('Vendor', 'isUpdate'), filterRestrictedStaffFields, Upload('LOGO-').fields([{ name: 'logoUrl', maxCount: 1 }, { name: 'documents', maxCount: Number(process.env.MAX_VENDOR_DOCUMENTS) ?? 2 }]), update_vendor_profile);
 
 /* @description -> To delete vendor record byId
    @end-Point -> /api/vendor/:id/delete
    @methtod -> DELETE
    @access -> Private (vendor/admin) 
 */
-router.delete('/:id/delete', authentication, authorizationRoles(['vendor', 'admin']), remove_vendor_profile);
+router.delete('/:id/delete', authentication, authorizationAccess('Vendor', 'isDelete'), remove_vendor_profile);
 
 /* @description -> To clear vendors
    @end-Point -> /api/vendor/clear
    @methtod -> DELETE
    @access -> Private (admin) 
 */
-router.delete('/clear', authentication, authorizationRoles(['vendor', 'admin']), clear_vendors);
+router.delete('/clear', authentication, authorizationAccess('Vendor', 'isDelete'), clear_vendors);
 
 /* @description -> To filter
    @end-Point -> /api/vendor/filter
    @methtod -> GET 
 */
-router.get('/filters', authentication, authorizationRoles(['admin']), vendor_filters);
+router.get('/filters', authentication, authorizationAccess('Vendor', 'isRead'), vendor_filters);
 
 export default router;

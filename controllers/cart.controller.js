@@ -5,38 +5,33 @@ import { Product } from '../models/product.model.js';
 export const add_to_cart = async (req, res) => {
     try {
         const { productId, userId, quantity = 1 } = req.body;
-        const { id } = req.user;
-
-        if (!productId) {
-            return res.status(400).json({
-                error: `'productId' field must be required`,
-                success: false,
-            })
-        }
 
         const product = await Product.findById(productId);
 
-        if (!product) {
+        if (!product || product.stock < quantity) {
             return res.status(404).json({
-                error: `Product not found with the given id`,
+                error: `Product not found or stock not available with the given id`,
                 success: false,
             });
         }
 
-        const subTotal = quantity * product.price;
+        const subTotal = quantity * product.price
 
-        let cart = await Cart.findOne({ userId: id });
+        const cartData = {
+            userId: req.user.role === 'user' ? req.user.id : userId || undefined,
+            items: [{
+                productId: productId || undefined,
+                quantity: parseInt(quantity),
+                price: product.price,
+                subtotal: subTotal,
+            }],
+            totalAmount: subTotal
+        }
+
+        let cart = await Cart.findOne({ userId: cartData.userId });
 
         if (!cart) {
-            cart = new Cart({
-                user: userId ,
-                items: [{
-                    productId,
-                    price: product.price,
-                    subtotal: subTotal,
-                }],
-                totalAmount: subTotal,
-            });
+            cart = new Cart(cartData);
         }
         else {
             // check if product already exist in cart 
@@ -52,23 +47,18 @@ export const add_to_cart = async (req, res) => {
                     cart.items[existingItemIndex].price;
             }
             else {
-                cart.items.push({
-                    productId,
-                    quantity,
-                    price: product.price,
-                    subtotal: subTotal,
-                });
+                cart.items.push(cartData.items);
             }
 
             // Recalculate total amount
             cart.totalAmount = cart.items.reduce((accume, currentItem) => accume + currentItem.subtotal, 0);
         }
 
-        const responseCart = await cart.save();
+        await cart.save();
 
         return res.status(200).json({
             message: 'Carted item successfully',
-            data: responseCart,
+            data: cartData,
             success: true,
         });
 
@@ -98,19 +88,30 @@ export const add_to_cart = async (req, res) => {
 /* **view_cart logic here** */
 export const view_cart = async (req, res) => {
     try {
-        const { id } = req.user;
 
-        const carts = await Cart.findOne({ userId: id })
+        if (req.user.role === 'user') {
+            const carts = await Cart.findOne({ userId: req.user.id })
+                .populate({ path: 'userId', select: 'name' })
+                .populate({ path: 'items.productId', select: 'name' })
+                .select('-__v -items._id');
+
+            if (!carts) {
+                return res.status(404).json({
+                    error: 'Product not found'
+                });
+            }
+        }
+
+        const carts = await Cart.find()
             .populate({ path: 'userId', select: 'name' })
             .populate({ path: 'items.productId', select: 'name' })
             .select('-__v -items._id');
 
-        if (!carts) {
+        if (!carts || carts.length === 0) {
             return res.status(404).json({
                 error: 'Product not found'
             });
         }
-
         return res.status(200).json({
             data: carts,
             success: true,
@@ -131,7 +132,7 @@ export const remove_cart_item = async (req, res) => {
         const cartId = req.params.id;
         const { id } = req.user;
 
-        const cart = await Cart.findOne({$and: {_id: cartId, userId: id}})
+        const cart = await Cart.findOne({ $and: { _id: cartId, userId: id } })
             .populate({ path: 'items.productId', select: 'sku' });
 
         if (!cart) {

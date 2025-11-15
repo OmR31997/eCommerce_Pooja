@@ -9,7 +9,7 @@ const router = express.Router();
    @methtod -> POST
    @access -> Private (user/admin/super_admin/manage_order) 
 */
-router.post('/checkout', checkout);
+router.post('/checkout', authentication, authorizationAccess('Order', 'isCreate'), checkout);
 
 /* @description -> To view ordered items
    @end-Point -> /api/order/view

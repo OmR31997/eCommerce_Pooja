@@ -6,6 +6,160 @@ import bcrypt from 'bcryptjs';
 import { Permission } from '../models/permission.model.js';
 import { Staff } from '../models/staff.model.js';
 import { Role } from '../models/staff.model.js';
+import { User } from '../models/user.model.js';
+import { Vendor } from '../models/vendor.model.js';
+
+const additionalUser = async () => {
+  const users = [
+    {
+      name: 'Amar Singh',
+      email: 'amar@gmail.com',
+      phone: '9000000123',
+      password: await bcrypt.hash('Amar@123', 10),
+      permissions: ['69175dae4f4955165e9e2184'],
+      address: 'India',
+      otp: '123'
+    },
+    {
+      name: 'Bhanu Singh',
+      email: 'bhanu@gmail.com',
+      phone: '9000000456',
+      password: await bcrypt.hash('Bhanu@123', 10),
+      permissions: ['69175dae4f4955165e9e2184'],
+      address: 'India',
+      otp: '12443'
+    },
+    {
+      name: 'Catherine',
+      email: 'cathe@gmail.com',
+      phone: '9000000147',
+      password: await bcrypt.hash('Cathe@123', 10),
+      permissions: ['69175dae4f4955165e9e2184'],
+      address: 'India',
+      otp: '123'
+    },
+    {
+      name: 'Anjalee',
+      email: 'anjalee@gmail.com',
+      phone: '9000000741',
+      password: await bcrypt.hash('Anjalee@123', 10),
+      permissions: ['69175dae4f4955165e9e2184'],
+      address: 'India',
+      otp: '123454'
+    },
+    {
+      name: 'Ganesh',
+      email: 'ganesh@gmail.com',
+      phone: '9000004444',
+      password: await bcrypt.hash('Ganesh@123', 10),
+      permissions: ['69175dae4f4955165e9e2184'],
+      address: 'India',
+      otp: '1234441'
+    }
+  ]
+
+  for (const user of users) {
+    await User.create(user);
+  }
+
+  console.log('User seeded successfully!');
+}
+
+const additionalVendor = async () => {
+  const users = [
+    {
+      userId: '6917631b583cd5a1e3f6edd3',
+      type: 'FM55SS',
+      businessName: 'AMAR SERVICE LTD',
+      businessEmail: 'amar@gmail.com',
+      businessDescription: 'Automobile Services',
+      phone: '90009454545',
+      password: await bcrypt.hash('Amar@123', 10),
+      gstNumber: 'GST4478787878',
+      bankDetails: {
+        accountNumber: '222011078956999',
+        ifsc: 'SBI0000004898',
+        bankName: 'State Bank of India',
+      },
+      address: 'India',
+      otp: '123'
+    },
+    {
+      userId: '6917631b583cd5a1e3f6edd3',
+      type: 'FM55SS',
+      businessName: 'VIJAY SERVICE LTD',
+      businessEmail: 'vijay@gmail.com',
+      businessDescription: 'EV Services',
+      phone: '90009454445',
+      password: await bcrypt.hash('Vijay@123', 10),
+      gstNumber: 'GST4478787878',
+      bankDetails: {
+        accountNumber: '2220110789574185',
+        ifsc: 'SBI0000004870',
+        bankName: 'State Bank of India',
+      },
+      address: 'India',
+      otp: '124'
+    },
+    {
+      userId: '6917631b583cd5a1e3f6edd3',
+      type: 'FM55SS',
+      businessName: 'KRISHNA SERVICE LTD',
+      businessEmail: 'krishna@gmail.com',
+      businessDescription: 'Mobile Services',
+      phone: '90009454564',
+      password: await bcrypt.hash('Krishna@123', 10),
+      gstNumber: 'GST4478787878',
+      bankDetails: {
+        accountNumber: '222011078954555',
+        ifsc: 'SBI0000005047',
+        bankName: 'State Bank of India',
+      },
+      address: 'India',
+      otp: '123'
+    },
+    {
+      userId: '6917631b583cd5a1e3f6edd3',
+      type: 'FM55SS',
+      businessName: 'JWELERY SERVICE LTD',
+      businessEmail: 'ankush@gmail.com',
+      businessDescription: 'Jwelery',
+      phone: '90009445466',
+      password: await bcrypt.hash('Ankush@123', 10),
+      gstNumber: 'GST4478787878',
+      bankDetails: {
+        accountNumber: '222011078957899',
+        ifsc: 'SBI0000009544',
+        bankName: 'State Bank of India',
+      },
+      address: 'India',
+      otp: '1444'
+    },
+    {
+      userId: '6917631b583cd5a1e3f6edd3',
+      type: 'FM55SS',
+      businessName: 'NAMRTA SERVICE LTD',
+      businessEmail: 'namrta@gmail.com',
+      businessDescription: 'EV Services',
+      phone: '900094545454',
+      password: await bcrypt.hash('NAMRTA@123', 10),
+      gstNumber: 'GST4478787878',
+      bankDetails: {
+        accountNumber: '2220110789544',
+        ifsc: 'SBI0000004898',
+        bankName: 'State Bank of India',
+      },
+      address: 'India',
+      otp: '123'
+    }
+  ]
+
+  for (const user of users) {
+    await Vendor.create(user);
+  }
+
+  console.log('User seeded successfully!');
+}
 
 const permissionsSeed = async () => {
   const permission = await Permission.countDocuments();
@@ -48,6 +202,18 @@ const permissionsSeed = async () => {
         description: 'Can read, and update staff accounts',
         actions: { idCreate: true, isRead: true, isUpdate: true, isApproved: true },
       },
+      {
+        name: 'user',
+        module: ['Product', 'Order', 'Cart', 'Payment'],
+        description: 'Can read, and update staff accounts',
+        actions: { idCreate: true, isRead: true, isUpdate: true, isApproved: true },
+      },
+      {
+        name: 'vendor',
+        module: ['Product', 'Order', 'Cart'],
+        description: 'Can read, and update staff accounts',
+        actions: { idCreate: true, isRead: true, isUpdate: true, isApproved: true },
+      },
     ];
 
     await Permission.insertMany(permissions, { ordered: false });
@@ -71,7 +237,7 @@ const rolesSeed = async () => {
       permissions: allPermission
         .filter(p => p.module.includes('Product') || p.module.includes('Order'))
         .map(p => p._id),
-      description: 'Can manage product and orders'
+      description: 'Can manage everything'
     }
 
     const staff = {
@@ -82,7 +248,27 @@ const rolesSeed = async () => {
       description: 'Can manage orders only.',
     }
 
-    for (const role of [superAdmin, admin, staff]) {
+    const vendor = {
+      name: 'vendor',
+      description: 'Can manage own profile, products, orders only.',
+      permissions: allPermission
+        .filter(p =>
+          ['Vendor', 'Product', 'Order'].includes(p.module)
+        )
+        .map(p => p._id)
+    }
+
+    const customer = {
+      name: 'user',
+      description: 'Regular customer role.',
+      permissions: allPermission
+        .filter(p =>
+          ['User', 'Product', 'Cart', 'Order'].includes(p.module)
+        )
+        .map(p => p._id)
+    }
+
+    for (const role of [superAdmin, admin, staff, vendor, customer]) {
       const exists = await Role.findOne({ name: role.name });
       if (!exists) await Role.create(role);
     }
@@ -148,6 +334,8 @@ export const seedDatabase = async (isManual = false) => {
     await permissionsSeed();
     await rolesSeed();
     await adminSeed();
+    // await additionalUser();
+    // await additionalVendor();
 
   } catch (error) {
     console.log('Error seeding database', error)
