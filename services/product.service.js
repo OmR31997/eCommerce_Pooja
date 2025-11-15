@@ -6,7 +6,7 @@ export const CreateProduct = async (productData) => {
     try {
 
         productData.sku = `SKU-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-
+        
         const response = await Product.create(productData);
 
         return { status: 201, message: 'Product created successfully', data: response, success: true };

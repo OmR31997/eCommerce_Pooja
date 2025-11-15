@@ -68,11 +68,13 @@ export const get_admin_dashboard = async (req, res) => {
     }
 }
 
+/* **get_admin logic here** */
 export const get_admin = async (req, res) => {
     try {
 
         let admin = undefined;
-        if (req.user === 'admin')
+
+        if (req.user.role === 'admin')
             admin = await Admin.findById(req.user.id);
         else
             admin = await Admin.find();
@@ -97,6 +99,7 @@ export const get_admin = async (req, res) => {
     }
 }
 
+/* **update_admin_profile logic here** */
 export const update_admin_profile = async (req, res) => {
     try {
         const { name, email, adminId } = req.body;
@@ -107,7 +110,7 @@ export const update_admin_profile = async (req, res) => {
         }
 
         let admin = undefined;
-        if (req.user === 'admin')
+        if (req.user.role === 'admin')
             admin = await Admin.findByIdAndUpdate(req.user.id, adminData);
         else if (req.user === 'super_admin')
             admin = await Admin.findByIdAndUpdate(adminId, adminData);
@@ -121,7 +124,7 @@ export const update_admin_profile = async (req, res) => {
 
         return res.status(404).json({
             message: 'Admin updated successfully',
-            data: admin,
+            data: adminData,
             success: true,
         })
     } catch (error) {
@@ -133,6 +136,7 @@ export const update_admin_profile = async (req, res) => {
     }
 }
 
+/* **update_super_admin_profile logic here** */
 export const update_super_admin_profile = async (req, res) => {
     try {
         const { name, email } = req.body;
@@ -164,19 +168,20 @@ export const update_super_admin_profile = async (req, res) => {
     }
 }
 
+/* **delete_admin logic here** */
 export const delete_admin = async (req, res) => {
     try {
         const admin_id = req.params.id;
 
         const deletedAdmin = await Admin.findByIdAndDelete(admin_id);
 
-        if (!admin) {
+        if (!deletedAdmin) {
             return res.status(404).json({
                 error: 'Admin not found',
                 success: true,
             })
         }
-        
+
         return res.status(200).json({
             message: 'Admin deleted success fully',
             success: true
@@ -190,8 +195,29 @@ export const delete_admin = async (req, res) => {
     }
 }
 
-export const manage_permissions = async () => {
 
+export const manage_permissions = async (req, res) => {
+    try {
+        const permissionId = req.params.id;
+        const { moduleName, actions } = req.body;
+
+        const permissionData = {
+            moduleName: moduleName.charAt(0).toUpperCase()+moduleName.substring(1).toLowerCase() || undefined
+        }
+        // const response = await findByIdAndUpdate(permissionId, )
+
+        return res.status(200).json({
+            message: 'Permission managed successfully',
+            data: permissionData,
+            success: true,
+        })
+    } catch (error) {
+        return res.status(500).json({
+            error: error.message,
+            message: 'Internal Server Error',
+            success: false,
+        });
+    }
 }
 
 export const manage_roles = async () => {

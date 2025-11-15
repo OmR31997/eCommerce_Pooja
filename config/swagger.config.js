@@ -22,6 +22,8 @@ const doc = {
   tags: [
     { name: 'Auth', description: 'Authentication routes' },
     { name: 'Admin', description: 'Admin routes' },
+    { name: 'Permission', description: 'Permissions routes' },
+    { name: 'Role', description: 'Roles routes' },
     { name: 'Staff', description: 'Staff management routes' },
     { name: 'Vendor', description: 'Vendor management routes' },
     { name: 'Customer', description: 'Customer/User management routes' },
@@ -66,6 +68,8 @@ swaggerAutogen()(outputFile, endpointsFiles, doc).then(() => {
 const getTagsFromRoute = (route) => {
   if (route.includes('/auth')) return 'Auth';
   if (route.includes('/admin')) return 'Admin';
+  if (route.includes('/permission')) return 'Permission';
+  if (route.includes('/role')) return 'Role';
   if (route.includes('/staff')) return 'Staff';
   if (route.includes('/vendor')) return 'Vendor';
   if (route.includes('/user')) return 'Customer';

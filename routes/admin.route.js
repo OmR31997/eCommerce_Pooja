@@ -1,9 +1,19 @@
 import express from 'express';
-import { delete_admin, get_admin, get_admin_dashboard, manage_permissions, manage_product, manage_roles, manage_vendor, update_admin_profile, update_super_admin_profile } from '../controllers/admin.controller.js';
+import { create_admin, delete_admin, get_admin, get_admin_dashboard, manage_permissions, manage_product, manage_roles, manage_vendor, update_admin_profile, update_super_admin_profile } from '../controllers/admin.controller.js';
 import { authentication, authorizationAccess } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
+/* @description -> To create sub admin
+   @end-Point -> /api/admin/create
+   @methtod -> POST
+*/
+router.post('/create', authentication, authorizationAccess('Admin', 'isRead'), create_admin);
+
+/* @description -> To view admin
+   @end-Point -> /api/admin/view
+   @methtod -> GET
+*/
 router.get('/view', authentication, authorizationAccess('Admin', 'isRead'), get_admin);
 
 router.patch('/update', authentication, authorizationAccess('Admin', 'isUpdate'), update_admin_profile);
@@ -11,10 +21,6 @@ router.patch('/update', authentication, authorizationAccess('Admin', 'isUpdate')
 router.patch('/update/super_admin', authentication, authorizationAccess('Admin', 'isUpdate'), update_super_admin_profile);
 
 router.delete('/:id/delete', authentication, authorizationAccess('Admin', 'isUpdate'), delete_admin);
-
-router.patch('/:id/manage-permission', authentication, authorizationAccess('Permission', 'isUpdate'), manage_permissions);
-
-router.patch('/:id/manage-roles', authentication, authorizationAccess('Role', 'isUpdate'), manage_roles);
 
 /* @description -> To access admin dashboard data
    @end-Point -> /api/admin/dashboard

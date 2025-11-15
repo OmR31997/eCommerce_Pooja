@@ -11,6 +11,8 @@ import swaggerUi from 'swagger-ui-express';
 
 import AuthRoute from './routes/auth.route.js';
 import AdminRoute from './routes/admin.route.js';
+import PermissionsRoute from './routes/permission.route.js';
+import RolesRoute from './routes/role.route.js';
 import StaffRoute from './routes/staff.route.js';
 import VendorRoute from './routes/vendor.route.js';
 import UserRoute from './routes/user.route.js';
@@ -67,6 +69,8 @@ appServer.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, { s
 
 appServer.use('/api/auth', AuthRoute);
 appServer.use('/api/admin', authentication, authorizationRoles(['admin']), AdminRoute);
+appServer.use('/api/permission', PermissionsRoute);
+appServer.use('/api/role', RolesRoute)
 appServer.use('/api/staff', StaffRoute);
 appServer.use('/api/vendor', VendorRoute);
 appServer.use('/api/category', CategoryRoute);
