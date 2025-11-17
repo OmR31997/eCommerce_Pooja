@@ -21,8 +21,8 @@ import ProductRoute from './routes/product.route.js';
 import CartRoute from './routes/cart.route.js';
 import PaymentRoute from './routes/payment.route.js';
 import OrderRoute from './routes/order.route.js';
-
-import { authentication, authorizationRoles } from './middlewares/auth.middleware.js';
+import DashboardRoute from './routes/dashboard.route.js';
+import { authentication, authorizationAccess, authorizationRoles } from './middlewares/auth.middleware.js';
 
 const appServer = express();
 appServer.use(express.json());
@@ -69,19 +69,20 @@ appServer.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, { s
 
 appServer.use('/api/auth', AuthRoute);
 appServer.use('/api/admin', authentication, authorizationRoles(['admin']), AdminRoute);
-appServer.use('/api/permission', PermissionsRoute);
-appServer.use('/api/role', RolesRoute)
+appServer.use('/api/permission', authentication, authorizationRoles(['admin', 'super_admin']), PermissionsRoute);
+appServer.use('/api/role', authentication, authorizationRoles(['admin', 'super_admin']), RolesRoute)
 appServer.use('/api/staff', StaffRoute);
 appServer.use('/api/vendor', VendorRoute);
-appServer.use('/api/category', CategoryRoute);
+appServer.use('/api/category', authentication, authorizationRoles(['admin', 'super_admin']), CategoryRoute);
 appServer.use('/api/product', ProductRoute);
 appServer.use('/api/cart', CartRoute);
 appServer.use('/api/payment', PaymentRoute);
 appServer.use('/api/order', OrderRoute);
 appServer.use('/api/user', UserRoute);
+appServer.use('/api/dashboard', DashboardRoute);
 
 const port = process.env.PORT;
 
-const baseUrl = process.env.NODE_ENV ==='development'? `http://localhost:${port}`: process.env.BASE_URL;
+const baseUrl = process.env.NODE_ENV === 'development' ? `http://localhost:${port}` : process.env.BASE_URL;
 console.log(process.env.NODE_ENV)
 appServer.listen(port, () => console.log(`Server is running at ${baseUrl}`));

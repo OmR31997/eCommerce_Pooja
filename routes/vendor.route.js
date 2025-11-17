@@ -1,6 +1,6 @@
 import express from 'express';
 import { authentication, authorizationAccess, filterRestrictedStaffFields } from '../middlewares/auth.middleware.js';
-import { clear_vendors, confirm_otp, get_dashboard, get_vendor_byId, get_vendors, remove_vendor_profile, update_vendor_profile, vendor_filters, vendor_signup } from '../controllers/vendor.controller.js';
+import { clear_vendors, confirm_otp, get_dashboard, get_me, get_vendor_byId, get_vendors, remove_vendor_profile, update_vendor_profile, vendor_filters, vendor_signup } from '../controllers/vendor.controller.js';
 import { Upload } from '../middlewares/upload.middleware.js';
 const router = express.Router();
 
@@ -18,6 +18,13 @@ router.post('/sign-up', authentication, authorizationAccess('Vendor', 'isCreate'
 */
 router.post('/confirm-otp', authentication, authorizationAccess('Vendor', 'isCreate'), Upload('LOGO-').single('logoUrl'), confirm_otp);
 
+/* @description -> To get profile
+   @end-Point -> /api/user/me
+   @methtod -> GET
+   @access -> Private (userId===req.user.id) 
+*/
+router.post('/me', authentication, authorizationAccess('Vendor', 'isRead'), get_me);
+
 /* @description -> To read all vendors records
    @end-Point -> /api/vendor/view
    @methtod -> GET
@@ -31,13 +38,6 @@ router.get('/view', authentication, authorizationAccess('Vendor', 'isRead'), get
    @access -> Private (admin) 
 */
 router.get('/view/:id', authentication, authorizationAccess('Vendor', 'isRead'), get_vendor_byId);
-
-/* @description -> To view dashboard data of vendor 
-   @end-Point -> /api/vendor/dashboard
-   @methtod -> GET
-   @access -> Private (vendor) 
-*/
-router.get('/dashboard', authentication, authorizationAccess('Vendor', 'isRead'), get_dashboard);
 
 /* @description -> To update vedor record byId
    @end-Point -> /api/vendor/view/:id

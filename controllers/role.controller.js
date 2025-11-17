@@ -12,10 +12,10 @@ export const create_roles = async (req, res) => {
 
             if (typeof permissionIds === "string") {
                 permissionsArray = permissionIds.split(",").map(id => id.trim());
-            } 
+            }
             else if (Array.isArray(permissionIds)) {
                 permissionsArray = permissionIds;
-            } 
+            }
             else {
                 return res.status(400).json({
                     message: "permissionIds must be array or comma-separated string",
@@ -67,6 +67,31 @@ export const create_roles = async (req, res) => {
     }
 };
 
+export const get_roles = async (req, res) => {
+    try {
+        const permissions = await Role.find().populate('permissions');
+
+        if (!permissions || permissions.length === 0) {
+            return res.status(404).json({
+                error: 'Data not found',
+                success: false,
+            });
+        }
+
+        return res.status(200).json({
+            message: 'Data fetched successfully',
+            data: permissions,
+            success: true,
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            message: "Internal Server Error",
+            error: error.message,
+            success: false
+        });
+    }
+}
 
 export const update_roles = async (req, res) => {
     try {
@@ -89,10 +114,10 @@ export const update_roles = async (req, res) => {
             // Convert string to array
             if (typeof permissionIds === "string") {
                 permissionsArray = permissionIds.split(",").map(i => i.trim());
-            } 
+            }
             else if (Array.isArray(permissionIds)) {
                 permissionsArray = permissionIds;
-            } 
+            }
             else {
                 return res.status(400).json({
                     message: "permissionIds must be an array or comma-separated string",
@@ -154,10 +179,42 @@ export const update_roles = async (req, res) => {
 };
 
 export const delete_role = async (req, res) => {
+    const { id } = req.params;
+
+    const role = await Role.findById(id);
+
+    if (!role) {
+        return res.status(404).json({
+            message: "Data not found",
+            success: false
+        });
+    }
+
+    await Role.findByIdAndDelete(id);
+
+    return res.status(200).json({
+        message: "Data deleted successfully",
+        data: role,
+        success: true
+    });
 
 }
 
 export const clear_roles = async (req, res) => {
+    try {
+        const result = await Role.deleteMany({});
 
+        return res.status(200).json({
+            message: "All roles have been deleted successfully",
+            data: result,
+            success: true,
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            message: "Internal Server Error",
+            error: error.message,
+            success: false,
+        });
+    }
 }
-

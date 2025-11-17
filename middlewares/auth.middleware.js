@@ -62,10 +62,29 @@ export const authorizationRoles = (allowedRoles = []) => {
 
 export const authorizationAccess = (moduleName, actionKey, options = {}) => {
   return async (req, res, next) => {
+
+    let action = undefined;
+    switch(actionKey) {
+      case 'isCreate':
+        action = 'create';
+        break;
+      case 'isRead':
+        action = 'create';
+        break;
+      case 'isUpdate':
+        action = 'update';
+        break;
+      case 'isDelete':
+        action = 'delete';
+        break;
+      case 'isApproved':
+        action = 'approve';
+        break;
+    }
+
     try {
       const authId = req.user.id;
       const authRole = req.user.role;
-
       const { role, collection } = getModelByRole(authRole);
       const Models = { Admin, Staff, Vendor, User }
       const Model = Models[collection];
@@ -109,7 +128,7 @@ export const authorizationAccess = (moduleName, actionKey, options = {}) => {
 
       if (!hasAccess) {
         return res.status(403).json({
-          error: `Access denied: You don't have permission to ${actionKey} on ${moduleName}`,
+          error: `Access denied: You don't have permission to ${action} on ${moduleName}`,
           success: false,
         });
       }

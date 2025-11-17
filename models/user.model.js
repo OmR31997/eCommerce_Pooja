@@ -33,15 +33,15 @@ const UserSchema = new mongoose.Schema({
             ref: 'Permission',
         },
     ],
-    role: [
-    {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Role',
-        required: [true, `'role' field must be provided`],
-    }],
+    roles: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Role',
+            required: [true, `'role' field must be provided`],
+        }],
     orders: [
-        { 
-            type: mongoose.Schema.Types.ObjectId, ref: 'Order' 
+        {
+            type: mongoose.Schema.Types.ObjectId, ref: 'Order'
         }
     ],
     totalSpents: {

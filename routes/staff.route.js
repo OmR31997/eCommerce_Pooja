@@ -1,9 +1,16 @@
 import express from 'express';
 import { Upload } from '../middlewares/upload.middleware.js';
-import { clear_staff, create_staff, read_staff_byId, read_staffs, remove_staff, update_staff, } from '../controllers/staff.controller.js';
+import { clear_staff, create_staff, get_me, read_staff_byId, read_staffs, remove_staff, update_staff, } from '../controllers/staff.controller.js';
 import { authentication, authorizationAccess } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
+
+/* @description -> To get profile
+   @end-Point -> /api/staff/me
+   @methtod -> POST
+   @access -> Private (staffId===req.user.id) 
+*/
+router.post('/me', authentication, authorizationAccess('Staff', 'isRead'), get_me);
 
 /* @description -> To create new staff
    @end-Point -> /api/staff/create
@@ -46,13 +53,5 @@ router.delete('/:id/delete', authentication, authorizationAccess('Staff', 'isDel
    @access -> Private (super_admin) 
 */
 router.delete('/:id/clear', authentication, authorizationAccess('Staff', 'isDelete'), clear_staff);
-
-// router.post('/profile', Upload('PROFILE').single('profilePic'), (req, res) => {
-//    res.status(200).json({
-//       message: 'File uploaded successfully!',
-//       file: req.file?.path,
-//       name: req.body?.staffName,
-//    });
-// });
 
 export default router;

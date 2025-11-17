@@ -1,8 +1,15 @@
 import express from 'express';
 import { authentication, authorizationAccess, filterRestrictedStaffFields } from '../middlewares/auth.middleware.js';
-import { clear_users, customer_filters, get_user_byId, get_users, remove_user_profile, update_user_profile, } from '../controllers/user.controller.js';
+import { clear_users, get_me, get_user_byId, get_users, remove_user_profile, update_user_profile, users_filters, } from '../controllers/user.controller.js';
 
 const router = express.Router();
+
+/* @description -> To get profile
+   @end-Point -> /api/user/me
+   @methtod -> GET
+   @access -> Private (userId===req.user.id) 
+*/
+router.post('/me', authentication, authorizationAccess('User', 'isRead'), get_me);
 
 /* @description -> To read all users records
    @end-Point -> /api/vendor/view
@@ -17,6 +24,12 @@ router.get('/view', authentication, authorizationAccess('User', 'isRead'), get_u
    @access -> Private (admin) 
 */
 router.get('/view/:id', authentication, authorizationAccess('User', 'isRead'), get_user_byId);
+
+/* @description -> To filteration
+   @end-Point -> /api/user/filter
+   @methtod -> GET 
+*/
+router.get('/filter', authentication, authorizationAccess('User', 'isRead'), users_filters);
 
 /* @description -> To update own profile like: name, email, & phone etc. 
    @end-Point -> /api/user/profile/update
@@ -38,11 +51,5 @@ router.delete('/:id/delete', authentication, authorizationAccess('User', 'isDele
    @access -> Private (admin) 
 */
 router.delete('/clear', authentication, authorizationAccess('User', 'isDelete'), clear_users);
-
-/* @description -> To filteration
-   @end-Point -> /api/user/filter
-   @methtod -> GET 
-*/
-router.get('/filter', authentication, authorizationAccess('User', 'isRead'), customer_filters);
 
 export default router;

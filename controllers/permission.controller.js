@@ -3,7 +3,7 @@ import { Permission } from "../models/permission.model.js";
 export const create_permissions = async (req, res) => {
     try {
         const { name, modulesName, description, actions } = req.body;
-        
+
         // Normalize modules
         let modules = [];
         if (Array.isArray(modulesName)) {
@@ -47,6 +47,32 @@ export const create_permissions = async (req, res) => {
         });
     }
 };
+
+export const get_permissions = async (req, res) => {
+    try {
+        const permissions = await Permission.find();
+
+        if (!permissions || permissions.length === 0) {
+            return res.status(404).json({
+                error: 'Data not found',
+                success: false,
+            });
+        }
+
+        return res.status(200).json({
+            message: 'Data fetched successfully',
+            data: permissions,
+            success: true,
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            message: "Internal Server Error",
+            error: error.message,
+            success: false
+        });
+    }
+}
 
 export const update_permission = async (req, res) => {
     try {

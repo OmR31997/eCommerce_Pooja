@@ -1,6 +1,6 @@
 import express from 'express';
-import { confirm_signIn_otp, forgot_password, google_Callback, reset_password, send_otp, sign_in, sign_in_withGoogle, sign_up } from '../controllers/auth.controller.js';
-
+import { change_passoword, confirm_signIn_otp, forgot_password, google_Callback, reset_password, send_otp, sign_in, sign_in_withGoogle, sign_up } from '../controllers/auth.controller.js';
+import { authentication } from '../middlewares/auth.middleware.js';
 const router = express.Router();
 
 /* @description -> To generate otp
@@ -38,6 +38,12 @@ router.get('/google', sign_in_withGoogle);
    @methtod -> GET
 */
 router.get('/google/callback', google_Callback);
+
+/* @description -> Change passwor
+   @end-Point -> /api/auth/change-password
+   @methtod -> PATCH
+*/
+router.patch('/change-password', authentication, change_passoword);
 
 /* @description -> to update password if forgotten 
    @end-Point -> /api/auth/forgot-password

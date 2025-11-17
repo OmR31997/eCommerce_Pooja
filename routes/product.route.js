@@ -1,5 +1,5 @@
 import express from 'express';
-import { create_product, manage_product_byVendor, product_filters, rate_product, view_products, view_single_product, view_vendor_product, view_vendor_products, } from '../controllers/product.controller.js';
+import { create_product, product_filters, rate_product, update_product, view_product_byId, view_products, view_vendor_product, view_vendor_products, } from '../controllers/product.controller.js';
 import { authentication, authorizationAccess, filterRestrictedStaffFields } from '../middlewares/auth.middleware.js';
 import { Upload } from '../middlewares/upload.middleware.js';
 const router = express.Router();
@@ -28,7 +28,7 @@ router.get('/vendor-view', authentication, authorizationAccess('Product', 'isRea
    @end-Point -> /api/product/view/:id
    @methtod -> POST
 */
-router.get('/view/:id', view_single_product);
+router.get('/view/:id', authentication, authorizationAccess('Product', 'isRead'), view_product_byId);
 
 /* @description -> To view product by productId which already created by own
    @end-Point -> /api/product/:id/vendor-view
@@ -42,7 +42,7 @@ router.get('/:id/vendor-view', authentication, authorizationAccess('Product', 'i
    @methtod -> PATCH
    @access -> Private (vendor) 
 */
-router.patch('/:id', authentication, filterRestrictedStaffFields,  authorizationAccess('Product', 'isUpdate'), manage_product_byVendor);
+router.patch('/:id/update', authentication, filterRestrictedStaffFields,  authorizationAccess('Product', 'isUpdate'), update_product);
 
 /* @description -> To give rating to the product
    @end-Point -> /api/product/:id/rate

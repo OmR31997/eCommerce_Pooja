@@ -1,27 +1,37 @@
 import { Admin } from "../models/admin.model.js";
+import { Permission } from '../models/permission.model.js';
+import { Role } from '../models/role.model.js';
 import { Category } from "../models/category.model.js";
 import { Product } from "../models/product.model.js";
 import { User } from "../models/user.model.js";
 import { Vendor } from "../models/vendor.model.js";
+import bcrypt from 'bcryptjs';
+import mongoose from "mongoose";
+import { Staff } from "../models/staff.model.js";
 
+/* **create_admin_dashboard logic here** */
 export const create_admin = async (req, res) => {
     try {
-        const { name, email, password } = req.body;
+        const { name, email, password, } = req.body;
 
         const AdminRoleId = await Role.findOne({ name: 'admin' });
         const AdminPermissons = await Permission.findOne({ name: 'admin' });
 
-        const hashedPassword_Admin = await bcrypt.hash(password, 10);
-
-        await Admin.create({
+        const adminData = {
             name: name || undefined,
-            email: email || undefined,
-            password: hashedPassword_Admin,
             role: AdminRoleId,
             permissions: AdminPermissons,
-        })
+            email: email ? `admin.${email}` : undefined,
+            password: password ? await bcrypt.hash(password, 10) : undefined
+        }
 
-        console.log('Admin created successfully!');
+        const response = await Admin.create(adminData)
+
+        return res.status(201).json({
+            message: 'Admin created successfully!',
+            data: response,
+            success: true,
+        });
 
     } catch (error) {
         if (error.name === 'ValidationError') {
@@ -100,65 +110,37 @@ export const get_admin = async (req, res) => {
 }
 
 /* **update_admin_profile logic here** */
-export const update_admin_profile = async (req, res) => {
+export const update_profile = async (req, res) => {
     try {
-        const { name, email, adminId } = req.body;
+        const { name, email, adminId = req.user.id } = req.body;
 
         const adminData = {
             name: name || undefined,
             email: email || undefined,
         }
 
-        let admin = undefined;
-        if (req.user.role === 'admin')
-            admin = await Admin.findByIdAndUpdate(req.user.id, adminData);
-        else if (req.user === 'super_admin')
-            admin = await Admin.findByIdAndUpdate(adminId, adminData);
+        if (req.user.role === 'admin' && req.user.id !== adminId) {
+            return res.status(400).json({
+                error: 'You can update only own profile',
+                success: false,
+            });
+        }
 
-        if (!admin || admin.length === 0) {
+        const updatedAdmin = await Admin.findByIdAndUpdate(adminId, adminData);
+
+        if (!updatedAdmin) {
             return res.status(404).json({
                 error: 'Admin not found',
-                success: true,
+                success: false,
             })
         }
 
-        return res.status(404).json({
+        return res.status(200).json({
             message: 'Admin updated successfully',
             data: adminData,
             success: true,
         })
-    } catch (error) {
-        return res.status(500).json({
-            error: error.message,
-            message: 'Internal Server Error',
-            success: false,
-        });
-    }
-}
 
-/* **update_super_admin_profile logic here** */
-export const update_super_admin_profile = async (req, res) => {
-    try {
-        const { name, email } = req.body;
-
-        const adminData = {
-            name: name || undefined,
-            email: email || undefined,
-        }
-
-        const admin = await Admin.findByIdAndUpdate(req.user.id, adminData);
-
-        if (!admin) {
-            return res.status(404).json({
-                error: 'Admin not found',
-                success: true,
-            })
-        }
-
-        return res.status(404).json({
-            data: admin,
-            success: true,
-        })
     } catch (error) {
         return res.status(500).json({
             error: error.message,
@@ -183,7 +165,8 @@ export const delete_admin = async (req, res) => {
         }
 
         return res.status(200).json({
-            message: 'Admin deleted success fully',
+            message: 'Admin deleted successfully',
+            data: deletedAdmin,
             success: true
         })
     } catch (error) {
@@ -195,68 +178,32 @@ export const delete_admin = async (req, res) => {
     }
 }
 
-
-export const manage_permissions = async (req, res) => {
-    try {
-        const permissionId = req.params.id;
-        const { moduleName, actions } = req.body;
-
-        const permissionData = {
-            moduleName: moduleName.charAt(0).toUpperCase()+moduleName.substring(1).toLowerCase() || undefined
-        }
-        // const response = await findByIdAndUpdate(permissionId, )
-
-        return res.status(200).json({
-            message: 'Permission managed successfully',
-            data: permissionData,
-            success: true,
-        })
-    } catch (error) {
-        return res.status(500).json({
-            error: error.message,
-            message: 'Internal Server Error',
-            success: false,
-        });
-    }
-}
-
-export const manage_roles = async () => {
-
-}
-
 /* **manage_staff logic here** */
 export const manage_staff = async (req, res) => {
     try {
-        const key = req.params.id;
-        const { status } = req.body;
+        const { staffId } = req.params.id;
+        const { isActive } = req.body;
 
-
-        const filter = key.startsWith('SKU-') ? { sku: key } : { _id: key };
-
-        const product = await Product.findOne(filter);
-        if (!product) {
-            return res.status(404).json({
-                error: 'Product not found',
-                success: false,
-            });
-        }
-
-        if (!status) {
+        if (!isActive) {
             return res.status(400).json({
-                error: `Please provide 'status' field (e.g., 'pending', 'approved', 'rejected', 'inactive')`,
+                error: `'isActive' field must be required.`,
                 success: false,
             });
         }
 
-        product.status = status;
+        const updatedStaff = await Staff.findByIdAndUpdate(staffId, { isActive });
 
-        const updateRespnse = await product.save();
+        if(!updatedStaff) {
+            return res.status(404).json({
+                error: `Staff not found`,
+                success: false,
+            });
+        }
 
         return res.status(200).json({
-            message: 'Product status updated successfully',
-            data: updateRespnse,
+            message: 'Staff updated successfully',
             success: true,
-        });
+        })
     } catch (error) {
         return res.status(500).json({
             error: error.message,
@@ -325,7 +272,7 @@ export const manage_product = async (req, res) => {
 
         if (!status) {
             return res.status(400).json({
-                error: `Please provide 'status' field (e.g., 'pending', 'approved', 'rejected', 'inactive')`,
+                error: `Please provide 'status' field with value from either 'pending', 'approved', 'rejected', or, 'inactive'`,
                 success: false,
             });
         }

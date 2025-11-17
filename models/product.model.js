@@ -14,6 +14,7 @@ const ProductSchema = new mongoose.Schema({
     name: {
         type: String,
         trim: true,
+        unique: true,
         required: [true, `'name' field must be required`],
     },
     description: {
@@ -72,13 +73,18 @@ const ProductSchema = new mongoose.Schema({
             type: Number,
             default: 0
         }
+    },
+    views: {
+        type: Number,
+        default: 0,
     }
+
 }, { timestamps: true });
 
 ProductSchema.index({ name: 'text', description: 'text' }, {
-  name: 'product_text_index',
-  weights: { name: 3, description: 1 },
-  default_language: 'english'
+    name: 'product_text_index',
+    weights: { name: 3, description: 1 },
+    default_language: 'english'
 });
 
 ProductSchema.index({ price: 1 });

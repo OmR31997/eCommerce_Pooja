@@ -94,7 +94,7 @@ export const UpdateStaff = async (staffData, staffId) => {
     } catch (error) {
 
         console.log(error.message)
-        await ErrorHandle(error, 'UpdateStaff');
-        return { status: 500, success: false, error: 'Internal Server Error' };
+        const handle = ErrorHandle(error, 'UpdateStaff');
+        return { status: 500, success: false, error: handle? handle?.error: handle.errors || 'Internal Server Error' };
     }
 }

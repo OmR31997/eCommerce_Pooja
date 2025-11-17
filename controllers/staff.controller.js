@@ -2,6 +2,25 @@ import { Staff } from '../models/staff.model.js';
 import { CreateStaff, UpdateStaff } from '../services/staff.service.js';
 import { Pagination } from '../utils/fileHelper.js';
 
+export const get_me = async (req, res) => {
+    const staffId = req.user.id;
+
+    const staff = await Staff.findById(staffId);
+
+    if (!staff) {
+        return res.status(404).json({
+            error: 'Data not found',
+            success: false,
+        });
+    }
+
+    return res.status(200).json({
+        message: 'Data fetched successfully',
+        data: staff,
+        success: true,
+    })
+}
+
 export const create_staff = async (req, res) => {
     const { role: m_role } = req.user;
 

@@ -10,7 +10,7 @@ import { sendEmail } from '../utils/sendEmail.js';
 import { OAuth2Client } from 'google-auth-library';
 import axios from 'axios';
 import qs from 'qs';
-import { identifyRoleFromEmail } from '../utils/fileHelper.js';
+import { getModelByRole, identifyRoleFromEmail } from '../utils/fileHelper.js';
 
 /* **send_otp logic here** */
 export const send_otp = async (req, res) => {
@@ -171,12 +171,10 @@ export const sign_in = async (req, res) => {
 
         const { role, collection } = identifyRoleFromEmail(email);
 
-        // const existUser = await User.findOne({ $or: [{ email }, { phone }] });
-
         const Models = { Admin, Staff, Vendor, User };
         const Model = Models[collection];
 
-        const query = email ? { email } : { phone };
+        const query = email ? collection === 'Vendor' ? { businessEmail: email } : { email } : { phone };
 
         const existing = await Model.findOne(query).select('+password');
 
@@ -204,7 +202,7 @@ export const sign_in = async (req, res) => {
         }
 
         if (role !== 'user') {
-            
+
             const payload = {
                 id: existing._id,
                 role,
@@ -427,6 +425,68 @@ export const confirm_signIn_otp = async (req, res) => {
         return res.status(200).json({
             message: 'OTP has been verified successfully',
             accessToken,
+            success: true,
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            error: error.message,
+            message: 'Internal Server Error',
+            success: false,
+        });
+    }
+}
+
+/* *change_passowrd logic here* **/
+export const change_passoword = async (req, res) => {
+    try {
+        const { role, id } = req.user;
+        const { old_password, new_password, confirm_password } = req.body;
+
+        if (new_password !== confirm_password) {
+            return res.status(400).json({
+                error: `Password mistmatch`,
+                success: false,
+            });
+        };
+
+        const Models = { Admin, Staff, Vendor, User };
+        const { collection } = getModelByRole(role);
+
+        if (!modelRole || !Models[modelRole.collection]) {
+            return res.status(400).json({
+                error: `Invalid role`,
+                success: false
+            });
+        }
+
+        const Model = Models[collection];
+
+        const existing = await Model.findById(id);
+
+        if (!existing) {
+            return res.status(400).json({
+                error: `Account not found`,
+                success: false,
+            });
+        }
+
+        const isMatch = await bcrypt.compare(old_password, existing.password);
+
+        if (!isMatch) {
+            return res.status(400).json({
+                error: `Incorrect Old Password`,
+                success: false,
+            });
+        }
+
+        const salt = Number(process.env.HASH_SALT) || 10;
+        existing.password = await bcrypt.hash(new_password, salt);
+
+        await existing.save();
+
+        return res.status(200).json({
+            message: 'Password updated successfully',
             success: true,
         });
 

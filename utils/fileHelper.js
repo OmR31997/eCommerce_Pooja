@@ -41,24 +41,24 @@ export const identifyRoleFromEmail = (email) => {
         return { role: "super_admin", collection: "Admin" };
     }
 
-    if (lower === "admin@support.com") {
+    // Get Admin Specific
+    if (lower.startsWith('admin')) {
         return { role: "admin", collection: "Admin" };
     }
 
     // --- Staff ---
-    if (lower.includes("_staff@")) {
+    if (lower.split('@')[0].endsWith(".support")) {
         return { role: "staff", collection: "Staff" };
     }
 
     // --- Vendor ---
-    if (lower.includes("_vendor@")) {
-        return { role: "vendor", collection: "Vendor" };
+    if (lower.split('@')[0].endsWith('.vendor')) {
+        return { role: "vendor", collection: "Vendor" }
     }
 
     // --- Default USER ---
     return { role: "user", collection: "User" };
 };
-
 
 // Free Mail Case
 export const getModelByRole = (role) => {
@@ -302,4 +302,38 @@ export const BuildUserQuery = (filters) => {
     } catch (error) {
         throw new Error(`Error building product query: ${error.message}`);
     }
+}
+
+export const getStartAndEndDate = (selectedYear, range, page) => {
+    let startMonth = 0;
+    let endMonth = 11;
+
+    if (range === 'quarter') {
+        if (![1, 2, 3, 4].includes(page)) {
+            return { status: 400, error: `page must be 1, 2, 3, or 4`, success: false };
+        }
+        startMonth = (page - 1) * 3;
+        endMonth = startMonth + 2;
+    }
+    else if (range === 'half') {
+        startMonth = 0;
+        endMonth = 5;
+    }
+    else if (range === 'year') {
+        startMonth = 0;
+        endMonth = 11;
+    }
+    else if (range === 'month') {
+        if (page < 1 || page > 12) {
+            return { status: 400, error: 'Invalid page' }
+        }
+
+        startMonth = page - 1;
+        endMonth = page - 1;
+    }
+
+    const startDate = new Date(selectedYear, startMonth, 1);
+    const endDate = new Date(selectedYear, endMonth + 1, 0, 23, 59, 59)
+
+    return { startDate, endDate, startMonth, endMonth };
 }
