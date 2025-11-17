@@ -1,5 +1,5 @@
 import express from 'express';
-import { authentication, authorizationAccess, filterRestrictedStaffFields } from '../middlewares/auth.middleware.js';
+import { authentication, authorizationAccess, authorizationRoles, filterRestrictedStaffFields } from '../middlewares/auth.middleware.js';
 import { clear_users, get_me, get_user_byId, get_users, remove_user_profile, update_user_profile, users_filters, } from '../controllers/user.controller.js';
 
 const router = express.Router();
@@ -9,7 +9,7 @@ const router = express.Router();
    @methtod -> GET
    @access -> Private (userId===req.user.id) 
 */
-router.post('/me', authentication, authorizationAccess('User', 'isRead'), get_me);
+router.post('/me', authentication, authorizationRoles(['user']), get_me);
 
 /* @description -> To read all users records
    @end-Point -> /api/vendor/view

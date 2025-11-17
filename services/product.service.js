@@ -145,14 +145,77 @@ export const UpdateProduct = async (productData, others) => {
             const productImages = await UpdateImages(files, product.sku, product.images, product.vendorId);
             productData.images = productImages;
         }
-        console.log(productData)
-        const response = await Product.findByIdAndUpdate(product._id, productData);
 
-        return { status: 200, message: `Product updated successfully`, data: productData };
+        await Product.findByIdAndUpdate(product._id, productData);
+
+        return { status: 200, message: `Product updated successfully`, data: productData, success: true };
 
     } catch (error) {
         console.log(error.message)
         const handle = await ErrorHandle(error, 'UpdateProduct');
+        return handle;
+    }
+}
+
+export const DeleteProduct = async (key) => {
+    try {
+
+        let product = undefined;
+        if (key.startsWith('SKU')) {
+            product = await Product.findOneAndDelete({ sku: key })
+
+            if (!product) {
+                return { status: 404, error: `Data not found for sku: '${key}'`, success: false }
+            }
+        }
+        else {
+            product = await Product.findByIdAndDelete(key)
+
+            if (!product) {
+                return { status: 404, error: `Data not found for productId: '${key}'`, success: false }
+            }
+        }
+
+        return { status: 200, message: `Product deleted successfully`, data: product, success: true };
+
+    } catch (error) {
+        console.log(error.message)
+        const handle = await ErrorHandle(error, 'DeleteProduct');
+        return handle;
+    }
+}
+
+export const ClearProducts = async (user) => {
+    try {
+        const { role, id} = user;
+
+        let result = undefined;
+        
+        if(role ==='vendor')
+        {
+            result = await Product.deleteMany({vendorId: id});
+        }
+        else if(role ==='super_admin') {
+            result = await Product.deleteMany();
+        }
+        
+
+        if (result.deletedCount === 0) {
+            return {
+                status: 404,
+                error: 'No product found to delete',
+                success: false,
+            }
+        }
+
+        return {
+            status: 200,
+            message: `All user cleared successfully (${result.deletedCount} deleted)`,
+            success: true,
+        };
+    } catch (error) {
+        console.log(error.message)
+        const handle = await ErrorHandle(error, 'DeleteProduct');
         return handle;
     }
 }

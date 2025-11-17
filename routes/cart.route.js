@@ -16,7 +16,7 @@ router.post('/add-to-cart', authentication, authorizationAccess('Cart', 'isCreat
    @methtod -> GET
    @access -> Private (user/) 
 */
-router.get('/view', authentication, authorizationAccess('Cart', 'isRead'), view_cart);
+router.get('/view', authentication, view_cart);
 
 /* @description -> to remove item from the carted items 
    @end-Point -> /api/cart/item/:id

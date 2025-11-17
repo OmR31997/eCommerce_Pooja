@@ -44,6 +44,13 @@ router.get('/:id/vendor-view', authentication, authorizationAccess('Product', 'i
 */
 router.patch('/:id/update', authentication, filterRestrictedStaffFields,  authorizationAccess('Product', 'isUpdate'), update_product);
 
+/* @description -> To delete product by productId
+   @end-Point -> /api/product/:id/delet
+   @methtod -> PATCH
+   @access -> Private (vendor/admin) 
+*/
+router.patch('/:id/delete', authentication, filterRestrictedStaffFields,  authorizationAccess('Product', 'isDelete'), update_product);
+
 /* @description -> To give rating to the product
    @end-Point -> /api/product/:id/rate
    @methtod -> PATCH

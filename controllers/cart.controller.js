@@ -1,5 +1,7 @@
 import { Cart } from '../models/cart.model.js';
 import { Product } from '../models/product.model.js';
+import { GetCarts } from '../services/cart.service.js';
+import { Pagination } from '../utils/fileHelper.js';
 
 /* **create_cart logic here** */
 export const add_to_cart = async (req, res) => {
@@ -88,35 +90,42 @@ export const add_to_cart = async (req, res) => {
 /* **view_cart logic here** */
 export const view_cart = async (req, res) => {
     try {
+        const { page = 1, limit = 10, offset,
+            sortBy = 'createdAt', orderSequence = 'desc' } = req.query;
 
-        if (req.user.role === 'user') {
-            const carts = await Cart.findOne({ userId: req.user.id })
-                .populate({ path: 'userId', select: 'name' })
-                .populate({ path: 'items.productId', select: 'name' })
-                .select('-__v -items._id');
+        const parsedLimit = parseInt(limit);
 
-            if (!carts) {
-                return res.status(404).json({
-                    error: 'Product not found'
-                });
-            }
+        // Build Query
+        const filter = { sortBy, orderSequence };
+        
+        const { status, success, error, data, count } = await GetCarts(req.user, filter);
+
+        if (!success) {
+            return res.status(status).json({
+                error,
+                success,
+            })
         }
 
-        const carts = await Cart.find()
-            .populate({ path: 'userId', select: 'name' })
-            .populate({ path: 'items.productId', select: 'name' })
-            .select('-__v -items._id');
+        const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
+            parseInt(page), parsedLimit, offset, count,
+            `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`, filter);
 
-        if (!carts || carts.length === 0) {
-            return res.status(404).json({
-                error: 'Product not found'
-            });
-        }
-        return res.status(200).json({
-            data: carts,
-            success: true,
-        });
+        const paginated = data.slice(skip, skip + parsedLimit);
 
+
+        return res.status(status).json({
+            message: 'Data fetched succefully',
+            pagination: {
+                count,
+                prevUrl,
+                nextUrl,
+                currentPage,
+                totalPages,
+            },
+            data: paginated,
+            success,
+        })
     } catch (error) {
         return res.status(500).json({
             error: error.message,

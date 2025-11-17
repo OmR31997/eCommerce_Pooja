@@ -2,7 +2,7 @@ import { Vendor } from '../models/vendor.model.js';
 import { Category } from '../models/category.model.js';
 import { Product } from '../models/product.model.js';
 import { BuildProductQuery, DeleteLocalFile, ErrorHandle, Pagination, ValidateFileSize, ValidateImageFileType } from '../utils/fileHelper.js';
-import { CreateProduct, UpdateProduct } from '../services/product.service.js';
+import { ClearProducts, CreateProduct, DeleteProduct, UpdateProduct } from '../services/product.service.js';
 
 /* **create_product logic here** */
 export const create_product = async (req, res) => {
@@ -199,6 +199,13 @@ export const update_product = async (req, res) => {
 
     const files = req.files;
 
+    if (!name && !description && !price && !discount && !stock && !files && files.length === 0) {
+        return res.status(400).json({
+            error: 'Please provide atleast one field',
+            success: false,
+        });
+    }
+
     const productData = {
         name: name || undefined,
         description: description || undefined,
@@ -206,7 +213,6 @@ export const update_product = async (req, res) => {
         discount: parseFloat(discount) || undefined,
         stock: parseInt(stock) || undefined,
     }
-
 
     const { status, error, errors, success, message, data } = await UpdateProduct(productData, { key, files: files || [], user: req.user });
 
@@ -216,6 +222,32 @@ export const update_product = async (req, res) => {
 
     return res.status(status).json({ message, data, success });
 }
+
+/* **delete_product logic here** */
+export const delete_product = async (req, res) => {
+    const key = req.params.id;
+
+    const { status, error, errors, success, message, data } = await DeleteProduct(key);
+
+    if (!success) {
+        return res.status(status).json({ errors, error, message, })
+    }
+
+    return res.status(status).json({ message, data, success });
+}
+
+/* **delete_product logic here** */
+export const clear_product = async (req, res) => {
+
+    const { status, error, errors, success, message, data } = await ClearProducts(req.user);
+
+    if (!success) {
+        return res.status(status).json({ errors, error, message, })
+    }
+
+    return res.status(status).json({ message, data, success });
+}
+
 
 /* **rate_product logic here** */
 export const rate_product = async (req, res) => {

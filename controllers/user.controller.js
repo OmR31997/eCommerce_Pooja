@@ -8,7 +8,6 @@ export const get_me = async (req, res) => {
     const userId = req.user.id;
 
     const user = await User.findById(userId);
-
     if (!user) {
         return res.status(404).json({
             error: 'Data not found',
@@ -95,22 +94,21 @@ export const get_users = async (req, res) => {
 export const get_user_byId = async (req, res) => {
     try {
         const userId = req.params.id;
-        const { id, role } = req.user;
+        const { role } = req.user;
 
-        if (role === 'user' && userId !== id) {
-            return res.status(400).json({
-                error: 'You can access only own data',
-                success: false,
+        if (role === 'staff' || role === 'admin' || role === 'super_admin') {
+            const user = await getUserDetails(userId);
+
+            return res.status(user.status).json({
+                data: user.data,
+                success: user.success,
             });
         }
 
-        const user = await getUserDetails(userId);
-
-        return res.status(user.status).json({
-            data: user.data,
-            success: user.success,
+        return res.status(400).json({
+            message: 'Unauthorized: user cannot access',
+            success: false,
         });
-
     } catch (error) {
         return res.status(500).json({
             error: error.message,
