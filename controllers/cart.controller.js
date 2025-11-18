@@ -1,89 +1,21 @@
 import { Cart } from '../models/cart.model.js';
-import { Product } from '../models/product.model.js';
-import { GetCarts } from '../services/cart.service.js';
+import { AddToCart, DecrementItemQty, GetCartById, GetCarts } from '../services/cart.service.js';
 import { Pagination } from '../utils/fileHelper.js';
 
 /* **create_cart logic here** */
 export const add_to_cart = async (req, res) => {
-    try {
-        const { productId, userId, quantity = 1 } = req.body;
+    const { productId, quantity = 1 } = req.body;
+    const { id: userId, role } = req.user;
 
-        const product = await Product.findById(productId);
+    if (role === 'user') {
 
-        if (!product || product.stock < quantity) {
-            return res.status(404).json({
-                error: `Product not found or stock not available with the given id`,
-                success: false,
-            });
+        const { status, error, errors, success, message, data } = await AddToCart({ productId, quantity: parseInt(quantity), userId });
+
+        if (!success) {
+            return res.status(status).json({ errors, error, message, })
         }
 
-        const subTotal = quantity * product.price
-
-        const cartData = {
-            userId: req.user.role === 'user' ? req.user.id : userId || undefined,
-            items: [{
-                productId: productId || undefined,
-                quantity: parseInt(quantity),
-                price: product.price,
-                subtotal: subTotal,
-            }],
-            totalAmount: subTotal
-        }
-
-        let cart = await Cart.findOne({ userId: cartData.userId });
-
-        if (!cart) {
-            cart = new Cart(cartData);
-        }
-        else {
-            // check if product already exist in cart 
-            const existingItemIndex = cart.items.findIndex((item) =>
-                item.productId.toString() === productId,
-            );
-
-            // console.log(existingItemIndex);
-            if (existingItemIndex > -1) {
-                cart.items[existingItemIndex].quantity += quantity;
-                cart.items[existingItemIndex].subtotal =
-                    cart.items[existingItemIndex].quantity *
-                    cart.items[existingItemIndex].price;
-            }
-            else {
-                cart.items.push(cartData.items);
-            }
-
-            // Recalculate total amount
-            cart.totalAmount = cart.items.reduce((accume, currentItem) => accume + currentItem.subtotal, 0);
-        }
-
-        await cart.save();
-
-        return res.status(200).json({
-            message: 'Carted item successfully',
-            data: cartData,
-            success: true,
-        });
-
-    } catch (error) {
-        if (error.name === 'ValidationError') {
-            const errors = {};
-
-            Object.keys(error.errors).forEach(key => {
-                errors[key] = error.errors[key].message
-            });
-
-            return res.status(400).json({
-                errors,
-                message: 'Validation failed',
-                success: false,
-            });
-        }
-
-        return res.status(500).json({
-            error: error.message,
-            message: 'Internal Server Error',
-            success: false,
-        });
+        return res.status(status).json({ message, data, success });
     }
 }
 
@@ -97,8 +29,8 @@ export const view_cart = async (req, res) => {
 
         // Build Query
         const filter = { sortBy, orderSequence };
-        
-        const { status, success, error, data, count } = await GetCarts(req.user, filter);
+
+        const { status, success, error, data, counts } = await GetCarts(req.user, filter);
 
         if (!success) {
             return res.status(status).json({
@@ -107,8 +39,8 @@ export const view_cart = async (req, res) => {
             })
         }
 
-        const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
-            parseInt(page), parsedLimit, offset, count,
+        const { skip, currentPage, totalPages, nextUrl, prevUrl } = Pagination(
+            parseInt(page), parsedLimit, offset, counts,
             `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`, filter);
 
         const paginated = data.slice(skip, skip + parsedLimit);
@@ -117,7 +49,7 @@ export const view_cart = async (req, res) => {
         return res.status(status).json({
             message: 'Data fetched succefully',
             pagination: {
-                count,
+                counts,
                 prevUrl,
                 nextUrl,
                 currentPage,
@@ -135,13 +67,41 @@ export const view_cart = async (req, res) => {
     }
 }
 
+/* **get_cart_item_byId logic here** */
+export const get_cart_item_byId = async (req, res) => {
+
+    const cartId = req.params.id;
+
+    const { status, error, errors, success, message, data } = await GetCartById(cartId);
+
+    if (!success) {
+        return res.status(status).json({ errors, error, message, })
+    }
+
+    return res.status(status).json({ message, data, success });
+}
+
+/* **delete_to_cart logic here** */
+export const delete_to_cart = async (req, res) => {
+    const { cartId, productId, quantity } = req.body;
+    const { userId } = req.user;
+
+    const { status, success, errors, error, data } = await DecrementItemQty({ cartId, productId, quantity: parseInt(quantity), userId });
+
+    if (!success) {
+        return res.status(status).json({ errors, error, message, })
+    }
+
+    return res.status(status).json({ message, data, success });
+}
+
 /* **remove_cart_item logic here** */
 export const remove_cart_item = async (req, res) => {
     try {
         const cartId = req.params.id;
-        const { id } = req.user;
+        const userId = req.user.id;
 
-        const cart = await Cart.findOne({ $and: { _id: cartId, userId: id } })
+        const cart = await Cart.findOne({ $and: { _id: cartId, userId } })
             .populate({ path: 'items.productId', select: 'sku' });
 
         if (!cart) {
@@ -169,7 +129,7 @@ export const remove_cart_item = async (req, res) => {
         const response = await cart.save();
 
         return res.status(200).json({
-            message: 'Product removed successfully from cart',
+            message: 'Product removed successfully from the cart',
             data: response,
             success: true,
         });

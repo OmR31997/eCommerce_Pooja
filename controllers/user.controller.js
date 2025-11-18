@@ -2,24 +2,17 @@ import { User } from '../models/user.model.js';
 import { Vendor } from '../models/vendor.model.js';
 import bcrypt from 'bcryptjs'
 import { BuildUserQuery, Pagination } from '../utils/fileHelper.js';
-import { getUserDetails } from '../services/user.service.js';
+import { GeUser } from '../services/user.service.js';
 
 export const get_me = async (req, res) => {
-    const userId = req.user.id;
 
-    const user = await User.findById(userId);
-    if (!user) {
-        return res.status(404).json({
-            error: 'Data not found',
-            success: false,
-        });
+    const { status, error, errors, success, message, data } = await GeUser(req.user.id);
+
+    if (!success) {
+        return res.status(status).json({ errors, error, message, })
     }
 
-    return res.status(200).json({
-        message: 'Data fetched successfully',
-        data: user,
-        success: true,
-    })
+    return res.status(status).json({ message, data, success });
 }
 
 /* **get_users logic here** */
@@ -97,12 +90,13 @@ export const get_user_byId = async (req, res) => {
         const { role } = req.user;
 
         if (role === 'staff' || role === 'admin' || role === 'super_admin') {
-            const user = await getUserDetails(userId);
+            const { status, error, errors, success, message, data } = await GeUser(userId);
 
-            return res.status(user.status).json({
-                data: user.data,
-                success: user.success,
-            });
+            if (!success) {
+                return res.status(status).json({ errors, error, message, })
+            }
+
+            return res.status(status).json({ message, data, success });
         }
 
         return res.status(400).json({

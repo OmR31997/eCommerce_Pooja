@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { User } from '../models/user.model.js';
 import { Order } from '../models/order.model.js';
+import { ErrorHandle } from '../utils/fileHelper.js';
 
 export const getUserDetails = async (userId) => {
     const userObjectId = new mongoose.Types.ObjectId(userId);
@@ -53,3 +54,20 @@ export const getUserDetails = async (userId) => {
     }
 
 }
+
+export const GeUser = async (userId) => {
+    try {
+        const user = await User.findById(userId).populate('permissions').populate('roles');
+
+        if(!user) {
+            return { status: 404, success: false, data: user, message: 'Account not found'}
+        }
+
+        return {status: 200, success: true, data: user};
+    } catch (error) {
+        console.log(error.message)
+        const handle = await ErrorHandle(error, 'Create Product');
+        return handle;
+    }
+}
+

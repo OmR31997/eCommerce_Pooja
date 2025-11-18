@@ -39,9 +39,14 @@ const UserSchema = new mongoose.Schema({
             ref: 'Role',
             required: [true, `'role' field must be provided`],
         }],
+    carts: {
+        type: Number,
+        default: 0,
+    },
     orders: [
         {
-            type: mongoose.Schema.Types.ObjectId, ref: 'Order'
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Order'
         }
     ],
     totalSpents: {

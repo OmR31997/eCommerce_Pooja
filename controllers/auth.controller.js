@@ -12,6 +12,10 @@ import axios from 'axios';
 import qs from 'qs';
 import { getModelByRole, identifyRoleFromEmail } from '../utils/fileHelper.js';
 
+export const sign_out = async (req, res) => {
+    
+}
+
 /* **send_otp logic here** */
 export const send_otp = async (req, res) => {
     try {

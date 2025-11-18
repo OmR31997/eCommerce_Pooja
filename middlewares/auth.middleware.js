@@ -64,7 +64,7 @@ export const authorizationAccess = (moduleName, actionKey, options = {}) => {
   return async (req, res, next) => {
 
     let action = undefined;
-    switch(actionKey) {
+    switch (actionKey) {
       case 'isCreate':
         action = 'create';
         break;
@@ -120,7 +120,7 @@ export const authorizationAccess = (moduleName, actionKey, options = {}) => {
         const moduleMatch = Array.isArray(perm.module)
           ? perm.module.includes(moduleName)
           : perm.module === moduleName;
-          
+
         const acctionAllowed = perm.actions?.[actionKey] === true;
         return moduleMatch && acctionAllowed;
 
@@ -136,6 +136,14 @@ export const authorizationAccess = (moduleName, actionKey, options = {}) => {
       next();
     } catch (error) {
       console.error("Authorization error:", error);
+
+      if (error.name === "StrictPopulateError") {
+        return res.status(500).json({
+          error: `Invalid populate path: '${error.path}'. Add this field to schema or remove populate().`,
+          success: false
+        });
+      }
+
       res.status(500).json({ error: "Authorization check failed" });
     }
   }
