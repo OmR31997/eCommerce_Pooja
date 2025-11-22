@@ -24,12 +24,10 @@ const AdminSchema = new mongoose.Schema({
     required: [true, `'role' field must be provided`],
     immutable: true,
   },
-  permissions: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Permission',
-    },
-  ],
+  permission: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Permission',
+  },
   isActive: {
     type: Boolean,
     default: true,

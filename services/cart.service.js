@@ -156,7 +156,7 @@ export const AddToCart = async (cartData) => {
 
     } catch (error) {
         const handled = await ErrorHandle(error, 'AddToCart');
-        return handled || { status: 500, success: false, error: 'Internal Server Error' };
+        return handled;
     }
 }
 

@@ -34,9 +34,6 @@ export const create_staff = async (req, res) => {
         email: email || undefined,
         password: password || undefined,
         phone: phone || undefined,
-        role: role || '6915c8771a4ca360ff3c32d2',
-        permissions: Array.isArray(permissions) ? permissions : [permissions],
-        isActive: isActive === 'true' ? true : false,
     }
 
     if (m_role === 'super_admin' || m_role === 'admin') {

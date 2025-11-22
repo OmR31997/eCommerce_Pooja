@@ -2,9 +2,8 @@ import { Product } from '../models/product.model.js';
 import { User } from '../models/user.model.js';
 import { Vendor } from '../models/vendor.model.js';
 import { Order } from '../models/order.model.js';
-import { generateOtp, verifyOtp } from '../services/otp.service.js';
 import { ToDeleteFromCloudStorage, ToSaveCloudStorage } from '../services/cloudUpload.service.js';
-import { BuildVendorQuery, DeleteLocalFile, Pagination, ValidateFileSize, ValidateImageFileType, } from '../utils/fileHelper.js';
+import { BuildVendorQuery, DeleteLocalFile, GenerateEmail, Pagination, ValidateFileSize, ValidateImageFileType, } from '../utils/fileHelper.js';
 import { getVendorDetails } from '../services/vendor.service.js';
 
 /* **vendor_signup logic here** */
@@ -31,7 +30,7 @@ export const vendor_signup = async (req, res) => {
         }
 
         const otpKey = businessEmail;
-        const { otp, message, otpExpiresAt } = generateOtp(otpKey);
+        const { otp, message, otpExpiresAt } = GenerateEmail(otpKey);
 
         console.log({
             otp,
@@ -597,7 +596,7 @@ export const vendor_filters = async (req, res) => {
 
         // Build Mongo query
         const query = BuildVendorQuery(filters);
-
+        
         // Count Total Docs
         const total = await Vendor.countDocuments(query);
 

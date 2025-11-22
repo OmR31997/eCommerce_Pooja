@@ -1,7 +1,15 @@
 import express from 'express';
-import { change_passoword, confirm_signIn_otp, forgot_password, google_Callback, reset_password, send_otp, sign_in, sign_in_withGoogle, sign_up } from '../controllers/auth.controller.js';
-import { authentication } from '../middlewares/auth.middleware.js';
+import { change_passoword, confirm_signIn_otp, forgot_password, google_Callback, refresh_token, reset_password, send_otp, sign_in, sign_in_withGoogle, sign_out, sign_out_all_devices, sign_up, test_protected } from '../controllers/auth.controller.js';
+import { Authentication } from '../middlewares/auth.middleware.js';
 const router = express.Router();
+
+router.get('/protected', Authentication, test_protected);
+
+router.post('/refresh-token', refresh_token);
+
+router.post('/logged-out', sign_out);
+
+router.post('/logged-out-from-all-device', sign_out_all_devices);
 
 /* @description -> To generate otp
    @end-Point -> /api/auth/send-otp
@@ -43,7 +51,7 @@ router.get('/google/callback', google_Callback);
    @end-Point -> /api/auth/change-password
    @methtod -> PATCH
 */
-router.patch('/change-password', authentication, change_passoword);
+router.patch('/change-password', Authentication, change_passoword);
 
 /* @description -> to update password if forgotten 
    @end-Point -> /api/auth/forgot-password

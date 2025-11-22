@@ -11,10 +11,10 @@ import { Role } from '../models/role.model.js';
 import { Permission } from '../models/permission.model.js';
 import { Cart } from '../models/cart.model.js';
 
-export const GetPrimaryModule = (permissions) => {
+export const GetPrimaryModule = (permission) => {
     let modules = [];
 
-    permissions.forEach(p => {
+    permission.forEach(p => {
         modules.push(...p.module);
     });
 
@@ -163,7 +163,7 @@ export const GetSuperAdminDashboard = async (filter) => {
     try {
         const { selectedYear, range, page } = filter;
 
-        const totalSubAdmin = await Admin.countDocuments({ $not: { 'role.name': 'super_admin' } })
+        const totalSubAdmin = await Admin.countDocuments({ email: { $ne: process.env.SUPER_ADMIN_EMAIL } })
         const totalVendors = await Vendor.countDocuments();
         const totalStaffs = await Staff.countDocuments();
         const totalUsers = await User.countDocuments();

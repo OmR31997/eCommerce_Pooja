@@ -2,204 +2,150 @@ import { User } from '../models/user.model.js';
 import { Vendor } from '../models/vendor.model.js';
 import bcrypt from 'bcryptjs'
 import { BuildUserQuery, Pagination } from '../utils/fileHelper.js';
-import { GeUser } from '../services/user.service.js';
+import { GetAllUsers, GetUser, RemoveAllUsers, RemoveUser, UpdateUser } from '../services/user.service.js';
 
+/*      *get_me handler*      */
 export const get_me = async (req, res) => {
+    try {
+        const { status, success, message, data } = await GetUser(req.user.id);
 
-    const { status, error, errors, success, message, data } = await GeUser(req.user.id);
+        return res.status(status).json({ message, data, success });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
+        }
 
-    if (!success) {
-        return res.status(status).json({ errors, error, message, })
+        return res.status(500).json({ success: false, error: 'Internal Server Error' });
     }
+}
 
-    return res.status(status).json({ message, data, success });
+/*      *get_user_byId handler*      */
+export const get_user_byId = async (req, res) => {
+    try {
+        const userId = req.params.id;
+
+        const { status, success, message, data } = await GetUser(userId);
+
+        return res.status(status).json({ message, data, success });
+
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
+        }
+
+        return res.status(500).json({ success: false, error: 'Internal Server Error' });
+    }
 }
 
 /* **get_users logic here** */
 export const get_users = async (req, res) => {
     try {
+        if (req.user.role === 'user')
+            throw {
+                status: 401,
+                message: `Unauthorized: You haven't accessibility`,
+                success: false
+            }
+
         const {
             page = 1,
             limit = 10,
             offset,
-            status = 'active',
             sortBy = 'createdAt',
             orderSequence = 'desc' } = req.query;
 
-        const parsedLimit = parseInt(limit);
+        const { status, success, message, pagination, data } = await GetAllUsers(
+            `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`,
+            { page: parseInt(page), limit: parseInt(limit), offset, sortBy, orderSequence },
+            {}
+        );
 
-        // Build Query
-        const filter = {};
-
-        // Handle Status
-        if (status) filter.status = status;
-
-        // Count total records
-        const total = await User.countDocuments({ ...filter, role: { $nin: ['admin', 'vendor'] } });
-
-        const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
-            parseInt(page),
-            parsedLimit,
-            offset,
-            total,
-            `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`, filter);
-
-        // Sorting
-        const sortField = ['name', 'totalSpents', 'createdAt'].includes(sortBy) ? sortBy : 'createdAt';
-        const sortDirection = orderSequence === 'asc' ? 1 : -1;
-        const sortOption = { [sortField]: sortDirection };
-
-        const users = await User.find({ ...filter, role: { $nin: ['admin', 'vendor'] } })
-            .skip(skip)
-            .limit(parsedLimit)
-            .sort(sortOption)
-
-        if (users.length === 0) {
-            return res.status(404).json({
-                error: 'User not found',
-                success: false,
-            });
-        }
-
-        return res.status(200).json({
-            message: 'Users fetched successfully.',
-            pagination: {
-                count: total,
-                prevUrl,
-                nextUrl,
-                currentPage,
-                totalPages,
-                success: true,
-            },
-            data: users,
-        });
+        return res.status(status).json({ message, pagination, data, success });
 
     } catch (error) {
-        return res.status(500).json({
-            error: error.message,
-            message: 'Internal Server Error',
-            success: false,
-        });
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
+        }
+
+        return res.status(500).json({ success: false, error: 'Internal Server Error' });
     }
 }
 
-/* **get_user_byId logic here** */
-export const get_user_byId = async (req, res) => {
+export const users_filters = async (req, res) => {
     try {
-        const userId = req.params.id;
-        const { role } = req.user;
+        const {
+            search = '', status = '',
+            name = '', email = '', phone = '', segment = '', joinRange = '', updatedRange = '', address = '',
+            page = 1, limit = 10, offset,
+            sortBy = 'createdAt', orderSequence = 'desc'
+        } = req.query;
 
-        if (role === 'staff' || role === 'admin' || role === 'super_admin') {
-            const { status, error, errors, success, message, data } = await GeUser(userId);
-
-            if (!success) {
-                return res.status(status).json({ errors, error, message, })
+        if (req.user.role === 'user')
+            throw {
+                status: 401,
+                message: `Unauthorized: You haven't accessibility`,
+                success: false
             }
 
-            return res.status(status).json({ message, data, success });
+        const { status: StatusCode, success, message, pagination, data } = await GetAllUsers(
+            `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`,
+            { page: parseInt(page), limit: parseInt(limit), offset, sortBy, orderSequence },
+            {
+                search, status, name, email, phone, segment, address,
+                joinRange: joinRange ? joinRange.split(',').map(i => i.trim()) : undefined,
+                updatedRange: updatedRange ? updatedRange.split(',').map(i => i.trim()) : undefined,
+            }
+        )
+
+        return res.status(StatusCode).json({ message, pagination, data, success });
+
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
         }
 
-        return res.status(400).json({
-            message: 'Unauthorized: user cannot access',
-            success: false,
-        });
-    } catch (error) {
-        return res.status(500).json({
-            error: error.message,
-            message: 'Internal Server Error',
-            success: false,
-        });
+        return res.status(500).json({ success: false, error: 'Internal Server Error' });
     }
-}
+};
 
 /* **update_user_profile logic here** */
 export const update_user_profile = async (req, res) => {
     try {
-        const { password, currentPassword, status, isVerified, ...rest } = req.body;
+        const {
+            name, email, phone,
+            segment, address
+        } = req.body;
+
         const userId = req.params.id;
-        const { id, role } = req.user;
 
-        if (role === 'user' && userId !== id) {
-            return res.status(400).json({
-                error: 'You can update only own profile',
-                success: false,
-            });
+        const userData = {
+            name: name || undefined,
+            email: email || undefined,
+            phone: phone || undefined,
+            address: address || undefined,
+            segment: segment || undefined,
         }
 
-        const errors = [];
+        const isExist = Object.keys(userData).filter(key => userData[key] !== undefined);
 
-        if (status && role === 'user') errors.push(`You cannot update 'status' field — please talk with admin`);
-        if (isVerified) errors.push(`Please do not include 'isVerified' field`);
-        if (rest.role) delete rest.role;
-
-        if (errors.length > 0) {
-            return res.status(400).json({
-                errors,
-                success: false,
-            });
-        }
-
-        const user = await User.findById(userId);
-
-        if (!user) {
-            return res.status(404).json({
-                error: 'User not found',
-                success: false,
-            });
-        }
-
-        if (password) {
-            if (!currentPassword) {
-                return res.status(400).json({
-                    error: 'Current password required to set a new password',
-                    success: false,
-                });
+        if(isExist.length === 0) {
+            throw {
+                status: 400, 
+                message: 'Atleast one field must be required for update',
+                success: false
             }
-
-            const validPassword = bcrypt.compare(currentPassword, user.password);
-
-            if (!validPassword) {
-                return res.status(400).json({
-                    error: 'Password mistmatched',
-                    success: false,
-                });
-            }
-
-            user.password = await bcrypt.hash(password, 10);
         }
 
+        const {status, success, message, data} = await UpdateUser(userData, userId);
 
-        Object.keys(rest).forEach((key) => {
-            user[key] = rest[key];
-        });
-
-        const updatedUser = await user.save();
-
-        return res.status(200).json({
-            message: 'User updated successfully',
-            data: updatedUser._doc,
-            success: true,
-        });
+        return res.status(status).json({message, data, success});
 
     } catch (error) {
-        return res.status(500).json({
-            error: error.message,
-            message: 'Internal Server Error',
-            success: false,
-        });
-    }
-}
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
+        }
 
-/* **update_user_profile logic here** */
-export const update_user_status = async (req, res) => {
-    try {
-
-    } catch (error) {
-        return res.status(500).json({
-            error: error.message,
-            message: 'Internal Server Error',
-            success: false,
-        });
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
     }
 }
 
@@ -208,138 +154,39 @@ export const remove_user_profile = async (req, res) => {
     try {
         const userId = req.params.id;
 
-        const user = await User.findByIdAndDelete(userId);
+        const {status, success, message, data} = await RemoveUser(userId);
 
-        if (!user) {
-            return res.status(404).json({
-                error: `User not found for ID: '${userId}'`,
-                success: false,
-            });
+        return res.status(status).json({message, data, success});
+
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
         }
 
-        await Vendor.findOneAndDelete({ userId });
-
-        return res.status(200).json({
-            message: 'User deleted successfully',
-            data: user,
-            success: true,
-        });
-    } catch (error) {
-        return res.status(500).json({
-            error: error.message,
-            message: 'Internal Server Error',
-            success: false,
-        });
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
     }
 }
 
 /* **clear_users logic here** */
 export const clear_users = async (req, res) => {
     try {
-        const users = await User.find();
+        if(['admin', 'super_admin'].includes(req.user.role)) {
+            const {status, success, message, data} = await RemoveAllUsers();
 
-        if (users.length === 0) {
-            return res.status(404).json({
-                error: 'No user found to delete',
-                success: false,
-            });
+            return res.status(status).json({message, data, success})
         }
 
-        for (const user of users) {
-            await Vendor.findByIdAndDelete(user._id);
+        throw {
+            status: 401,
+            message: `Unauthorized: You haven't accessibility to clear action`,
+            success: false
         }
-
-        const result = await User.deleteMany({});
-
-        if (result.deletedCount === 0) {
-            return res.status(404).json({
-                error: 'No users found to delete',
-                success: false,
-            });
-        }
-
-        return res.status(200).json({
-            message: `All user cleared successfully (${result.deletedCount} deleted)`,
-            success: true,
-        });
 
     } catch (error) {
-        return res.status(500).json({
-            error: error.message,
-            message: 'Internal Server Error',
-            success: false,
-        });
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
+        }
+
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
     }
 }
-
-export const users_filters = async (req, res) => {
-    try {
-        const {
-            search,
-            name, email, phone, segment, joinRange, updatedRange, address, status = 'active',
-            page = 1, limit = 10, offset,
-            sortBy = 'createdAt', orderSequence = 'desc'
-        } = req.query;
-
-        // Build Filters 
-        const filters = {
-            search: search || '',
-            name: name || '',
-            email: email || '',
-            phone: phone || '',
-            segment: segment || '',
-            address: address || '',
-            joinRange: joinRange ? joinRange.split(',').map(i => i.trim()) : undefined,
-            updatedRange: updatedRange ? updatedRange.split(',').map(i => i.trim()) : undefined,
-            status: status || 'active',
-        };
-
-        const parsedLimit = parseInt(limit);
-
-        // Build Mongo query
-        const query = BuildUserQuery(filters);
-
-        // Count Total Docs
-        const total = await User.countDocuments({ role: 'user', ...query });
-
-        const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
-            parseInt(page),
-            parsedLimit,
-            offset,
-            total,
-            `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`,
-            filters,
-        );
-
-        // Sorting
-        const sortField = ['name', 'address', 'createdAt'].includes(sortBy) ? sortBy : 'createdAt';
-        const sortDirection = orderSequence === 'asc' ? 1 : -1;
-        const sortOption = { [sortField]: sortDirection };
-
-        const customers = await User.find({ role: 'user', ...query })
-            .skip(skip)
-            .limit(parsedLimit)
-            .sort(sortOption)
-
-        return res.status(200).json({
-            message: 'Customers fetched successfully',
-            pagination: {
-                count: total,
-                prevUrl,
-                nextUrl,
-                currentPage,
-                totalPages,
-            },
-            data: customers,
-            success: true,
-        });
-
-    } catch (error) {
-        console.error('Error in customer_filters:', error);
-        return res.status(500).json({
-            error: error.message,
-            message: 'Internal Server Error',
-            success: false,
-        });
-    }
-};

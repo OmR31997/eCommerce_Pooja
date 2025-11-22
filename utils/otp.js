@@ -1,55 +1,55 @@
 // **In-Memory Cache (for testing in small project)
 export const otpStore = new Map();
 
-const set_otp = (key, otp, ttlMs) => {
-    otpStore.set(key, {
+const SetOtp = (otpKey, otp, ttlMs) => {
+    otpStore.set(otpKey, {
         otp,
         expiresAt: Date.now() + ttlMs
     });
 
-    setTimeout(() => otpStore.delete(key), ttlMs);
+    setTimeout(() => otpStore.delete(otpKey), ttlMs);
 }
 
-export const verifyOtp = (key, otp) => {
-    const entry = otpStore.get(key);
+export const VerifyOtp = (otpKey, otp) => {
+    console.log(`OtpKey: ${otpKey}, OTP: ${otp}`)
+    const existing = otpStore.get(otpKey);
 
-    if (!entry) {
+    if (!existing) {
         return {
             reason: 'OTP expired or not found',
             valid: false,
         }
     }
 
-    if (Date.now() > entry.expiresAt) {
-        otpStore.delete(key);
+    if (Date.now() > existing.expiresAt) {
+        otpStore.delete(otpKey);
         return {
             reason: 'OTP expired',
             valid: false,
         }
     }
 
-    if (entry.otp !== otp) {
+    if (existing.otp !== otp) {
         return {
             reason: 'Invalid OTP',
             valid: false,
         }
     }
 
-    otpStore.delete(key);
+    otpStore.delete(otpKey);
 
     return { valid: true };
 }
 
-export const generateOtp = (key) => {
+export const GenerateOtp = (otpKey) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const ttlMs = 5*60*1000;
     const otpExpiresAt = new Date(Date.now() + ttlMs);
-    set_otp(key, otp, ttlMs);
+    SetOtp(otpKey, otp, ttlMs);
 
     return {
         otp,
-        message: 'OTP valid for 5 minutes.',
+        message: 'OTP generated successfully & OTP valid for 5 minutes.',
         otpExpiresAt,
     }
 }
-/* **End In-Memory** */

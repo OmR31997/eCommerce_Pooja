@@ -1,11 +1,12 @@
 import mongoose from "mongoose";
 
 const ActionSchema = new mongoose.Schema({
-  isCreate: { type: Boolean, default: false },
-  isRead: { type: Boolean, default: false },
-  isUpdate: { type: Boolean, default: false },
-  isDelete: { type: Boolean, default: false },
-  isApproved: { type: Boolean, default: false },
+  create: { type: Boolean, default: false },
+  read: { type: Boolean, default: false },
+  update: { type: Boolean, default: false },
+  delete: { type: Boolean, default: false },
+  approve: { type: Boolean, default: false },
+  backup: { type: Boolean, default: false },
 }, { _id: false });
 
 const PermissionSchema = new mongoose.Schema({
@@ -15,9 +16,13 @@ const PermissionSchema = new mongoose.Schema({
     unique: true,
     trim: true,
   },
-  module: {
+  modules: {
     type: [String],
-    enum: ['Staff', 'Vendor', 'User', 'Category', 'Product', 'Cart', 'Order', 'Discount', 'Admin'],
+    enum: [
+      'Admin', 'Staff', 'Vendor', 'User', 'Permission', 
+      'Role', 'Category', 'Product', 'Cart', 
+      'Order', 'Discount', 'Account', 'Payment'
+    ],
     required: [true, `'module' field must be required (e.g., 'Product', 'Order', etc)`],
   },
   description: {
@@ -26,13 +31,7 @@ const PermissionSchema = new mongoose.Schema({
   },
   actions: {
     type: ActionSchema,
-    default: {
-      isCreate: false,
-      isRead: true,
-      isUpdate: false,
-      isDelete: false,
-      isApproved: false,
-    },
+    default: {},
   },
 }, { timestamps: true });
 

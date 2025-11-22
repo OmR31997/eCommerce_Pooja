@@ -1,57 +1,57 @@
 import express from 'express';
 import { Upload } from '../middlewares/upload.middleware.js';
 import { clear_staff, create_staff, get_me, read_staff_byId, read_staffs, remove_staff, update_staff, } from '../controllers/staff.controller.js';
-import { authentication, authorizationAccess } from '../middlewares/auth.middleware.js';
+import { AuthAccess } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
 /* @description -> To get profile
    @end-Point -> /api/staff/me
    @methtod -> POST
-   @access -> Private (staffId===req.user.id) 
+   @access -> Private (staff) 
 */
-router.post('/me', authentication, authorizationAccess('Staff', 'isRead'), get_me);
+router.get('/me', AuthAccess('Staff', 'read'), get_me);
 
 /* @description -> To create new staff
    @end-Point -> /api/staff/create
    @methtod -> POST
-   @access -> Private (super_admin/admin/user) 
+   @access -> Private (super_admin/admin/staff_manager) 
 */
-router.post('/create', authentication, authorizationAccess('Staff', 'isCreate'), create_staff);
+router.post('/create', AuthAccess('Staff', 'create'), create_staff);
 
 /* @description -> To read all staff records
    @end-Point -> /api/staff/view
    @methtod -> GET
-   @access -> Private (super_admin/admin/user) 
+   @access -> Private (super_admin/admin/staff_manager) 
 */
-router.get('/view', authentication, authorizationAccess('Staff', 'isRead'), read_staffs);
+router.get('/view', AuthAccess('Staff', 'read'), read_staffs);
 
 /* @description -> To read all staff records
    @end-Point -> /api/staff/view/:id
    @methtod -> GET
-   @access -> Private (super_admin/admin/staff) 
+   @access -> Private (super_admin/admin/staff_manager) 
 */
-router.get('/view/:id', authentication, authorizationAccess('Staff', 'isRead'), read_staff_byId);
+router.get('/view/:id', AuthAccess('Staff', 'read'), read_staff_byId);
 
 /* @description -> To update profile like: name, email, & phone etc. 
    @end-Point -> /api/staff/:id/update
    @methtod -> PATCH
    @access -> Private (super_admin/admin/staff) 
 */
-router.patch('/:id/update', authentication, authorizationAccess('Staff', 'isUpdate', { allowSelf: true }), update_staff);
+router.patch('/:id/update', AuthAccess('Staff', 'update'), update_staff);
 
 /* @description -> To delete staff record byId
    @end-Point -> /api/staff/:id/delete
    @methtod -> DELETE
    @access -> Private (super_admin/admin/staff) 
 */
-router.delete('/:id/delete', authentication, authorizationAccess('Staff', 'isDelete'), remove_staff);
+router.delete('/:id/delete', AuthAccess('Staff', 'delete'), remove_staff);
 
 /* @description -> To clear users
    @end-Point -> /api/staff/clear
    @methtod -> DELETE
    @access -> Private (super_admin) 
 */
-router.delete('/:id/clear', authentication, authorizationAccess('Staff', 'isDelete'), clear_staff);
+router.delete('/:id/clear', AuthAccess('Staff', 'delete'), clear_staff);
 
 export default router;

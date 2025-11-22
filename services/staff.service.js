@@ -45,7 +45,7 @@ export const CreateStaff = async (staffData) => {
         return { status: 200, success: true, data: response, message: 'Staff Created Successfully' };
 
     } catch (error) {
-
+        console.log(error.message);
         const handled = await ErrorHandle(error, 'CreateStaff');
         return handled || { status: 500, success: false, error: 'Internal Server Error' };
     }
@@ -95,6 +95,6 @@ export const UpdateStaff = async (staffData, staffId) => {
 
         console.log(error.message)
         const handle = ErrorHandle(error, 'UpdateStaff');
-        return { status: 500, success: false, error: handle? handle?.error: handle.errors || 'Internal Server Error' };
+        return { status: 500, success: false, error: handle ? handle?.error : handle.errors || 'Internal Server Error' };
     }
 }

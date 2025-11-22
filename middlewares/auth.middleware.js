@@ -3,12 +3,11 @@ import { User } from '../models/user.model.js';
 import { Vendor } from '../models/vendor.model.js';
 import { Staff } from '../models/staff.model.js';
 import { Admin } from '../models/admin.model.js';
-import { getModelByRole } from '../utils/fileHelper.js';
+import { GetModelByRole } from '../utils/fileHelper.js';
 
 
-export const authentication = async (req, res, next) => {
+export const Authentication = async (req, res, next) => {
   let authHeader = req.headers.authorization;
-
   if (!authHeader) {
     return res.status(401).json({
       error: 'Unauthorized: Token not provided',
@@ -44,98 +43,58 @@ export const authentication = async (req, res, next) => {
   }
 }
 
-// Dynamic Authorization
-export const authorizationRoles = (allowedRoles = []) => {
-  return (req, res, next) => {
-    const role = req.user?.role;
-
-    if (!role || !allowedRoles.includes(role)) {
-      return res.status(403).json({
-        error: `Access denied: [${allowedRoles.join(', ')}] only`,
-        success: true,
-      });
-    }
-
-    next();
-  }
-}
-
-export const authorizationAccess = (moduleName, actionKey, options = {}) => {
+export const AuthAccess = (moduleName, actionKey, options = {}) => {
   return async (req, res, next) => {
-
-    let action = undefined;
-    switch (actionKey) {
-      case 'isCreate':
-        action = 'create';
-        break;
-      case 'isRead':
-        action = 'create';
-        break;
-      case 'isUpdate':
-        action = 'update';
-        break;
-      case 'isDelete':
-        action = 'delete';
-        break;
-      case 'isApproved':
-        action = 'approve';
-        break;
-    }
-
     try {
-      const authId = req.user.id;
-      const authRole = req.user.role;
-      const { role, collection } = getModelByRole(authRole);
-      const Models = { Admin, Staff, Vendor, User }
-      const Model = Models[collection];
+      const { id: logId, role: logRole } = req.user;
 
-      const existing = await Model.findById(authId).populate('role').populate('permissions');
+      const { model } = GetModelByRole(logRole);
 
-      if (!existing) {
-        return res.status(401).json({ error: "Unauthorized: User not found", succcess: false, });
-      }
+      const Models = { Admin, Staff, Vendor, User };
 
-      const roleName = existing.role?.name || 'user';
+      const existing = await Models[model].findById(logId).populate('permission');
 
       // Super Admin / Admin Override
-      if (['super_admin', 'admin'].includes(roleName)) {
-        return next();
-      }
+      if (logRole?.toLowerCase() === 'super_admin') return next();
 
       // Self-Access Rule (Reusable)
-      if (options.allowSelf && req.params.id === authId.toString()) {
-        return next();
+      if (['user', 'vendor'].includes(logRole) && req.params.id) {
+        if (logId !== req.params.id) {
+          throw {
+            status: 401,
+            message: `Unauthorized: You haven't accessibility`,
+            success: false,
+          }
+        }
+      }
+
+      if (options.staffOnlyAllow) {
+        if (['user', 'vendor'].includes(logRole))
+          return res.status(400).json('Access denied: only can access staff')
       }
 
       // If This User Type Doesn't Even Have Permissions → Auto deny
-      if (!existing.permissions) {
+      if (!existing.permission) {
         return res.status(403).json({
-          error: `Access denied: No permissions assigned`,
+          error: `Access denied: No permissions assigned for ID: ${logId}`,
           success: false
         });
       }
 
       // Permission Check
-      const hasAccess = existing.permissions.some((perm) => {
-        const moduleMatch = Array.isArray(perm.module)
-          ? perm.module.includes(moduleName)
-          : perm.module === moduleName;
-
-        const acctionAllowed = perm.actions?.[actionKey] === true;
-        return moduleMatch && acctionAllowed;
-
-      });
+      const hasAccess =
+        existing.permission?.modules.includes(moduleName) &&
+        existing.permission?.actions?.[actionKey] === true;
 
       if (!hasAccess) {
         return res.status(403).json({
-          error: `Access denied: You don't have permission to ${action} on ${moduleName}`,
+          error: `Access denied: You don't have permission to ${actionKey} on ${moduleName}`,
           success: false,
         });
       }
 
       next();
     } catch (error) {
-      console.error("Authorization error:", error);
 
       if (error.name === "StrictPopulateError") {
         return res.status(500).json({
@@ -144,20 +103,11 @@ export const authorizationAccess = (moduleName, actionKey, options = {}) => {
         });
       }
 
-      res.status(500).json({ error: "Authorization check failed" });
+      if (error.status) {
+        return res.status(error.status).json({ success: false, error: error.message });
+      }
+
+      return res.status(500).json({ success: false, error: `Authorization check failed ${error}` });
     }
   }
-}
-
-export const filterRestrictedStaffFields = (req, res, next) => {
-
-  // const { role, permissions, isActive, status } = req.body;
-
-  // Self-Update Restrictions
-  delete req.body.role;
-  delete req.body.permissions;
-  delete req.body.isActive;
-  delete req.body.status;
-
-  next()
 }

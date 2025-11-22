@@ -6,7 +6,7 @@ const ReviewSchema = new mongoose.Schema({
     rating: { type: Number, min: 1, max: 5, required: true },
     comment: { type: String },
     createdAt: { type: Date, default: Date.now }
-});
+}, { _id: false });
 
 const VendorSchema = new mongoose.Schema({
     userId: {
@@ -27,7 +27,7 @@ const VendorSchema = new mongoose.Schema({
         trim: true,
         lowercase: true,
         enum: ['approved', 'pending', 'rejected'],
-        default: 'pending',
+        default: 'approved',
         index: true,
     },
     businessName: {
@@ -55,12 +55,10 @@ const VendorSchema = new mongoose.Schema({
         unique: true,
         required: [true, `'businessEmail' field must be required`],
     },
-    permissions: [
-        {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Permission',
-        },
-    ],
+    permission: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Permission',
+    },
     role: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Role',
@@ -96,50 +94,18 @@ const VendorSchema = new mongoose.Schema({
             required: [true, `'bankName' field must be required`]
         }
     },
+    onTimeDelivery: {
+        type: Boolean,
+        default: false,
+    },
+    review: [ReviewSchema],
     documents: {
         type: [String],
     },
-
-    // Additional 
-
-    // sales: {
-    //     type: Number,
-    //     default: 0,
-    // },
-    // commision: {
-    //     type: Number,
-    //     default: 0,
-    // },
-    // totalOrders: {
-    //     type: Number,
-    //     default: 0,
-    // },
-    // failedOrders: {
-    //     type: Number,
-    //     default: 0,
-    // },
-    // recentOrder: {
-    //     type: [mongoose.Schema.Types.ObjectId],
-    //     default: null,
-    // },
-    // totalEarning: {
-    //     type: Number,
-    //     default: 0,
-    // },
-    // rating: {
-    //     type: String,
-    //     default: 0,
-    // },
-
-    // avgDispatchTime: {
-    //     type: String,
-    //     trim: true,
-    // },
-    // onTimeDelivery: {
-    //     type: Boolean,
-    //     default: false,
-    // },
-    // review: [ReviewSchema],
+    commision: {
+        type: Number,
+        default: 0,
+    },
 }, { timestamps: true });
 
 VendorSchema.index({

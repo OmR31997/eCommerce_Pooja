@@ -83,18 +83,82 @@
         ]
       }
     },
-    "/api/auth/send-otp": {
+    "/api/auth/protected": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/auth/refresh-token": {
       "post": {
         "description": "",
         "responses": {
           "200": {
             "description": "OK"
           },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/auth/logged-out": {
+      "post": {
+        "description": "",
+        "responses": {
           "400": {
             "description": "Bad Request"
-          },
-          "500": {
-            "description": "Internal Server Error"
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/auth/logged-out-from-all-device": {
+      "post": {
+        "description": "",
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/auth/send-otp": {
+      "post": {
+        "description": "",
+        "responses": {
+          "400": {
+            "description": "Bad Request"
           }
         },
         "requestBody": {
@@ -123,17 +187,8 @@
       "post": {
         "description": "",
         "responses": {
-          "201": {
-            "description": "Created"
-          },
           "400": {
             "description": "Bad Request"
-          },
-          "409": {
-            "description": "Conflict"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         },
         "requestBody": {
@@ -145,22 +200,22 @@
                   "name": {
                     "example": "any"
                   },
-                  "segment": {
-                    "example": "any"
-                  },
-                  "address": {
-                    "example": "any"
-                  },
                   "email": {
                     "example": "any"
                   },
                   "phone": {
                     "example": "any"
                   },
-                  "otp": {
+                  "segment": {
+                    "example": "any"
+                  },
+                  "address": {
                     "example": "any"
                   },
                   "password": {
+                    "example": "any"
+                  },
+                  "otp": {
                     "example": "any"
                   }
                 }
@@ -177,17 +232,8 @@
       "post": {
         "description": "",
         "responses": {
-          "200": {
-            "description": "OK"
-          },
           "400": {
             "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "404": {
-            "description": "Not Found"
           },
           "500": {
             "description": "Internal Server Error"
@@ -202,10 +248,22 @@
                   "email": {
                     "example": "any"
                   },
+                  "businessEmail": {
+                    "example": "any"
+                  },
+                  "businessPhone": {
+                    "example": "any"
+                  },
                   "phone": {
                     "example": "any"
                   },
                   "password": {
+                    "example": "any"
+                  },
+                  "staffEmail": {
+                    "example": "any"
+                  },
+                  "staffPhone": {
                     "example": "any"
                   }
                 }
@@ -222,17 +280,8 @@
       "post": {
         "description": "",
         "responses": {
-          "200": {
-            "description": "OK"
-          },
           "400": {
             "description": "Bad Request"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         },
         "requestBody": {
@@ -241,13 +290,13 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "otp": {
+                  "email": {
                     "example": "any"
                   },
                   "phone": {
                     "example": "any"
                   },
-                  "email": {
+                  "otp": {
                     "example": "any"
                   }
                 }
@@ -264,11 +313,8 @@
       "get": {
         "description": "",
         "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "500": {
-            "description": "Internal Server Error"
+          "default": {
+            "description": ""
           }
         },
         "tags": [
@@ -289,14 +335,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "500": {
-            "description": "Internal Server Error"
+          "default": {
+            "description": ""
           }
         },
         "tags": [
@@ -317,14 +357,14 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
-          },
           "400": {
             "description": "Bad Request"
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "409": {
+            "description": "Conflict"
           },
           "500": {
             "description": "Internal Server Error"
@@ -336,13 +376,13 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "old_password": {
+                  "oldPassword": {
                     "example": "any"
                   },
-                  "new_password": {
+                  "newPassword": {
                     "example": "any"
                   },
-                  "confirm_password": {
+                  "confirmPassword": {
                     "example": "any"
                   }
                 }
@@ -359,18 +399,6 @@
       "post": {
         "description": "",
         "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
           "500": {
             "description": "Internal Server Error"
           }
@@ -385,6 +413,18 @@
                     "example": "any"
                   },
                   "phone": {
+                    "example": "any"
+                  },
+                  "staffEmail": {
+                    "example": "any"
+                  },
+                  "staffPhone": {
+                    "example": "any"
+                  },
+                  "businessEmail": {
+                    "example": "any"
+                  },
+                  "businessPhone": {
                     "example": "any"
                   }
                 }
@@ -401,9 +441,6 @@
       "post": {
         "description": "",
         "responses": {
-          "200": {
-            "description": "OK"
-          },
           "400": {
             "description": "Bad Request"
           },
@@ -417,19 +454,31 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "otp": {
-                    "example": "any"
-                  },
-                  "token": {
-                    "example": "any"
-                  },
-                  "newPassword": {
+                  "email": {
                     "example": "any"
                   },
                   "phone": {
                     "example": "any"
                   },
-                  "email": {
+                  "staffEmail": {
+                    "example": "any"
+                  },
+                  "staffPhone": {
+                    "example": "any"
+                  },
+                  "businessEmail": {
+                    "example": "any"
+                  },
+                  "businessPhone": {
+                    "example": "any"
+                  },
+                  "newPassword": {
+                    "example": "any"
+                  },
+                  "confirmPassword": {
+                    "example": "any"
+                  },
+                  "otp": {
                     "example": "any"
                   }
                 }
@@ -439,6 +488,38 @@
         },
         "tags": [
           "Auth"
+        ]
+      }
+    },
+    "/api/admin/backup": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-backup-key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "tags": [
+          "Admin"
         ]
       }
     },
@@ -455,12 +536,6 @@
           }
         ],
         "responses": {
-          "201": {
-            "description": "Created"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
           "401": {
             "description": "Unauthorized"
           },
@@ -509,9 +584,6 @@
           "401": {
             "description": "Unauthorized"
           },
-          "404": {
-            "description": "Not Found"
-          },
           "500": {
             "description": "Internal Server Error"
           }
@@ -537,9 +609,6 @@
           "401": {
             "description": "Unauthorized"
           },
-          "404": {
-            "description": "Not Found"
-          },
           "500": {
             "description": "Internal Server Error"
           }
@@ -562,17 +631,11 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
           "401": {
             "description": "Unauthorized"
           },
-          "404": {
-            "description": "Not Found"
+          "403": {
+            "description": "Forbidden"
           },
           "500": {
             "description": "Internal Server Error"
@@ -624,14 +687,11 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
-          },
           "401": {
             "description": "Unauthorized"
           },
-          "404": {
-            "description": "Not Found"
+          "403": {
+            "description": "Forbidden"
           },
           "500": {
             "description": "Internal Server Error"
@@ -663,17 +723,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
-          },
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
           },
           "500": {
             "description": "Internal Server Error"
@@ -719,34 +770,14 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
-          },
           "400": {
             "description": "Bad Request"
           },
           "401": {
             "description": "Unauthorized"
           },
-          "404": {
-            "description": "Not Found"
-          },
           "500": {
             "description": "Internal Server Error"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "status": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
           }
         },
         "tags": [
@@ -1177,7 +1208,7 @@
       }
     },
     "/api/staff/me": {
-      "post": {
+      "get": {
         "description": "",
         "parameters": [
           {
@@ -1627,7 +1658,7 @@
       }
     },
     "/api/vendor/me": {
-      "post": {
+      "get": {
         "description": "",
         "parameters": [
           {
@@ -1812,18 +1843,6 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "role": {
-                    "example": "any"
-                  },
-                  "permissions": {
-                    "example": "any"
-                  },
-                  "isActive": {
-                    "example": "any"
-                  },
-                  "status": {
-                    "example": "any"
-                  },
                   "businessName": {
                     "example": "any"
                   },
@@ -2639,7 +2658,7 @@
         ]
       }
     },
-    "/api/product/vendor-view": {
+    "/api/product/secure-view": {
       "get": {
         "description": "",
         "parameters": [
@@ -2666,7 +2685,7 @@
           }
         },
         "tags": [
-          "Vendor"
+          "Product"
         ]
       }
     },
@@ -2785,18 +2804,6 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "role": {
-                    "example": "any"
-                  },
-                  "permissions": {
-                    "example": "any"
-                  },
-                  "isActive": {
-                    "example": "any"
-                  },
-                  "status": {
-                    "example": "any"
-                  },
                   "name": {
                     "example": "any"
                   },
@@ -2823,7 +2830,7 @@
       }
     },
     "/api/product/{id}/delete": {
-      "patch": {
+      "delete": {
         "description": "",
         "parameters": [
           {
@@ -2859,18 +2866,6 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "role": {
-                    "example": "any"
-                  },
-                  "permissions": {
-                    "example": "any"
-                  },
-                  "isActive": {
-                    "example": "any"
-                  },
-                  "status": {
-                    "example": "any"
-                  },
                   "name": {
                     "example": "any"
                   },
@@ -2936,18 +2931,6 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "role": {
-                    "example": "any"
-                  },
-                  "permissions": {
-                    "example": "any"
-                  },
-                  "isActive": {
-                    "example": "any"
-                  },
-                  "status": {
-                    "example": "any"
-                  },
                   "rating": {
                     "example": "any"
                   }
@@ -3338,7 +3321,7 @@
         ]
       }
     },
-    "/api/payment/create-order": {
+    "/api/payment/create": {
       "post": {
         "description": "",
         "parameters": [
@@ -3359,9 +3342,6 @@
           },
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           },
           "500": {
             "description": "Internal Server Error"
@@ -3407,9 +3387,6 @@
           },
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           },
           "500": {
             "description": "Internal Server Error"
@@ -3666,7 +3643,7 @@
       }
     },
     "/api/user/me": {
-      "post": {
+      "get": {
         "description": "",
         "parameters": [
           {
@@ -3680,9 +3657,6 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           },
           "500": {
             "description": "Internal Server Error"
@@ -3726,13 +3700,6 @@
             }
           },
           {
-            "name": "status",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
             "name": "sortBy",
             "in": "query",
             "schema": {
@@ -3748,14 +3715,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
-          },
           "401": {
             "description": "Unauthorized"
-          },
-          "404": {
-            "description": "Not Found"
           },
           "500": {
             "description": "Internal Server Error"
@@ -3787,9 +3748,6 @@
           }
         ],
         "responses": {
-          "400": {
-            "description": "Bad Request"
-          },
           "401": {
             "description": "Unauthorized"
           },
@@ -3815,6 +3773,13 @@
           },
           {
             "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
             "in": "query",
             "schema": {
               "type": "string"
@@ -3870,13 +3835,6 @@
             }
           },
           {
-            "name": "status",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
             "name": "page",
             "in": "query",
             "schema": {
@@ -3913,9 +3871,6 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
-          },
           "401": {
             "description": "Unauthorized"
           },
@@ -3949,17 +3904,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
           "401": {
             "description": "Unauthorized"
-          },
-          "404": {
-            "description": "Not Found"
           },
           "500": {
             "description": "Internal Server Error"
@@ -3971,28 +3917,19 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "role": {
+                  "name": {
                     "example": "any"
                   },
-                  "permissions": {
+                  "email": {
                     "example": "any"
                   },
-                  "isActive": {
+                  "phone": {
                     "example": "any"
                   },
-                  "status": {
+                  "segment": {
                     "example": "any"
                   },
-                  "password": {
-                    "example": "any"
-                  },
-                  "currentPassword": {
-                    "example": "any"
-                  },
-                  "isVerified": {
-                    "example": "any"
-                  },
-                  "rest": {
+                  "address": {
                     "example": "any"
                   }
                 }
@@ -4075,7 +4012,7 @@
         ]
       }
     },
-    "/api/dashboard/super-admin-overview": {
+    "/api/dashboard/super-admin/overview": {
       "get": {
         "description": "",
         "parameters": [
@@ -4121,7 +4058,53 @@
         ]
       }
     },
-    "/api/dashboard/admin-overview": {
+    "/api/dashboard/admin/overview": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "yearType",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "tags": [
+          "Dashboard"
+        ]
+      }
+    },
+    "/api/dashboard/vendor/overview": {
       "get": {
         "description": "",
         "parameters": [
@@ -4192,7 +4175,7 @@
         ]
       }
     },
-    "/api/dashboard/user-manager": {
+    "/api/dashboard/vendor-manager": {
       "get": {
         "description": "",
         "parameters": [
@@ -4217,7 +4200,7 @@
         ]
       }
     },
-    "/api/dashboard/vendor-manager": {
+    "/api/dashboard/user-manager": {
       "get": {
         "description": "",
         "parameters": [
@@ -4299,52 +4282,6 @@
           {
             "name": "authorization",
             "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "Unauthorized"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "tags": [
-          "Dashboard"
-        ]
-      }
-    },
-    "/api/dashboard/vendor-overview": {
-      "get": {
-        "description": "",
-        "parameters": [
-          {
-            "name": "authorization",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "year",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "yearType",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
             "schema": {
               "type": "string"
             }

@@ -10,7 +10,7 @@ export const create_product_category = async (req, res) => {
 
         // Top-Level and Subcatecory Validation
         const isSubCategory = req.query.sub === 'true';
-
+        
         if (isSubCategory && !parent) {
             return res.status(400).json({
                 error: `Parent category 'id' value is required for 'parent' field`,
@@ -60,7 +60,7 @@ export const create_product_category = async (req, res) => {
             name,
             slug: generatedSlug,
             description,
-            parent: parent ?? null,
+            parent: parent || null,
         }
 
         // Manage DB, Cloud/Local Storage If File Uploading 
@@ -92,6 +92,8 @@ export const create_product_category = async (req, res) => {
                 categoryData.imageUrl = file.path;
             }
         }
+
+        console.log(parent)
 
         // Careate new category record into the db.collection
         const responseCategory = await Category.create(categoryData);

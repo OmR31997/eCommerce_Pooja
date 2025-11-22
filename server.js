@@ -22,7 +22,7 @@ import CartRoute from './routes/cart.route.js';
 import PaymentRoute from './routes/payment.route.js';
 import OrderRoute from './routes/order.route.js';
 import DashboardRoute from './routes/dashboard.route.js';
-import { authentication, authorizationAccess, authorizationRoles } from './middlewares/auth.middleware.js';
+import { Authentication } from './middlewares/auth.middleware.js';
 
 const appServer = express();
 appServer.use(express.json());
@@ -68,21 +68,21 @@ try {
 appServer.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, { swaggerOptions: { persistAuthorization: true } }));
 
 appServer.use('/api/auth', AuthRoute);
-appServer.use('/api/admin', authentication, authorizationRoles(['admin']), AdminRoute);
-appServer.use('/api/permission', authentication, authorizationRoles(['admin', 'super_admin']), PermissionsRoute);
-appServer.use('/api/role', authentication, authorizationRoles(['admin', 'super_admin']), RolesRoute)
-appServer.use('/api/staff', StaffRoute);
-appServer.use('/api/vendor', VendorRoute);
-appServer.use('/api/category', authentication, authorizationRoles(['admin', 'super_admin']), CategoryRoute);
+appServer.use('/api/admin', Authentication, AdminRoute);
+appServer.use('/api/permission', Authentication, PermissionsRoute);
+appServer.use('/api/role', Authentication, RolesRoute)
+appServer.use('/api/staff', Authentication, StaffRoute);
+appServer.use('/api/vendor', Authentication, VendorRoute);
+appServer.use('/api/category', Authentication, CategoryRoute);
 appServer.use('/api/product', ProductRoute);
-appServer.use('/api/cart', CartRoute);
-appServer.use('/api/payment', PaymentRoute);
-appServer.use('/api/order', OrderRoute);
-appServer.use('/api/user', UserRoute);
-appServer.use('/api/dashboard', DashboardRoute);
+appServer.use('/api/cart', Authentication, CartRoute);
+appServer.use('/api/payment', Authentication, PaymentRoute);
+appServer.use('/api/order', Authentication, OrderRoute);
+appServer.use('/api/user', Authentication, UserRoute);
+appServer.use('/api/dashboard', Authentication, DashboardRoute);
 
 const port = process.env.PORT;
 
-const baseUrl = process.env.NODE_ENV === 'development' ? `http://localhost:${port}` : process.env.BASE_URL;
-console.log(process.env.NODE_ENV)
+const baseUrl = process.env.NODE_ENV === 'development' ? `http://localhost:${port}/api/health` : `${process.env.BASE_URL}/health`;
+
 appServer.listen(port, () => console.log(`Server is running at ${baseUrl}`));

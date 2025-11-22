@@ -6,14 +6,14 @@ const StaffSchema = new mongoose.Schema({
         trim: true,
         required: [true, `'name' field must be required`],
     },
-    email: {
+    staffEmail: {
         type: String,
         lowercase: true,
         trim: true,
         unique: true,
         required: [true, `'email' field must be required`],
     },
-    phone: {
+    staffPhone: {
         type: String,
         trim: true,
         unique: true,
@@ -28,16 +28,18 @@ const StaffSchema = new mongoose.Schema({
         ref: 'Role',
         required: [true, `'role' field must be provided`],
     },
-    permissions: [
-        {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Permission'
-        },
-    ],
-    isActive: {
-        type: Boolean,
-        default: false,
-    }
+    permission: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Permission',
+    },
+    status: {
+        type: String,
+        trim: true,
+        lowercase: true,
+        enum: ['approved', 'pending', 'rejected'],
+        default: 'approved',
+        index: true,
+    },
 
 }, { timestamps: true });
 

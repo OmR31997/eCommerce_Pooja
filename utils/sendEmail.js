@@ -1,7 +1,6 @@
 import axios from 'axios';
-import fetch from 'node-fetch';
 
-export const sendEmail = async (to, subject, htmlContent = null) => {
+export const SendEmail = async (to, subject, htmlContent = null) => {
   try {
     const response = await axios.post('https://api.brevo.com/v3/smtp/email', {
       sender: {
@@ -20,18 +19,25 @@ export const sendEmail = async (to, subject, htmlContent = null) => {
         }
       });
 
-    const data = response.data;
-
-    if (response.status === 201 && data.messageId) {
-      return { success: true }
+    if (response.status === 201 && response.data.messageId) {
+      return { status: 201, success: true, messageId: response.data.messageId };
     }
 
     console.error('Brevo Email Failed', data);
-    return { success: false, error: data.message || `Failed to send email: ${to}` };
 
   } catch (error) {
 
-    console.error('Brevo Email Error', error);
-    return { error: error.message, success: false };
+    const status = error?.response?.status || 500;
+    const errorMessage =
+      error?.response?.data?.message ||
+      error?.response?.data?.errors?.[0]?.message ||
+      error.message ||
+      "Brevo Email Error";
+
+    return {
+      status,
+      error: errorMessage,
+      success: false,
+    };
   }
 }

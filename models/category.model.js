@@ -5,7 +5,6 @@ const CategorySchema = new mongoose.Schema({
         type: String,
         required: [true, `'name' field must be required`],
         trim: true,
-        unique: true,
     },
     slug: {
         type: String,

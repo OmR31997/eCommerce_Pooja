@@ -21,7 +21,7 @@ export const ErrorHandle = async (error, serviceMethod) => {
             errors[key] = error.errors[key].message
         });
 
-        console.log({ message: `Errorr in '${serviceMethod}'`, errors });
+        console.log({ message: `Error in '${serviceMethod}'`, errors });
         return { status: 400, success: false, errors, message: 'Validation failed', };
     }
 
@@ -31,51 +31,72 @@ export const ErrorHandle = async (error, serviceMethod) => {
     }
 
     console.log(`Errorr in '${serviceMethod}'`, error.message);
+
+    return { status: 500, success: false, message: 'Internal Server Error' }
 }
 
-export const identifyRoleFromEmail = (email) => {
+export const GenerateEmail = (email, role) => {
+    
+    const lowerEmail = email.toLowerCase();
+    const forbidden = ['super', 'admin', 'support', 'vendor'];
+
+    if(forbidden.some(word => lowerEmail.includes(word))) {
+        throw new Error(`Email cannot contain reserved keywords: super, admin, support, vendor`);
+    }
+    
+    const splitedMail = email.split('@');
+    return `${splitedMail[0]}.${role}@${splitedMail[1]}`;
+}
+
+export const IdentifyModel = (logKey) => {
+
+    const key = Object.keys(logKey)[0];
+    const value = logKey[key];
+
+    if (key.startsWith('business')) return { role: 'vendor', model: 'Vendor', logValue: value };
+    if (key.startsWith('staff')) return { role: 'staff', model: 'Staff', logValue: value };
+
+    if (key === 'email') {
+        const prefix = value.split('@')[0];
+
+        if (prefix.endsWith('super')) return { role: 'super_admin', model: 'Admin', logValue: value };
+        if (prefix.endsWith('admin')) return { role: 'admin', model: 'Admin', logValue: value };
+
+        return { role: 'user', model: 'User', logValue: value };
+    }
+
+    return { role: 'user', model: 'User', logValue: value };
+};
+
+export const IdentifyModelByGoogleEmail = (email) => {
+
     const lower = email.toLowerCase();
+    const prefix = lower.split('@')[0];
 
-    // --- Admin & Super Admin ---
-    if (lower === "super_admin@support.com") {
-        return { role: "super_admin", collection: "Admin" };
-    }
+    if (prefix.endsWith('super')) return { role: 'super_admin', model: 'Admin', key:'email'};
+    if (prefix.endsWith('admin')) return { role: 'admin', model: 'Admin', key: 'email' };
+    if (prefix.endsWith('vendor')) return { role: 'vendor', model: 'Vendor', key: 'businessEmail' };
+    if (prefix.endsWith('support')) return { role: 'staff', model: 'Staff', key: 'staffEmail' };
 
-    // Get Admin Specific
-    if (lower.startsWith('admin')) {
-        return { role: "admin", collection: "Admin" };
-    }
-
-    // --- Staff ---
-    if (lower.split('@')[0].endsWith(".support")) {
-        return { role: "staff", collection: "Staff" };
-    }
-
-    // --- Vendor ---
-    if (lower.split('@')[0].endsWith('.vendor')) {
-        return { role: "vendor", collection: "Vendor" }
-    }
-
-    // --- Default USER ---
-    return { role: "user", collection: "User" };
+    return { role: 'user', model: 'User', key: 'email' };
 };
 
 // Free Mail Case
-export const getModelByRole = (role) => {
+export const GetModelByRole = (role) => {
+
     switch (role) {
-        case "super_admin":
-        case "admin":
-            return { role, collection: "Admin" };
+        case "admin" || 'super_admin':
+            return { model: "Admin" };
 
         case "staff":
-            return { role, collection: "Staff" };
+            return { model: "Staff" };
 
         case "vendor":
-            return { role, collection: "Vendor" };
+            return { model: "Vendor" };
 
         case "user":
         default:
-            return { role: "user", collection: "User" };
+            return { model: "User" };
     }
 };
 
@@ -89,11 +110,11 @@ export const GenerateSlug = async (name) => {
     let slug = baseSlug;
     let counter = 1;
 
-    while (await Category.countDocuments({ slug: baseSlug })) {
+    while (await Category.countDocuments({ slug })) {
         slug = `${baseSlug}-${counter++}`;
     }
 
-    return baseSlug;
+    return slug;
 }
 
 export const GenerateUniqueFileName = (prefix = '', originalname = '') => {

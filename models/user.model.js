@@ -13,26 +13,21 @@ const UserSchema = new mongoose.Schema({
     email: {
         type: String,
         unique: true,
-        sparse: true,
         required: [true, `'email' field must be required`],
     },
     phone: {
         type: String,
         unique: true,
-        sparse: true,
-        required: [true, `'phone' field must be required`],
     },
     password: {
         type: String,
         select: false,
         required: [true, `'password' field must be required`],
     },
-    permissions: [
-        {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Permission',
-        },
-    ],
+    permission: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Permission',
+    },
     roles: [
         {
             type: mongoose.Schema.Types.ObjectId,
