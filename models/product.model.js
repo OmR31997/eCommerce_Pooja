@@ -1,5 +1,10 @@
 import mongoose from 'mongoose';
 
+const File = new mongoose.Schema([{
+    public_id: { type: String, default: null },
+    secure_url: { type: String, required: [true, `'secure_url' field must be required`] },
+}], { _id: false });
+
 const ProductSchema = new mongoose.Schema({
     vendorId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -17,13 +22,18 @@ const ProductSchema = new mongoose.Schema({
         unique: true,
         required: [true, `'name' field must be required`],
     },
+    features: {
+        type:[String],
+        default: []
+    },
     description: {
         type: String,
         required: [true, `'description' field must be required`],
     },
     price: {
-        type: Number,
+        type: mongoose.Schema.Types.Decimal128,
         required: [true, `'price' field must be required`],
+        get: v => v ? `₹${parseInt(v.toString()).toFixed(2)}` : null
     },
     stock: {
         type: Number,
@@ -36,21 +46,13 @@ const ProductSchema = new mongoose.Schema({
         required: [true, `'sku' field must be required`],
     },
     images: {
-        type: [String],
-        default: []
+        type: [File],
+        required: [true, `'images' field must be required`],
     },
     status: {
         type: String,
         enum: ['approved', 'pending', 'rejected', 'under_process'],
         default: 'pending',
-        validate: {
-            validator: function (value) {
-                if (this.isNew && value !== 'pending')
-                    throw new Error(`'status' must be 'pending' at the creation time`);
-
-                return true;
-            }
-        }
     },
     sales: {
         type: Number,
@@ -62,24 +64,15 @@ const ProductSchema = new mongoose.Schema({
         min: 0,
         max: 100
     },
-    rating: {
-        average: {
-            type: Number,
-            default: 0,
-            min: 0,
-            max: 5,
-        },
-        totalReview: {
-            type: Number,
-            default: 0
-        }
-    },
     views: {
         type: Number,
         default: 0,
     }
 
 }, { timestamps: true });
+
+ProductSchema.set('toJSON', {getters: true});
+ProductSchema.set('toObject', {getters: true});
 
 ProductSchema.index({ name: 'text', description: 'text' }, {
     name: 'product_text_index',
@@ -89,6 +82,9 @@ ProductSchema.index({ name: 'text', description: 'text' }, {
 
 ProductSchema.index({ price: 1 });
 ProductSchema.index({ stock: 1 });
+ProductSchema.index({ vendorId: 1 });
+ProductSchema.index({ categoryId: 1 });
+ProductSchema.index({ createdAt: -1 });
 ProductSchema.index({ 'rating.average': 1 });
 ProductSchema.index({ discount: 1 });
 ProductSchema.index({ status: 1 });

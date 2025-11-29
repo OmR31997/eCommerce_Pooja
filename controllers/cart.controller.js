@@ -1,21 +1,25 @@
 import { Cart } from '../models/cart.model.js';
 import { AddToCart, DecrementItemQty, GetCartById, GetCarts } from '../services/cart.service.js';
-import { Pagination } from '../utils/fileHelper.js';
+import { ErrorHandle, Pagination } from '../utils/fileHelper.js';
 
 /* **create_cart logic here** */
 export const add_to_cart = async (req, res) => {
-    const { productId, quantity = 1 } = req.body;
-    const { id: userId, role } = req.user;
+    try {
+        const { productId, quantity = 1 } = req.body;
 
-    if (role === 'user') {
+        const userId = req.user.role ==='user' ? req.user.id : req.body.userId || undefined;
 
-        const { status, error, errors, success, message, data } = await AddToCart({ productId, quantity: parseInt(quantity), userId });
+        const {status, success, message, ...rest} = await AddToCart({productId, quantity}, userId);
 
-        if (!success) {
-            return res.status(status).json({ errors, error, message, })
-        }
+        return res.status(status).json({message, success, rest,});
 
-        return res.status(status).json({ message, data, success });
+    } catch (error) {
+        const handle = ErrorHandle(error);
+
+        if (handle?.status)
+            return res.status(handle.status).json({ error: handle.error, errors: handle.errors, success: false });
+
+        return res.status(500).json({ error: error.message })
     }
 }
 

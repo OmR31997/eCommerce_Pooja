@@ -1,11 +1,8 @@
 import mongoose from 'mongoose';
 
-const ReviewSchema = new mongoose.Schema({
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    vendorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Vendor', required: true },
-    rating: { type: Number, min: 1, max: 5, required: true },
-    comment: { type: String },
-    createdAt: { type: Date, default: Date.now }
+const File = new mongoose.Schema({
+    public_id: { type: String, default: null },
+    secure_url: { type: String, default: null },
 }, { _id: false });
 
 const VendorSchema = new mongoose.Schema({
@@ -27,8 +24,7 @@ const VendorSchema = new mongoose.Schema({
         trim: true,
         lowercase: true,
         enum: ['approved', 'pending', 'rejected'],
-        default: 'approved',
-        index: true,
+        default: 'pending',
     },
     businessName: {
         type: String,
@@ -36,24 +32,24 @@ const VendorSchema = new mongoose.Schema({
         unique: true,
         required: [true, `'businessName' field must be required`],
     },
-    password: {
+    businessEmail: {
         type: String,
-        required: [true, `'password' field must be required`],
-        select: false,
+        unique: true,
+        required: [true, `'businessEmail' field must be required`],
     },
     businessDescription: {
         type: String,
         trim: true,
         required: [true, `'businessDescription' field must be required`]
     },
+    password: {
+        type: String,
+        required: [true, `'password' field must be required`],
+        select: false,
+    },
     businessPhone: {
         type: String,
         default: null,
-    },
-    businessEmail: {
-        type: String,
-        unique: true,
-        required: [true, `'businessEmail' field must be required`],
     },
     permission: {
         type: mongoose.Schema.Types.ObjectId,
@@ -72,15 +68,11 @@ const VendorSchema = new mongoose.Schema({
         type: String,
         required: [true, `'address' field must be required`],
     },
-    logoUrl: {
-        type: String,
-        required: false,
-    },
+    logoUrl: File,
     bankDetails: {
         accountNumber: {
             type: String,
             trim: true,
-            unique: true,
             required: [true, `'accountNumber' field must be required`],
         },
         ifsc: {
@@ -98,10 +90,11 @@ const VendorSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
-    review: [ReviewSchema],
-    documents: {
-        type: [String],
+    review: {
+        type: Number,
+        default: 0
     },
+    documents: [File],
     commision: {
         type: Number,
         default: 0,
@@ -122,5 +115,6 @@ VendorSchema.index({
     default_language: 'english',
 });
 
+VendorSchema.index({ status: 1 });
+
 export const Vendor = mongoose.model('Vendor', VendorSchema);
-export const Review = mongoose.model('Review', ReviewSchema);

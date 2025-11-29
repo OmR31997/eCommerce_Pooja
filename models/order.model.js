@@ -20,11 +20,6 @@ const OrderItemSchema = new mongoose.Schema({
     }
 }, { _id: false });
 
-// OrderItemSchema.pre("validate", function (next) {
-//     this.subtotal = this.quantity * this.price;
-//     next();
-// });
-
 const ShippingSchema = new mongoose.Schema({
     name: {
         type: String,
@@ -86,12 +81,12 @@ const OrderSchema = new mongoose.Schema({
     },
     paymentStatus: {
         type: String,
-        enum: ['pending', 'initiated', 'paid', 'failed'],
+        enum: ['pending', 'paid',  'failed'],
         default: 'pending',
     },
     status: {
         type: String,
-        enum: ['pending', 'confirmed', 'shipped', 'cancelled', 'refunded'],
+        enum: ['pending', 'shipped', 'cancelled', 'refunded'],
         default: 'pending'
     },
     shippingAddress: {
@@ -107,13 +102,6 @@ const OrderSchema = new mongoose.Schema({
         type: String, // Razorpay or Stripe transaction ID
     },
 }, { timestamps: true });
-
-// Auto-calculate totalAmount before save
-// OrderSchema.pre("save", function (next) {
-//     this.totalAmount = this.items.reduce((accume, currentItem) =>
-//         accume + (currentItem.subtotal || 0), 0);
-//     next();
-// });
 
 // Virtual (not stored in DB)
 OrderSchema.virtual("itemCount").get(function () {

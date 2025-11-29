@@ -1,6 +1,7 @@
 import { User } from '../models/user.model.js';
 import bcrypt from 'bcryptjs';
 import { ChangePassword, ConfirmOtp, ForgotPassword, GoogleCallback, Refresh_Token, ResetPassword, SendOtp, SignIn, SignOut, SignOutAll, SignUp, SignWithGoogle } from '../services/auth.service.js';
+import { ErrorHandle } from '../utils/fileHelper.js';
 
 /*  *test_protected handler*  */
 export const test_protected = async (req, res) => {
@@ -43,22 +44,23 @@ export const refresh_token = async (req, res) => {
 
 /*  *sign_in handler*  */
 export const sign_in = async (req, res) => {
-
     try {
-
-        const { email, businessEmail, businessPhone, phone, password, staffEmail, staffPhone } = req.body;
-
-        const errors = [];
+        const { email, phone,
+            businessEmail, businessPhone,  
+            staffEmail, staffPhone,
+            password } = req.body;
 
         const identifiers = [email, staffEmail, staffPhone, businessEmail, businessPhone, phone].filter(Boolean);
 
         if (identifiers.length !== 1) {
-            errors.push(`Provide exactly ONE login field: 
-            email, phone, 
-            staffEmail, staffPhone, 
-            businessEmail, or businessPhone`);
+            throw {
+                status: 400,
+                success: false,
+                message: `Provide exactly ONE login field: email, phone, staffEmail, staffPhone, businessEmail, or businessPhone.`
+            };
         }
 
+        const errors = [];
         if (!password)
             errors.push(`'password' field must be required`);
 
@@ -84,11 +86,14 @@ export const sign_in = async (req, res) => {
 
         return res.status(status).json({ message, tokens, success });
     } catch (error) {
-        if (error.status) {
-            return res.status(error.status).json({ success: false, error: error.message });
-        }
 
-        return res.status(500).json({ success: false, error: `Internal Server Error or 'ForgotPasswrod' - ${error}` });
+        const handle = ErrorHandle(error);
+
+        if (handle?.status)
+            return res.status(handle.status).json({ error: handle.error, errors: handle.errors, success: false });
+
+        return res.status(500).json({ error: error.message });
+
     }
 }
 

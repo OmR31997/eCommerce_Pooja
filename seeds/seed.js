@@ -2218,7 +2218,7 @@ export const seedDatabase = async (isManual = false) => {
     // await permissionsSeed();
     // await rolesSeed();
     // await adminSeed();
-    await DummyCategories();
+    // await DummyCategories();
     // await DummyCustomers();
     // await DummyVendors();
     // await DummySubCTG();

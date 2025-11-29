@@ -47,7 +47,7 @@ export const AuthAccess = (moduleName, actionKey, options = {}) => {
   return async (req, res, next) => {
     try {
       const { id: logId, role: logRole } = req.user;
-
+      
       const { model } = GetModelByRole(logRole);
 
       const Models = { Admin, Staff, Vendor, User };
@@ -62,16 +62,20 @@ export const AuthAccess = (moduleName, actionKey, options = {}) => {
         if (logId !== req.params.id) {
           throw {
             status: 401,
-            message: `Unauthorized: You haven't accessibility`,
+            message: `Unauthorized: You don't have permission to access this module`,
             success: false,
           }
         }
       }
 
-      if (options.staffOnlyAllow) {
-        if (['user', 'vendor'].includes(logRole))
-          return res.status(400).json('Access denied: only can access staff')
-      }
+      // if (options.staffOnlyAllow) {
+      //   if (['user', 'vendor'].includes(logRole))
+      //     throw {
+      //       status: 401,
+      //       message: 'Access denied: only can access staff',
+      //       success: false,
+      //     }
+      // }
 
       // If This User Type Doesn't Even Have Permissions → Auto deny
       if (!existing.permission) {

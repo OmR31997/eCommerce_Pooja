@@ -44,4 +44,6 @@ CategorySchema.virtual('subcategories', {
 CategorySchema.set('toObject', { virtuals: true });
 CategorySchema.set('toJSON', { virtuals: true });
 
+CategorySchema.index({ status: 1 });
+
 export const Category = mongoose.model('Category', CategorySchema);

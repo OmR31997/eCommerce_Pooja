@@ -1,7 +1,7 @@
 import { User } from '../models/user.model.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { Blacklist, RefreshToken } from '../models/token.model.js';
+import { RefreshToken } from '../models/token.model.js';
 import { CreateAccessToken, CreateRefreshTokenString, RevokeRefreshToken, SaveRefreshToken } from '../utils/tokens.js';
 import { ClearRefreshCookie, SetRefreshCookie } from '../utils/cookies.js';
 import { Admin } from '../models/admin.model.js';
@@ -33,32 +33,6 @@ export const GenerateAndSendToken = async ({ res, logId, logRole, ip }) => {
 
     } catch (error) {
         throw new Error(`Error in GenerateAndSendToken: ${error.message}`);
-    }
-}
-
-export const SignInn = async (reqData, signData) => {
-    try {
-        const existing = await Admin.findOne({ email: signData.email });
-
-        if (!existing) {
-            return { status: 404, success: false, error: `Admin not found for email: ${email}` }
-        }
-
-        reqData.logId = existing._id;
-        reqData.logRole = 'admin';
-
-        const tokens = await GenerateAndSendToken(reqData);
-
-        return {
-            status: 200,
-            success: true,
-            message: 'Logged successfully',
-            tokens
-        }
-    } catch (error) {
-
-        const handled = await ErrorHandle(error, 'SignIn');
-        return handled || { status: 500, success: false, error: 'SignIn failed' };
     }
 }
 

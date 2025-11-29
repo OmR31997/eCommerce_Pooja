@@ -100,64 +100,71 @@ export const GetCartById = async (cardId) => {
     }
 }
 
-export const AddToCart = async (cartData) => {
-    try {
-        const { productId, quantity = 1 } = cartData;
+export const AddToCart = async (cartData, userId) => {
+    const {productId, quantity} = cartData;
 
-        const product = await Product.findById(productId);
+    if(quantity <= 0) {
+        throw {
+            status: 400,
+            message: "Quantity must be greater than 0",
+            success: false
+        }
+    }
 
-        if (!product || product.stock < quantity) {
-            return {
-                status: 404,
-                error: `Product not found or stock not available with the given id`,
-                success: false,
-            };
+    // Fetch with product & validate stock also
+    const product = await Product.findById(cartData.productId).lean();
+
+    if (!product || product.stock < cartData.quantity) {
+        throw {
+            status: 404,
+            message: `Product not found or Out-Of-Stock for productId: '${cartData.productId}'`,
+            success: false
+        }
+    }
+
+    const price = product.price - ((product.price * product.discount) / 100);
+    const subtotal = price * cartData.quantity;
+
+    let result = undefined;
+
+    const existing = await Cart.findOne({ userId });
+
+    if (!existing) {
+        // Add New
+
+        const newCart = {
+            userId,
+            items: [{ ...cartData, price, subtotal }],
+            totalAmount: subtotal
         }
 
-        let cart = await Cart.findOne({ userId: cartData.userId });
+        result = await Cart.create(newCart);
+    }
+    else {
+        // Update Existing
 
-        if (!cart) {
-            cart = new Cart({
-                userId,
-                items: [{
-                    productId,
-                    quantity,
-                    price: product.price,
-                    subtotal: quantity * product.price
-                }],
-                totalAmount: subtotal,
-            });
+        const index = existing.items.findIndex(item=> item.productId.toString() === productId);
+
+        if (index > -1) {
+            existing.items[index].quantity += cartData.quantity;
+            existing.items[index].price = price;
+            existing.items[index].subtotal = existing.items[index].quantity * price;
         }
         else {
-
-            const existItemIndex = cart.items.findIndex((item) => item.productId.toString() === productId);
-
-            if (existItemIndex > -1) {
-                cart.items[existItemIndex].quantity += quantity;
-                cart.items[existItemIndex].subtotal = cart.items[existItemIndex].quantity * cart.items[existItemIndex].price;
-            }
-            else {
-                cart.items.push()
-            }
-
-            // // Recalculate Total Amount
-            cart.totalAmount = cart.items.reduce((accume, currentItem) => accume + currentItem.subtotal, 0)
-
+            existing.items.push({productId, quantity, price, subtotal});
         }
 
-        const response = await cart.save();
-
-        return {
-            status: 200,
-            message: 'Item Carted successfully',
-            data: response,
-            success: true,
-        };
-
-    } catch (error) {
-        const handled = await ErrorHandle(error, 'AddToCart');
-        return handled;
+        existing.totalAmount = existing.items.reduce((accume, current) => accume + current.subtotal, 0);
+        
+        result = await existing.save();
     }
+
+    return {
+        status: 200,
+        message: 'Item Carted successfully',
+        data: result,
+        success: true,
+    };
 }
 
 export const DecrementItemQty = async (cartData) => {
@@ -204,7 +211,7 @@ export const DecrementItemQty = async (cartData) => {
 
 export const DeleteCartetItems = async (cartId) => {
     try {
-        
+
     } catch (error) {
         return { status: 500, success: false, error: 'Internal Server Error' };
     }

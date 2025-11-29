@@ -1,93 +1,466 @@
-import { Product } from '../models/product.model.js';
 import { User } from '../models/user.model.js';
 import { Vendor } from '../models/vendor.model.js';
-import { Order } from '../models/order.model.js';
-import { ToDeleteFromCloudStorage, ToSaveCloudStorage } from '../services/cloudUpload.service.js';
-import { BuildVendorQuery, DeleteLocalFile, GenerateEmail, Pagination, ValidateFileSize, ValidateImageFileType, } from '../utils/fileHelper.js';
-import { getVendorDetails } from '../services/vendor.service.js';
+import { DeleteLocalFile, ErrorHandle, } from '../utils/fileHelper.js';
+import { GetAllVendors, GetVendor, RemoveAllVendors, RemoveVendor, UpdateVendor, VendorRegistration } from '../services/vendor.service.js';
+import { GetSecuredAllProducts, GetSecuredProductByIdOrSku } from '../services/product.service.js';
+import { GetOrderById, GetOrders } from '../services/order.service.js';
 
-/* **vendor_signup logic here** */
-export const vendor_signup = async (req, res) => {
+// -----------------------------------------------------------------------------------------------------|
+// CRUD OPERATION FOR VENDOR
+
+/*      * get_me handler *      */
+export const get_me = async (req, res) => {
     try {
-        const { businessEmail, bankDetails } = req.body;
+        const { status, success, message, data } = await GetVendor(req.user.id);
 
-        const errors = [];
-
-        if (!businessEmail) {
-            errors.push(`'businessEmail' field must be required`);
+        return res.status(status).json({ message, data, success });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
         }
 
-        if (!bankDetails) {
-            errors.push(`'bankDetails' must be required`);
-        }
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+    }
+}
 
-        if (errors.length > 0) {
-            return res.status(400).json({
-                errors,
-                message: 'Validation failed',
-                success: false,
-            })
-        }
+/*      * get_vendor_byId handler *      */
+export const get_vendor_byId = async (req, res) => {
+    try {
+        const vendorId = req.params.id;
 
-        const otpKey = businessEmail;
-        const { otp, message, otpExpiresAt } = GenerateEmail(otpKey);
+        const { status, success, message, data } = await GetVendor(vendorId);
 
-        console.log({
-            otp,
-            message,
-            otpExpiresAt,
-        })
-
-        const query = [];
-
-        if (businessEmail) {
-            query.push({ businessEmail });
-        }
-
-        if (bankDetails?.accountNumber) {
-            query.push({ "bankDetails.accountNumber": bankDetails.accountNumber });
-        }
-
-        const existVendor = query.length ? await Vendor.findOne({ $or: query }) : null;
-
-        if (existVendor) {
-            return res.status(409).json({
-                error: `Vendor already registered with this 'businessEmail' or 'bankDetails.accountNumber'`,
-                success: false
-            });
-        }
-
-        return res.status(200).json({
-            message: 'OTP has been sent successfully',
-            warning: 'OTP expires in 5 minutes',
-            data: { ...req.body },
-            otpExpiresAt,
-        });
+        return res.status(status).json({ message, data, success });
 
     } catch (error) {
-        if (error.name === 'ValidationError') {
-            const errors = {};
-
-            Object.keys(error.errors).forEach(key => {
-                errors[key] = error.errors[key].message
-            });
-
-            return res.status(400).json({
-                errors,
-                message: 'Validation failed',
-                success: false,
-            })
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
         }
 
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+    }
+}
+
+/*      * get_vendors handler *      */
+export const get_vendors = async (req, res) => {
+    try {
+        if (req.user.role === 'vendor') {
+            throw {
+                status: 400,
+                message: `Unauthorized: You haven't accessibility`,
+                success: false
+            }
+        }
+
+        const {
+            page = 1,
+            limit = 10,
+            offset,
+            sortBy = 'createdAt',
+            orderSequence = 'desc' } = req.query;
+
+        const { status, success, message, pagination, data } = await GetAllVendors(
+            `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`,
+            { page: parseInt(page), limit: parseInt(limit), offset, sortBy, orderSequence },
+            {}
+        );
+
+        return res.status(status).json({ message, pagination, success, data })
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
+        }
+
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+    }
+}
+
+/*      * vendor_filters handler *      */
+export const vendor_filters = async (req, res) => {
+    try {
+        const {
+            search = '', status = '',
+            businessName = '', businessEmail = '', businessPhone = '',
+            joinRange = '', updatedRange = '', address = '',
+            page = 1, limit = 10, offset,
+            sortBy = 'createdAt', orderSequence = 'desc'
+        } = req.query;
+
+        if (req.user.role === 'vendor') {
+            throw {
+                status: 400,
+                message: `Unauthorized: You haven't accessibility`,
+                success: false
+            }
+        }
+
+        const { status: StatusCode, success, message, pagination, data } = await GetAllVendors(
+            `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`,
+            { page: parseInt(page), limit: parseInt(limit), offset, sortBy, orderSequence },
+            {
+                search, status, businessName, businessEmail, businessPhone, address,
+                joinRange: joinRange ? joinRange.split(',').map(i => i.trim()) : undefined,
+                updatedRange: updatedRange ? updatedRange.split(',').map(i => i.trim()) : undefined,
+            }
+        )
+
+        return res.status(StatusCode).json({ message, pagination, data, success });
+
+    } catch (error) {
+        console.error('Error in vendor_filters:', error);
         return res.status(500).json({
             error: error.message,
             message: 'Internal Server Error',
             success: false,
-        })
+        });
+    }
+};
+
+/*      * vendor_signup handler *      */
+export const vendor_signup = async (req, res) => {
+    try {
+        const {
+            userId,
+            businessName, businessEmail, businessPhone, password,
+            businessDescription,
+            accountNumber, ifsc, bankName,
+            gstNumber, address, type,
+        } = req.body;
+
+        const files = req.files || {};
+
+        const filePayload = {
+            logoUrl: files.logoUrl?.[0] || null,
+            documents: files.documents || []
+        }
+
+        if (!userId) throw { status: 400, message: `'userId' field must be required`, success: false };
+
+        const { status, success, message, data } = await VendorRegistration({
+            userId: req.user.role === 'user' ? req.user.id : userId,
+            businessName, businessEmail, businessPhone,
+            businessDescription, password, gstNumber,
+            status: ['admin', 'super_admin', 'staff'].includes(req.user.role) ? 'approved' : 'pending',
+            bankDetails: {
+                accountNumber,
+                ifsc,
+                bankName
+            },
+            type, address
+        }, filePayload);
+
+        return res.status(status).json({
+            message, data, success
+        });
+
+    } catch (error) {
+
+        const handle = ErrorHandle(error);
+
+        if (handle?.status)
+            return res.status(handle.status).json({ error: handle.error, errors: handle.errors, success: false });
+
+        return res.status(500).json({ error: error.message });
     }
 }
 
-/* **confirm_otp logic here** */
+/*      * update_vendor_profile handler *      */
+export const update_vendor_profile = async (req, res) => {
+    try {
+        const vendorId = req.params.id;
+
+        const {
+            businessName, businessEmail, businessPhone,
+            businessDescription, gstNumber, type,
+            address, accountNumber, ifsc, bankName,
+            onTimeDelivery,
+            removeDocuments
+        } = req.body;
+
+        const files = req.files || {};
+
+        // Convert string[] properly if sent as JSON/string
+        let removeDocs = [];
+        if (typeof removeDocuments === 'string') {
+            try {
+                removeDocs = JSON.parse(removeDocuments);
+            } catch (error) {
+                removeDocs = [removeDocuments];
+            }
+        }
+        else if (Array.isArray(removeDocuments)) removeDocs = removeDocuments;
+
+        const vendorData = {
+            businessName: businessName || undefined,
+            businessEmail: businessEmail || undefined,
+            businessPhone: businessPhone || undefined,
+            businessDescription: businessDescription || undefined,
+            gstNumber: gstNumber || undefined,
+            type: type || undefined,
+            accountNumber: accountNumber || undefined,
+            ifsc: ifsc || undefined, bankName: bankName || undefined,
+            address: address || undefined,
+            onTimeDelivery: onTimeDelivery === 'true' ? true : onTimeDelivery === 'false' ? false : undefined,
+            bankDetails: {
+                accountNumber: accountNumber || undefined,
+                ifsc: ifsc || undefined,
+                bankName: bankName || undefined
+            }
+        }
+
+        const filePayload = {
+            logoUrl: files.logoUrl?.[0],
+            documents: files.documents,
+            removeDocuments: removeDocs
+        }
+
+        const hasBankDetails = Object.values(vendorData.bankDetails)
+            .some(value => value !== undefined);
+
+        const hasFields = Object.keys(vendorData)
+            .filter(key => key !== 'bankDetails')
+            .some(key => vendorData[key] !== undefined);
+
+        const hasFiles = files && Object.keys(files).length > 0;
+
+        if (!hasFields && !hasBankDetails && !hasFiles && removeDocs.length === 0) {
+            throw {
+                status: 400,
+                message: 'At least one field must be required',
+                success: false
+            }
+        }
+
+        const { status, success, data, message } = await UpdateVendor(
+            vendorData,
+            filePayload,
+            vendorId
+        );
+
+        return res.status(status).json({ message, data, success });
+
+    } catch (error) {
+
+        if (error.code === 11000) {
+            const field = Object.keys(error.keyValue)[0];
+            return { status: 409, success: false, error: `${field} already exists` };
+        }
+
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
+        }
+
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+    }
+};
+
+/*      * remove_vendor_profile handler *      */
+export const remove_vendor_profile = async (req, res) => {
+    try {
+        const vendorId = req.params.id;
+
+        const { status, success, message, data } = await RemoveVendor(vendorId);
+
+        return res.status(status).json({ message, data, success });
+
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
+        }
+
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+    }
+}
+
+/*      * clear_vendors handler *      */
+export const clear_vendors = async (req, res) => {
+    try {
+
+        const { status, success, message, data } = await RemoveAllVendors();
+
+        return res.status(status).json({ message, success, data })
+    } catch (error) {
+        return res.status(500).json({
+            error: error.message,
+            message: 'Internal Server Error',
+            success: false,
+        });
+    }
+}
+
+// -----------------------------------------------------------------------------------------------------|
+// PRODUCT
+
+export const get_products_ByVendor = async (req, res) => {
+    try {
+        const {
+            page = 1, limit = 10, offset,
+            search, categoryIds,
+            priceRange, stockStatus,
+            discount, status,
+            sortBy = 'createdAt', orderSequence = 'desc'
+        } = req.query;
+
+        const pagingReq = {
+            page: parseInt(page),
+            limit: parseInt(limit),
+            offset,
+            sortBy, orderSequence
+        }
+
+        const populate = {
+            vendor: { path: 'vendorId', select: '-_id businessName status' },
+            category: { path: 'categoryId', select: '-_id slug description status' }
+        }
+        const vendorId = req.user.role === 'vendor' ? req.user.id : req.query.vendorId;
+
+        const options = {
+            filter: {
+                search,
+                vendorIds: vendorId,
+                categoryIds,
+                priceRange, stockStatus,
+                discount, status,
+            }
+        }
+
+        const baseUrl = `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`;
+
+        const { status: statusCode, success, message, data, pagination } =
+            await GetSecuredAllProducts(baseUrl, pagingReq, populate, options);
+
+        return res.status(statusCode).json({ message, pagination, success, data });
+
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
+        }
+
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+    }
+}
+
+export const get_product_by_pId = async (req, res) => {
+    try {
+        const productId = req.params.pId;
+
+        const vendorId = req.user.role === 'vendor' ? req.user.id : req.query.vendorId;
+
+        const filter = {
+            productId,
+            vendorId
+        }
+
+        const { status: statusCode, message, data, success } =
+            await GetSecuredProductByIdOrSku(filter);
+
+        return res.status(statusCode).json({ message, data, success })
+
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
+        }
+
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+    }
+}
+
+export const get_product_bySku = async (req, res) => {
+    try {
+        const sku = req.params.sku;
+        const vendorId = req.user.role === 'vendor' ? req.user.id : req.query.vendorId;
+
+        const filter = {
+            sku,
+            vendorId
+        }
+
+        const { status, success, message, data } = await GetSecuredProductByIdOrSku(filter);
+
+        return res.status(status).json({ message, data, success });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
+        }
+
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+    }
+}
+
+// -----------------------------------------------------------------------------------------------------|
+// ORDER
+export const get_orders_ByVendor = async (req, res) => {
+    try {
+        const {
+            page = 1, limit = 10, offset,
+            search, userIds,
+            paymentMethod, paymentStatus, status,
+            sortBy = 'createdAt', orderSequence = 'desc'
+        } = req.query;
+
+        const options = {
+            vendorId: req.user.role === 'vendor' ? req.user.id : req.query.vendorId,
+
+            pagingReq: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                offset,
+                sortBy, orderSequence
+            },
+
+            baseUrl: `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`,
+
+            filter: {
+                userIds,
+                search,
+                paymentMethod, paymentStatus, status
+            },
+
+            populates: {
+                user: { path: 'userId', select: 'name status totalSpents' },
+                product: { path: 'items.productId', select: 'name status' },
+            }
+        }
+
+        const { status: statusCode, message, data, success } = await GetOrders(options);
+
+        return res.status(statusCode).json({ message, data, success });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
+        }
+
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+    }
+}
+
+export const get_order_byId = async (req, res) => {
+    try {
+        const options = {
+            populates: {
+                vendor: { path: 'vendorId', select: 'businessName businessEmail status' },
+                user: { path: 'userId', select: 'name status totalSpents' },
+                product: { path: 'items.productId', select: 'name status' },
+            },
+
+            vendorId: req.user.role === 'vendor' ? req.user.id : req.query.vendorId,
+            orderId: req.params.orderId
+        }
+
+        const { status, message, data, success } = await GetOrderById(options);
+
+        return res.status(status).json({ message, data, success });
+
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
+        }
+
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+    }
+}
+
+/*      * confirm_otp handler *      */
 export const confirm_otp = async (req, res) => {
     try {
         const { otp, businessName, businessEmail, ...rest } = req.body;
@@ -176,467 +549,3 @@ export const confirm_otp = async (req, res) => {
         });
     }
 }
-
-export const get_me = async (req, res) => {
-    const vendorId = req.user.id;
-
-    const user = await Vendor.findById(vendorId);
-
-    if (!user) {
-        return res.status(404).json({
-            error: 'Data not found',
-            success: false,
-        });
-    }
-
-    return res.status(200).json({
-        message: 'Data fetched successfully',
-        data: user,
-        success: true,
-    })
-}
-
-/* **get_vendor_dashboard logic here** */
-export const get_dashboard = async (req, res) => {
-    try {
-        const vendorId = req.user.id;
-
-        const totalProducts = await Product.countDocuments({ vendorId });
-        const totalOrders = await Order.countDocuments({ vendorId });
-
-        const revenue = await Order.aggregate([
-            { $match: { vendorId } },
-            { $group: { _id: null, totalRevenue: { $sum: "$totalAmount" } } },
-        ]);
-
-        return res.status(200).json({
-            data: {
-                totalProducts,
-                totalOrders,
-                totalRevenue: revenue[0]?.totalRevenue || 0,
-            },
-            success: true,
-        });
-    } catch (error) {
-        return res.status(500).json({
-            error: error.message,
-            message: 'Internal Server Error',
-            success: false,
-        });
-    }
-}
-
-/* **get_vendors logic here** */
-export const get_vendors = async (req, res) => {
-    try {
-        const {
-            page = 1,
-            limit = 10,
-            offset,
-            status = '',
-            sortBy = 'createdAt',
-            orderSequence = 'desc' } = req.query;
-
-        const parsedLimit = parseInt(limit);
-
-        // Build Query
-        const filter = {};
-
-        // Handle Status
-        if (status) filter.status = status;
-
-        // Count total records
-        const total = await Vendor.countDocuments(filter);
-
-        const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
-            parseInt(page),
-            parsedLimit,
-            offset,
-            total,
-            `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`, filter);
-
-        // Sorting
-        const sortField = ['businessName', 'businessDescription', 'createdAt'].includes(sortBy) ? sortBy : 'createdAt';
-        const sortDirection = orderSequence === 'asc' ? 1 : -1;
-        const sortOption = { [sortField]: sortDirection };
-
-        const vendors = await Vendor.find(filter)
-            .skip(skip)
-            .limit(parsedLimit)
-            .sort(sortOption)
-            .populate({ path: 'userId' })
-
-
-        if (vendors.length === 0) {
-            return res.status(404).json({
-                error: 'Vendor not found',
-                success: false,
-            });
-        }
-
-        return res.status(200).json({
-            pagination: {
-                count: total,
-                prevUrl,
-                nextUrl,
-                currentPage,
-                totalPages,
-                success: true,
-            },
-            message: 'Vendors fetched successfully.',
-            data: vendors,
-        });
-
-    } catch (error) {
-        return res.status(500).json({
-            error: error.message,
-            message: 'Internal Server Error',
-            success: false,
-        });
-    }
-}
-
-/* **get_vendor_byId logic here** */
-export const get_vendor_byId = async (req, res) => {
-    try {
-        const vendorId = req.params.id;
-        const { role, id } = req.user;
-
-        if (role === 'vendor' && vendorId !== id) {
-            return res.status(400).json({
-                error: 'You can access only own data',
-                success: false,
-            });
-        }
-
-        const vendor = await getVendorDetails(vendorId);
-
-        return res.status(200).json({
-            data: vendor.data,
-            success: vendor.status,
-        });
-
-    } catch (error) {
-        return res.status(500).json({
-            error: error.message,
-            message: 'Internal Server Error',
-            success: false,
-        });
-    }
-}
-
-/* **update_vendor_profile logic here** */
-export const update_vendor_profile = async (req, res) => {
-    try {
-        const vendorId = req.params.id;
-        const {
-            businessName,
-            businessEmail,
-            businessPhone,
-            businessDescription,
-            type,
-            gstNumber,
-            bankDetails,
-        } = req.body;
-
-        const { id, role } = req.user;
-
-        if (role === 'vendor') {
-            if (vendorId !== id)
-                return res.status(400).json({
-                    error: 'You can update only own profile',
-                    success: false,
-                });
-        }
-
-        const vendor = await Vendor.findById(vendorId);
-
-        if (!vendor) {
-            return res.status(404).json({
-                error: 'Vendor not found',
-                success: false,
-            });
-        }
-
-        const updateField = {};
-        if (businessName) updateField.businessName = businessName;
-        if (businessEmail) updateField.businessEmail = businessEmail;
-        if (businessPhone) updateField.businessPhone = businessPhone;
-        if (businessDescription) updateField.businessDescription = businessDescription;
-        if (type) updateField.type = type;
-        if (gstNumber) updateField.gstNumber = gstNumber;
-        if (bankDetails) updateField.bankDetails = bankDetails;
-        
-        const files = req.files || {};
-
-        // Handle logo upload
-        const logoFile = files.logoUrl?.[0];
-        if (logoFile) {
-            if (!ValidateImageFileType(logoFile.mimetype)) {
-                DeleteLocalFile(logoFile.path);
-                return res.status(400).json({
-                    error: 'Invalid file type. Only images allowed for logo.',
-                    success: false,
-                });
-            }
-
-            if (!ValidateFileSize(logoFile.size, 1)) {
-                DeleteLocalFile(logoFile.path);
-                return res.status(400).json({
-                    error: 'File size exceeds 2MB limit',
-                    success: false,
-                });
-            }
-
-            const filename = `${Date.now()}-${logoFile.originalname}`;
-
-            // Upload Image Into The Local/Cloud Storage
-            if (process.env.NODE_ENV !== 'development') {
-                const { secure_url } = await ToSaveCloudStorage(
-                    logoFile.path,
-                    'eCommerce/Vendors/LogoUrls',
-                    filename
-                );
-                updateField.logoUrl = secure_url;
-            } else {
-                updateField.logoUrl = logoFile.path;
-            }
-
-            // Delete Old file from the Local/Cloud Storage
-            if (vendor.logoUrl) {
-                if (process.env.NODE_ENV !== 'development')
-                    await ToDeleteFromCloudStorage(
-                        'eCommerce/Vendors/LogoUrls',
-                        vendor.logoUrl
-                    );
-                else DeleteLocalFile(vendor.logoUrl);
-            }
-        }
-
-        // Handle documents upload
-        const documents = files.documents || [];
-        if (documents.length > 0) {
-            updateField.documents = [];
-
-            for (const doc of documents) {
-                if (!ValidateFileSize(doc.size, 5)) {
-                    DeleteLocalFile(doc.path);
-                    return res.status(400).json({
-                        error: `Document "${doc.originalname}" exceeds 5MB limit`,
-                        success: false,
-                    });
-                }
-
-                const docName = `${Date.now()}-${doc.originalname}`;
-
-                // Upload Image Into The Local/Cloud Storage
-                if (process.env.NODE_ENV !== 'development') {
-                    const { secure_url } = await ToSaveCloudStorage(
-                        doc.path,
-                        'eCommerce/Vendors/Documents',
-                        docName
-                    );
-                    updateField.documents.push(secure_url);
-                } else {
-                    updateField.documents.push(doc.path);
-                }
-            }
-
-            // Delete Old file from the Local/Cloud Storage
-            if (vendor.documents?.length) {
-                for (const oldDoc of vendor.documents) {
-                    if (process.env.NODE_ENV !== 'development')
-                        await ToDeleteFromCloudStorage(
-                            'eCommerce/Vendors/Documents',
-                            oldDoc
-                        );
-                    else DeleteLocalFile(oldDoc);
-                }
-            }
-        }
-
-        // Apply updating into the db.collection
-        const updatedVendor = await Vendor.findByIdAndUpdate(vendorId, { $set: updateField }, { new: true });
-
-        return res.status(200).json({
-            message: 'Vendor profile updated successfully',
-            data: updatedVendor,
-            success: true,
-        });
-    } catch (error) {
-        console.error('Error updating vendor profile:', error);
-        return res.status(500).json({
-            error: error.message,
-            message: 'Internal Server Error',
-            success: false,
-        });
-    }
-};
-
-/* **remove_vendor_profile logic here** */
-export const remove_vendor_profile = async (req, res) => {
-    try {
-        const vendorId = req.params.id;
-
-        const vendor = await Vendor.findById(vendorId);
-
-        if (!vendor) {
-            return res.status(404).json({
-                error: 'Vendor not found',
-                success: false,
-            });
-        }
-
-        // Delete Logo (if exists)
-        if (vendor.logoUrl) {
-            try {
-                if (process.env.NODE_ENV !== 'development') {
-                    await ToDeleteFromCloudStorage('eCommerce/Vendors/LogoUrls', vendor.logoUrl);
-                } else {
-                    DeleteLocalFile(vendor.logoUrl);
-                }
-            } catch (error) {
-                console.warn(`Failed to delete logo for vendor ${vendorId}:`, error.message);
-            }
-        }
-
-        // Delete Documents (if exists)
-        if (vendor.documents?.length) {
-            for (const docPath of vendor.documents) {
-                try {
-                    if (process.env.NODE_ENV !== 'development') {
-                        await ToDeleteFromCloudStorage('eCommerce/Vendors/Documents', docPath);
-                    } else {
-                        DeleteLocalFile(docPath);
-                    }
-                } catch (error) {
-                    console.warn(`Failed to delete document ${docPath}:`, error.message);
-                }
-            }
-        }
-
-        // Delete Vendor Record
-        const deletedVendor = await Vendor.findByIdAndDelete(vendorId);
-
-        await User.findByIdAndUpdate(deletedVendor.userId, { role: 'user' });
-
-        return res.status(200).json({
-            message: 'Vendor deleted successfully',
-            data: deletedVendor,
-            success: true,
-        });
-
-    } catch (error) {
-        return res.status(500).json({
-            error: error.message,
-            message: 'Internal Server Error',
-            success: false,
-        });
-    }
-}
-
-/* **clear_category logic here** */
-export const clear_vendors = async (req, res) => {
-    try {
-        const vendors = await Vendor.find();
-
-        if (vendors.length === 0) {
-            return res.status(404).json({
-                error: 'No vendor found to delete',
-                success: false,
-            });
-        }
-
-        for (const vendor of vendors) {
-            await Vendor.findByIdAndUpdate(vendor._id, { role: 'user' });
-        }
-
-        const result = await Vendor.deleteMany({});
-
-        if (result.deletedCount === 0) {
-            return res.status(404).json({
-                error: 'No vendors found to delete',
-                success: false,
-            });
-        }
-
-        return res.status(200).json({
-            message: `All vendors cleared successfully (${result.deletedCount} deleted)`,
-            success: true,
-        });
-
-    } catch (error) {
-        return res.status(500).json({
-            error: error.message,
-            message: 'Internal Server Error',
-            success: false,
-        });
-    }
-}
-
-export const vendor_filters = async (req, res) => {
-    try {
-        const {
-            search, status, address,
-            joinRange, updatedRange,
-            page = 1, limit = 10, offset,
-            sortBy = 'createdAt', orderSequence = 'desc'
-        } = req.query;
-
-        // Build Filters 
-        const filters = {
-            search: search || '',
-            address: address || '',
-            status: status || 'approved',
-            joinRange: joinRange ? joinRange.split(',').map(i => i.trim()) : undefined,
-            updatedRange: updatedRange ? updatedRange.split(',').map(i => i.trim()) : undefined,
-        };
-
-        const parsedLimit = parseInt(limit);
-
-        // Build Mongo query
-        const query = BuildVendorQuery(filters);
-        
-        // Count Total Docs
-        const total = await Vendor.countDocuments(query);
-
-        const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
-            parseInt(page),
-            parsedLimit,
-            offset,
-            total,
-            `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`, query,
-        );
-
-        // Sorting
-        const sortField = ['businessName', 'address', 'createdAt'].includes(sortBy) ? sortBy : 'createdAt';
-        const sortDirection = orderSequence === 'asc' ? 1 : -1;
-        const sortOption = { [sortField]: sortDirection };
-        const vendors = await Vendor.find(query)
-            .skip(skip)
-            .limit(parsedLimit)
-            .sort(sortOption)
-            .populate({ path: 'userId', select: 'name' })
-
-        return res.status(200).json({
-            message: 'Vendors fetched successfully',
-            pagination: {
-                count: total,
-                prevUrl,
-                nextUrl,
-                currentPage,
-                totalPages,
-            },
-            data: vendors,
-            success: true,
-        });
-
-    } catch (error) {
-        console.error('Error in vendor_filters:', error);
-        return res.status(500).json({
-            error: error.message,
-            message: 'Internal Server Error',
-            success: false,
-        });
-    }
-};

@@ -1,196 +1,177 @@
-import { Vendor } from '../models/vendor.model.js';
-import { Category } from '../models/category.model.js';
 import { Product } from '../models/product.model.js';
-import { BuildProductQuery, DeleteLocalFile, ErrorHandle, Pagination, ValidateFileSize, ValidateImageFileType } from '../utils/fileHelper.js';
-import { ClearProducts, CreateProduct, DeleteProduct, UpdateProduct } from '../services/product.service.js';
+import { BuildProductQuery, ErrorHandle, Pagination } from '../utils/fileHelper.js';
+import { ClearProducts, CreateProduct, DeleteProduct, GetPublicProductById, GetPublicProducts, GetSecuredAllProducts, GetSecuredProductByIdOrSku, UpdateProduct } from '../services/product.service.js';
 
-/* **create_product logic here** */
 export const create_product = async (req, res) => {
-    const { name, categoryId, description, price, stock, vendorId } = req.body;
-    const files = req.files || [];
+    try {
+        const {
+            vendorId, categoryId,
+            name, features, description,
+            price, stock
+        } = req.body;
 
-    const productData = {
-        name: name || undefined,
-        description: description || undefined,
-        price: parseFloat(price) || undefined,
-        stock: parseInt(stock) || undefined,
-        sku: `SKU-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        const files = req.files || [];
+
+        const filePayload = {
+            images: files
+        }
+
+        if (vendorId && req.user.role === 'vendor' && req.user.id.toString() !== vendorId.toString()) {
+            throw {
+                status: 401,
+                message: `Unauthorized: You don't have permission to create product for another vendor`,
+                success: false
+            }
+        }
+
+        if (!categoryId) {
+            throw {
+                status: 400,
+                message: `'categoryId' field must be required`,
+                success: false
+            }
+        }
+
+        const productData = {
+            vendorId: ['admin', 'super_admin', 'product_manager'].includes(req.user.role)
+                ? vendorId
+                : req.user.id,
+            categoryId: categoryId || undefined,
+            name: name || undefined,
+            features: features
+                ? Array.isArray(features)
+                    ? features
+                    : features.split(',').map(w => w.trim())
+                : (typeof features === 'object')
+                    ? Object.values(features)
+                    : undefined,
+            description: description || undefined,
+            price: price || undefined,
+            status: ['admin', 'super_admin', 'product_manager'].includes(req.user.role)
+                ? 'approved'
+                : 'pending',
+            stock: stock || 0,
+        }
+
+        const { status, success, message, data } = await CreateProduct(productData, filePayload);
+
+        return res.status(status).json({
+            message, data, success
+        });
+
+    } catch (error) {
+        const handle = ErrorHandle(error);
+
+        if (handle?.status)
+            return res.status(handle.status).json({ error: handle.error, errors: handle.errors, success: false });
+
+        return res.status(500).json({ error: error.message })
     }
-
-    const { status, error, errors, success, message, data } = await CreateProduct(productData, { vendorId, categoryId, files: files || [], user: req.user });
-
-    if (!success) {
-        return res.status(status).json({ errors, error, message, })
-    }
-
-    return res.status(status).json({ message, data, success });
 }
 
-/* **view_products logic here** */
-export const view_products = async (req, res) => {
+export const secured_products = async (req, res) => {
     try {
         const {
             page = 1, limit = 10, offset,
-            status = 'approved',
-            sortBy = 'createdAt', orderSequence = 'desc' } = req.query;
+            search,
+            categoryIds, vendorIds,
+            priceRange, stockStatus,
+            discount, status,
+            sortBy = 'createdAt', orderSequence = 'desc'
+        } = req.query;
 
-        const parsedLimit = parseInt(limit);
+        if (req.user.role === 'vendor') {
+            throw {
+                status: 401,
+                message: `Unauthorized: You don't have permission to access this module`,
+                success: false
+            }
+        }
 
-        // Build Query
-        const filter = {};
+        const baseUrl = `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`;
 
-        // Handle Status
-        if (status) filter.status = status;
-
-        // Count total records
-        const total = await Product.countDocuments(filter);
-
-        const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
-            parseInt(page),
-            parsedLimit,
+        const pagingReq = {
+            page: parseInt(page),
+            limit: parseInt(limit),
             offset,
-            total,
-            status,
-            `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`, filter);
-
-        const sortField = ['name', 'price', 'createdAt'].includes(sortBy) ? sortBy : 'createdAt';
-        const sortDirection = orderSequence === 'asc' ? 1 : -1;
-        const sortOption = { [sortField]: sortDirection };
-
-        const products = await Product.find(filter)
-            .populate({ path: 'vendorId' })
-            .populate({ path: 'categoryId' })
-            .skip(skip)
-            .limit(parsedLimit)
-            .sort(sortOption)
-
-        if (products.length === 0) {
-            return res.status(404).json({
-                error: 'Product not found',
-                success: false,
-            });
+            sortBy, orderSequence
         }
 
-        return res.status(200).json({
-            message: 'Products fetched successfully.',
-            pagination: {
-                count: total,
-                prevUrl,
-                nextUrl,
-                currentPage,
-                totalPages,
-                success: true,
-            },
-            data: products,
-        });
+        const options = {
+            filter: {
+                search,
+                categoryIds, vendorIds,
+                priceRange, stockStatus, discount,
+                status
+            }
+        }
+
+        const populate = {
+            category: {path: 'categoryId', select: 'status name slug description'}
+        }
+        const { status: statusCode, success, message, pagination, data } = await GetSecuredAllProducts(baseUrl, pagingReq, populate, options);
+
+        return res.status(statusCode).json({ message, pagination, data, success });
 
     } catch (error) {
-        return res.status(500).json({
-            error: error.message,
-            message: 'Internal Server Error',
-            success: false,
-        });
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
+        }
+
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
     }
 }
 
-/* **view_single_product logic here** */
-export const view_product_byId = async (req, res) => {
+export const secured_product_by_pId = async (req, res) => {
     try {
-        const key = req.params.id;
+        const productId = req.params.pId;
 
-        const filter = key.startsWith('SKU-') ? { sku: key } : { _id: key };
-        filter.status = 'approved';
-
-        const product = await Product.findOne(filter)
-            .populate({ path: 'vendorId', select: 'shopName -_id' })
-            .populate('categoryId', 'name slug -_id')
-            .select('-vendorId -categoryId');
-
-        if (!product) {
-            return res.status(404).json({
-                error: 'Product not found',
-                success: false,
-            });
+        if (req.user.role === 'vendor') {
+            throw {
+                status: 401,
+                message: `Unauthorized: You don't have permission to access this module`,
+                success: false
+            }
         }
 
-        return res.status(200).json({
-            data: product,
-            success: true,
-        });
+        const { status, success, message, data } = await GetSecuredProductByIdOrSku({ _id: productId });
+
+        return res.status(status).json({ message, data, success });
 
     } catch (error) {
-        return res.status(500).json({
-            error: error.message,
-            message: 'Internal Server Error',
-            success: false,
-        });
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
+        }
+
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
     }
 }
 
-/* **view_vendor_products logic here** */
-export const view_vendor_products = async (req, res) => {
+export const secured_product_by_sku = async (req, res) => {
     try {
-        const vendorId = req.user.id;
+        const sku = req.params.sku;
 
-        const products = await Product.find({ vendorId })
-            .populate({ path: 'vendorId', select: 'shopName' })
-            .populate('categoryId', 'name slug -_id')
-            .select('-vendorId -categoryId');;
-
-        if (products.length === 0) {
-            return res.status(400).json({
-                error: 'Product not found',
-                success: false,
-            });
+        if (req.user.role === 'vendor') {
+            throw {
+                status: 401,
+                message: `Unauthorized: You don't have permission to access this module`,
+                success: false
+            }
         }
 
-        return res.status(200).json({
-            data: products,
-            success: true,
-        });
+        const { status, success, message, data } = await GetSecuredProductByIdOrSku({ sku });
+
+        return res.status(status).json({ message, data, success });
 
     } catch (error) {
-        return res.status(500).json({
-            error: error.message,
-            message: 'Internal Server Error',
-            success: false,
-        });
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
+        }
+
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
     }
 }
 
-/* **view_vendor_product logic here** */
-export const view_vendor_product = async (req, res) => {
-    try {
-        const vendorId = req.user.id;
-        const productId = req.params.id;
-
-        const products = await Product.find({ _id: productId, vendorId })
-            .populate({ path: 'vendorId', select: 'shopName' })
-            .populate('categoryId', 'name slug -_id')
-            .select('-vendorId -categoryId');
-
-        if (products.length === 0) {
-            return res.status(400).json({
-                error: 'Product not found',
-                success: false,
-            });
-        }
-
-        return res.status(200).json({
-            data: products,
-            success: true,
-        });
-
-    } catch (error) {
-        return res.status(500).json({
-            error: error.message,
-            message: 'Internal Server Error',
-            success: false,
-        });
-    }
-}
-
-/* **update_product logic here** */
 export const update_product = async (req, res) => {
     const key = req.params.id;
     const {
@@ -223,7 +204,6 @@ export const update_product = async (req, res) => {
     return res.status(status).json({ message, data, success });
 }
 
-/* **delete_product logic here** */
 export const delete_product = async (req, res) => {
     const key = req.params.id;
 
@@ -236,7 +216,6 @@ export const delete_product = async (req, res) => {
     return res.status(status).json({ message, data, success });
 }
 
-/* **delete_product logic here** */
 export const clear_product = async (req, res) => {
 
     const { status, error, errors, success, message, data } = await ClearProducts(req.user);
@@ -248,8 +227,6 @@ export const clear_product = async (req, res) => {
     return res.status(status).json({ message, data, success });
 }
 
-
-/* **rate_product logic here** */
 export const rate_product = async (req, res) => {
     try {
         const { rating } = req.body;
@@ -297,15 +274,95 @@ export const rate_product = async (req, res) => {
     }
 }
 
-/* **product_filters logic here** */
+// --------------------------------------------------------------------------------------------------|
+// PUBLIC
+export const public_products = async (req, res) => {
+    try {
+
+        const {
+            page = 1, limit = 10,
+            sortBy = 'createdAt', orderSequence = 'desc',
+            search, categoryIds, priceRange, storeName
+        } = req.query;
+
+        const baseUrl = `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`;
+
+        const pagingReq = {
+            page: parseInt(page),
+            limit: parseInt(limit),
+            sortBy, orderSequence
+        }
+
+        const options = {
+            filter: {
+                search, priceRange, storeName,
+                categoryIds,
+                status: 'approved',
+                'vendorId.status': 'approved',
+                'categoryId.status': 'active',
+                stock: { $gte: 1 }
+            }
+        }
+
+        const { status, success, message, pagination, data } = await GetPublicProducts(baseUrl, pagingReq, options);
+
+        return res.status(status).json({ message, success, message, pagination, data });
+
+    } catch (error) {
+
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
+        }
+
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+    }
+}
+
+export const public_product_byId = async (req, res) => {
+    try {
+
+        const productId = req.params.id
+
+        const populate = {
+            vendor: { path: 'vendorId', select: 'name status' },
+            category: { path: 'categoryId', select: 'name status' }
+        };
+
+        const options = {
+            filter:
+            {
+                status: 'approved',
+                vendorStatus: 'approved',
+                categoryStatus: 'active',
+                stock: { $gte: 1 }
+            }
+        }
+
+        const { status: statusCode, success, message, data } = await GetPublicProductById(
+            productId,
+            populate,
+            options
+        );
+
+        return res.status(statusCode).json({ message, data, success });
+
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
+        }
+
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+    }
+}
+
 export const product_filters = async (req, res) => {
     try {
         const {
             search, category,
             stockStatus, priceRange,
             vendor, rating,
-            discount, status,
-            page = 1, limit = 2, offset,
+            discount,
+            page = 1, limit = 10, offset,
             sortBy = 'createdAt', orderSequence = 'desc'
         } = req.query;
 
@@ -318,7 +375,7 @@ export const product_filters = async (req, res) => {
             vendorId: vendor || '',
             rating: rating ? Number(rating) : undefined,
             discount: discount ? Number(discount) : undefined,
-            status: status || 'approved',
+            status: 'approved',
         };
 
         const parsedLimit = parseInt(limit);
@@ -371,4 +428,4 @@ export const product_filters = async (req, res) => {
             success: false,
         });
     }
-};
+}

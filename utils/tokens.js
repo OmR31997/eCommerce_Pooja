@@ -2,8 +2,8 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { RefreshToken } from '../models/token.model.js';
 
-const ACCESS_EXPIRES = process.env.ACCESS_EXPIRES || '15m';
-const REFRESH_EXPIRES = process.env.REFRESH_EXPIRES || '30d';
+const ACCESS_EXPIRES = process.env.ACCESS_TOKEN_EXPIRES_IN ?? '15m';
+const REFRESH_EXPIRES = process.env.REFRESH_TOKEN_EXPIRES_IN ?? '30d';
 
 export const CreateAccessToken = (payload) => {
     return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: ACCESS_EXPIRES });

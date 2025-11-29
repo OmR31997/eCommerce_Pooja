@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
 import { Admin } from '../models/admin.model.js';
 import { Order } from '../models/order.model.js';
-import { Review, Vendor } from '../models/vendor.model.js';
+import { Vendor } from '../models/vendor.model.js';
+import { Review } from '../models/review.model.js';
 import { ErrorHandle, getStartAndEndDate } from '../utils/fileHelper.js';
 import { User } from '../models/user.model.js';
 import { Staff } from '../models/staff.model.js';

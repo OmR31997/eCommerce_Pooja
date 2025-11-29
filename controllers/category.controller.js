@@ -1,6 +1,7 @@
+import { ENV } from '../config/env.config.js';
 import { Category } from '../models/category.model.js';
-import { DeleteLocalFile, GenerateSlug, Pagination, ValidateFileSize, ValidateImageFileType } from '../utils/fileHelper.js';
-import { ToDeleteFromCloudStorage, ToSaveCloudStorage } from '../services/cloudUpload.service.js';
+import { ToSaveCloudStorage } from '../utils/cloudUpload.js';
+import { DeleteLocalFile, GenerateSlug, Pagination, ValidateFiles, ValidateImages } from '../utils/fileHelper.js';
 
 /* **create_product_category logic here** */
 export const create_product_category = async (req, res) => {
@@ -10,7 +11,7 @@ export const create_product_category = async (req, res) => {
 
         // Top-Level and Subcatecory Validation
         const isSubCategory = req.query.sub === 'true';
-        
+
         if (isSubCategory && !parent) {
             return res.status(400).json({
                 error: `Parent category 'id' value is required for 'parent' field`,
@@ -65,32 +66,16 @@ export const create_product_category = async (req, res) => {
 
         // Manage DB, Cloud/Local Storage If File Uploading 
         if (file) {
-            if (!ValidateImageFileType(file.mimetype)) {
-                DeleteLocalFile(file.path);
-                return res.status(400).json({
-                    error: 'Invalid file type. Only images allowed.',
-                    success: false,
-                });
-            }
 
-            if (!ValidateFileSize(file.size, 1)) {
-                DeleteLocalFile(file.path);
-                return res.status(400).json({
-                    error: 'File size exceeds 2MB limit',
-                    success: false,
-                });
-            }
-
-            const categoryFileName = `${generatedSlug.substring(0, 3).toUpperCase()}_${file.filename}`;
+            await ValidateImages(file, 1)
 
             // Upload Image Into The Local/Cloud Storage
-            if (process.env.NODE_ENV !== 'development') {
-                const { secure_url } = await ToSaveCloudStorage(file.path, 'eCommerce/Categories', categoryFileName);
-                categoryData.imageUrl = secure_url;
-            }
-            else {
-                categoryData.imageUrl = file.path;
-            }
+            categoryData.imageUrl = ENV.IS_PROD
+                ? await ToSaveCloudStorage(
+                    file,
+                    'eCommerce/categories',
+                    `CTG-${generatedSlug}`)
+                : { secure_url: file.path };
         }
 
         console.log(parent)
@@ -243,14 +228,14 @@ export const update_category = async (req, res) => {
 /* **view_categories logic here** */
 export const view_categories = async (req, res) => {
     try {
-        const { 
-            page = 1, 
-            limit = 10, 
-            offset = 0, 
-            status = 'active', 
-            parent, 
-            sortBy='-createdAt', 
-            order='-1'} = req.query;
+        const {
+            page = 1,
+            limit = 10,
+            offset = 0,
+            status = 'active',
+            parent,
+            sortBy = '-createdAt',
+            order = '-1' } = req.query;
 
         const parsedPage = parseInt(page);
         const parsedLimit = parseInt(limit);
@@ -262,7 +247,7 @@ export const view_categories = async (req, res) => {
         if (status) query.status = status;
 
         query.parent = (parent === 'null' || parent === undefined) ? null : parent;
-        
+
         // Count total records
         const total = await Category.countDocuments(query);
         const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
@@ -274,8 +259,8 @@ export const view_categories = async (req, res) => {
             `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`);
 
         const sortField = ['name', 'slug', 'createdAt'].includes(sortBy) ? sortBy : 'createdAt';
-        const sortOption = {[sortField]: Number(order)};
-        
+        const sortOption = { [sortField]: Number(order) };
+
         const categories = await Category.find(query)
             .skip(skip)
             .limit(parsedLimit)
@@ -373,108 +358,108 @@ export const view_category_bySlug = async (req, res) => {
 
 /* **search_category logic here** */
 export const search_category = async (req, res) => {
-  try {
-    const {
-      find,
-      page = 1,
-      limit = 10,
-      sortBy = 'createdAt',
-      order = -1
-    } = req.query;
+    try {
+        const {
+            find,
+            page = 1,
+            limit = 10,
+            sortBy = 'createdAt',
+            order = -1
+        } = req.query;
 
-    if (!find || find.trim() === '') {
-      return res.status(400).json({
-        success: false,
-        message: "Please provide a search query in '?find=' parameter."
-      });
+        if (!find || find.trim() === '') {
+            return res.status(400).json({
+                success: false,
+                message: "Please provide a search query in '?find=' parameter."
+            });
+        }
+
+        const parsedPage = parseInt(page);
+        const parsedLimit = parseInt(limit);
+
+        // 1️⃣ Try text search first
+        let query = { $text: { $search: find } };
+        let projection = { score: { $meta: "textScore" } };
+        let sortOption = { score: { $meta: "textScore" } };
+
+        let total = await Category.countDocuments(query);
+        let { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
+            parsedPage,
+            parsedLimit,
+            0,
+            total,
+            null,
+            `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}?find=${find}`
+        );
+
+        let categories = await Category.find(query, projection)
+            .skip(skip)
+            .limit(parsedLimit)
+            .sort(sortOption);
+
+        // 2️⃣ Fallback to regex if text search finds nothing
+        if (categories.length === 0) {
+            query = {
+                $or: [
+                    { name: { $regex: find, $options: "i" } },
+                    { description: { $regex: find, $options: "i" } }
+                ]
+            };
+
+            // Sorting for regex fallback
+            const allowedSorts = ['name', 'slug', 'createdAt'];
+            const safeSortBy = allowedSorts.includes(sortBy) ? sortBy : 'createdAt';
+            sortOption = { [safeSortBy]: parseInt(order) };
+
+            total = await Category.countDocuments(query);
+            const pagination = Pagination(
+                parsedPage,
+                parsedLimit,
+                0,
+                total,
+                null,
+                `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}?find=${find}`
+            );
+
+            categories = await Category.find(query)
+                .skip(pagination.skip)
+                .limit(parsedLimit)
+                .sort(sortOption);
+
+            nextUrl = pagination.nextUrl;
+            prevUrl = pagination.prevUrl;
+            totalPages = pagination.totalPages;
+            currentPage = pagination.currentPage;
+        }
+
+        if (!categories.length) {
+            return res.status(404).json({
+                success: false,
+                message: `No categories found matching "${find}".`
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: `Found ${categories.length} matching categories.`,
+            data: categories,
+            pagination: {
+                count: total,
+                prevUrl,
+                nextUrl,
+                currentPage,
+                totalPages
+            }
+        });
+
+    } catch (error) {
+        console.error('Error in search_category:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal Server Error',
+            error: error.message
+        });
     }
-
-    const parsedPage = parseInt(page);
-    const parsedLimit = parseInt(limit);
-
-    // 1️⃣ Try text search first
-    let query = { $text: { $search: find } };
-    let projection = { score: { $meta: "textScore" } };
-    let sortOption = { score: { $meta: "textScore" } };
-
-    let total = await Category.countDocuments(query);
-    let { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
-      parsedPage,
-      parsedLimit,
-      0,
-      total,
-      null,
-      `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}?find=${find}`
-    );
-
-    let categories = await Category.find(query, projection)
-      .skip(skip)
-      .limit(parsedLimit)
-      .sort(sortOption);
-
-    // 2️⃣ Fallback to regex if text search finds nothing
-    if (categories.length === 0) {
-      query = {
-        $or: [
-          { name: { $regex: find, $options: "i" } },
-          { description: { $regex: find, $options: "i" } }
-        ]
-      };
-
-      // Sorting for regex fallback
-      const allowedSorts = ['name', 'slug', 'createdAt'];
-      const safeSortBy = allowedSorts.includes(sortBy) ? sortBy : 'createdAt';
-      sortOption = { [safeSortBy]: parseInt(order) };
-
-      total = await Category.countDocuments(query);
-      const pagination = Pagination(
-        parsedPage,
-        parsedLimit,
-        0,
-        total,
-        null,
-        `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}?find=${find}`
-      );
-
-      categories = await Category.find(query)
-        .skip(pagination.skip)
-        .limit(parsedLimit)
-        .sort(sortOption);
-
-      nextUrl = pagination.nextUrl;
-      prevUrl = pagination.prevUrl;
-      totalPages = pagination.totalPages;
-      currentPage = pagination.currentPage;
-    }
-
-    if (!categories.length) {
-      return res.status(404).json({
-        success: false,
-        message: `No categories found matching "${find}".`
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: `Found ${categories.length} matching categories.`,
-      data: categories,
-      pagination: {
-        count: total,
-        prevUrl,
-        nextUrl,
-        currentPage,
-        totalPages
-      }
-    });
-
-  } catch (error) {
-    console.error('Error in search_category:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Internal Server Error',
-      error: error.message
-    });
-  }
 };
 
 /* **remove_category logic here** */

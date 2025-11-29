@@ -1,13 +1,62 @@
 import { Cart } from "../models/cart.model.js";
 import { Order } from "../models/order.model.js";
+import { GetOrders } from "../services/order.service.js";
+
+/*      * manage_vendor handler *      */
+export const view_user_orders = async (req, res) => {
+    try {
+        const {
+            page = 1, limit = 10, offset,
+            search, userIds, vendorIds,
+            paymentMethod, paymentStatus, status,
+            sortBy = 'createdAt', orderSequence = 'desc'
+        } = req.query;
+
+        const options = {
+            pagingReq: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                offset,
+                sortBy, orderSequence
+            },
+
+            baseUrl: `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`,
+
+            filter: {
+                search,
+                userIds, vendorIds,
+                status, paymentStatus,
+                paymentMethod
+            },
+
+            populates: {
+                vendor: { path: 'vendorId', select: 'businessName businessEmail status' },
+                user: { path: 'userId', select: 'name status totalSpents' },
+                product: { path: 'items.productId', select: 'name status' },
+            }
+
+        }
+
+        const { status: statusCode, message, pagination, success, data, } = await GetOrders(options);
+
+        return res.status(statusCode).json({ message, pagination, success, data, });
+
+    } catch (error) {
+        return res.status(500).json({
+            error: error.message,
+            message: 'Internal Server Error',
+            success: false
+        });
+    }
+}
 
 /* **checkout logic here** */
 export const checkout = async (req, res) => {
     try {
-        const { 
+        const {
             userId,
             shippingAddress,
-            paymentMethod = "COD" 
+            paymentMethod = "COD"
         } = req.body;
 
         const orderData = {
@@ -25,11 +74,11 @@ export const checkout = async (req, res) => {
                 success: false,
             });
         }
-        
+
         const vendorGroups = {};
 
         cart.items.forEach(item => {
-            
+
             const vendorId = item.productId.vendorId.toString();
 
             if (!vendorGroups[vendorId])
@@ -85,44 +134,6 @@ export const checkout = async (req, res) => {
             });
         }
 
-        return res.status(500).json({
-            error: error.message,
-            message: 'Internal Server Error',
-            success: false
-        });
-    }
-}
-
-/* **view_user_orders logic here** */
-export const view_user_orders = async (req, res) => {
-    try {
-        const { id, role } = req.user;
-
-        const filter = {};
-        if (role === 'vendor') {
-            filter.vendorId = id;
-        }
-        else if (role === 'user') {
-            filter.userId = id;
-        }
-
-        const orders = await Order.find(filter)
-            .populate({ path: 'items.productId' })
-            .sort({ createdAt: -1 });
-
-        if (orders.length === 0) {
-            return res.status(404).json({
-                error: 'Order not found',
-                success: false,
-            });
-        }
-
-        return res.status(200).json({
-            data: orders,
-            success: true,
-        });
-
-    } catch (error) {
         return res.status(500).json({
             error: error.message,
             message: 'Internal Server Error',

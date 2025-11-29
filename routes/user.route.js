@@ -1,6 +1,6 @@
 import express from 'express';
 import { AuthAccess } from '../middlewares/auth.middleware.js';
-import { clear_users, get_me, get_user_byId, get_users, remove_user_profile, update_user_profile, users_filters, } from '../controllers/user.controller.js';
+import { clear_users, get_me, get_order_byId, get_orders_ByUser, get_user_byId, get_users, remove_user_profile, update_user_profile, users_filters, } from '../controllers/user.controller.js';
 
 const router = express.Router();
 
@@ -52,5 +52,20 @@ router.delete('/:id/delete', AuthAccess('User', 'delete'), remove_user_profile);
    @access -> Private (admin/super_admin/user_manager) 
 */
 router.delete('/clear', AuthAccess('User', 'delete'), clear_users);
+
+// ORDER
+/* @description -> To view product by productId which already created by own
+   @end-Point -> /api/orders
+   @methtod -> GET
+   @access -> Private (vendor/vendor_manager/admin/super_admin) 
+*/
+router.get('/orders', AuthAccess('User', 'read'), get_orders_ByUser);
+
+/* @description -> To view single product by orderId
+   @end-Point -> /api/user/order/:orderId
+   @methtod -> GET
+   @access -> Private (user/user_manager/admin/super_admin) 
+*/
+router.get('/order/:orderId/', AuthAccess('User', 'read'), get_order_byId);
 
 export default router;

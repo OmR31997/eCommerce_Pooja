@@ -23,7 +23,7 @@ export const GetAllUsers = async (baseUrl, pagingReq, filterReq) => {
     if (total === 0) {
         throw {
             status: 404,
-            message: 'User not found',
+            message: 'User account not found',
             success: false,
         }
     }
@@ -48,7 +48,6 @@ export const GetAllUsers = async (baseUrl, pagingReq, filterReq) => {
         .limit(pagingReq.limit)
         .sort(sortOption);
 
-    console.log(users)
     return {
         status: 200,
         message: `Users fetched successfully.`,
@@ -58,8 +57,8 @@ export const GetAllUsers = async (baseUrl, pagingReq, filterReq) => {
             nextUrl,
             currentPage,
             totalPages,
-            success: true,
         },
+        success: true,
         data: users
     }
 }

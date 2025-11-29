@@ -1,161 +1,269 @@
 import {
-    CreateAdmin, DeleteAdmin, ReadAdmin, UpdateAdmin, MONGO_DB_BACKUP,
-    ManageProduct, ManageStaff, ManageUser, ManageVendor
+    CreateAdmin, DeleteAdmin, UpdateAdmin,
+    ManageProduct, ManageStaff, ManageUser, ManageVendor,
+    GetAdmin
 } from "../services/admin.service.js";
+import { ErrorHandle } from "../utils/fileHelper.js";
 
-export const backup_database = async (req, res) => {
-    const { status, error, success, message, backupPath, fileName, clearFile } = await MONGO_DB_BACKUP({
-        role: req.user.role,
-        isSuper: true,
-        secureKey: req.headers['x-backup-key']
-    });
-
-    if (!success) {
-        return res.status(status).json({ error, success });
-    }
-
-    res.download(backupPath, fileName, () => clearFile());
-    // return res.status(status).json({ message, success });
-}
-
-/* **create_admin_dashboard logic here** */
+/*      * create_admin handler *      */
 export const create_admin = async (req, res) => {
+    try {
+        const { name, email, password, } = req.body;
 
-    const { name, email, password, } = req.body;
+        if (req.user.role !== 'super_admin') {
+            throw {
+                status: 401,
+                message: `Unauthorized: You don't have permission to create admin`
+            }
+        }
 
-    const adminData = {
-        name: name || undefined,
-        email: email || undefined,
-        password: password || undefined,
-    };
+        const adminData = { name, email, password };
 
-    const { status, error, errors, success, data, message } = await CreateAdmin(adminData);
+        const { status, message, data, success } = await CreateAdmin(adminData);
 
-    if (!success) {
-        return res.status(status).json({ error, errors, message });
+        return res.status(status).json({ message, data, success });
+
+    } catch (error) {
+        const handle = ErrorHandle(error);
+
+        if (handle?.status)
+            return res.status(handle.status).json({ success: false, error: handle.error, errors: handle.errors });
+
+        return res.status(500).json({ success: false, error: error.message });
     }
-
-    return res.status(status).json({ message, data, success });
 }
 
-/* **get_admin logic here** */
+/*      * get_admin handler *      */
 export const get_admin = async (req, res) => {
+    try {
+        const { status, success, data, message } = await GetAdmin(req.user);
 
-    const { status, error, errors, success, data, message } = await ReadAdmin(req.user);
+        return res.status(status).json({ message, data, success });
 
-    if (!success) {
-        return res.status(status).json({ error, errors, message });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
+        }
+
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
     }
-
-    return res.status(status).json({ message, data, success });
 
 }
 
-/* **update_admin_profile logic here** */
+/*      * get_admin handler *      */
 export const update_profile = async (req, res) => {
 
-    const { role, id } = req.user;
-    const { name, email, adminId = req.user.id } = req.body;
+    try {
+        const { role, id } = req.user;
 
-    if (role === 'admin' && id !== adminId) {
-        return res.status(403).json({
-            error: 'You can update only own profile',
-            success: false,
-        });
+        const {
+            name, email,
+            adminId = req.user.id
+        } = req.body;
+
+        if (role === 'admin' && id !== adminId) {
+            throw {
+                status: 401,
+                message: `Unauthorized: You don't have permission to update another`,
+            }
+        }
+
+        const adminData = { name, email }
+
+        const { status, success, data, message } = await UpdateAdmin(adminData, adminId);
+
+        return res.status(status).json({ message, data, success });
+
+    } catch (error) {
+        const handle = ErrorHandle(error);
+
+        if (handle?.status)
+            return res.status(handle.status).json({ success: false, error: handle.error, errors: handle.errors });
+
+        return res.status(500).json({ success: false, error: error.message });
     }
-
-    const adminData = {
-        name: name || undefined,
-        email: email || undefined,
-    }
-
-    const { status, error, errors, success, data, message } = await UpdateAdmin(adminData, adminId);
-
-    if (!success) {
-        return res.status(status).json({ error, errors, message });
-    }
-
-    return res.status(status).json({ message, data, success });
 }
 
-/* **delete_admin logic here** */
+/*      * delete_admin handler *      */
 export const delete_admin = async (req, res) => {
 
-    const { role, id } = req.user;
-    const adminId = req.params.id;
+    try {
+        const { role, id } = req.user;
+        const adminId = req.params.id;
 
-    if (role === 'admin' && id !== adminId) {
-        return res.status(403).json({
-            error: 'You can update only own profile',
-            success: false,
-        });
+        if (role === 'admin' && id !== adminId) {
+            throw {
+                status: 401,
+                message: `Unauthorized: You don't have permission to update another`,
+            }
+        }
+
+        const { status, success, data, message } = await DeleteAdmin(adminId);
+
+        return res.status(status).json({ message, data, success });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
+        }
+
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
     }
-
-    const { status, error, errors, success, data, message } = await DeleteAdmin(adminId);
-
-    if (!success) {
-        return res.status(status).json({ error, errors, message });
-    }
-
-    return res.status(status).json({ message, data, success });
 }
 
-/* **manage_staff logic here** */
+/*      * manage_staff handler *      */
 export const manage_staff = async (req, res) => {
 
-    const staffId = req.params.id;
-    const { status, error, errors, success, data, message } = await ManageStaff(req.body.isActive, staffId);
+    try {
+        const staffId = req.params.id;
 
-    if (!success) {
-        return res.status(status).json({ error, errors, message });
+        const status = req.body.status;
+
+        if (!status) {
+            throw {
+                status: 400,
+                message: `'status' field must be required!`
+            }
+        }
+
+        const { status: statusCode, success, data, message } = await ManageStaff(status, staffId);
+
+        return res.status(statusCode).json({ message, data, success });
+
+    } catch (error) {
+        const handle = ErrorHandle(error);
+
+        if (handle?.status)
+            return res.status(handle.status).json({ success: false, error: handle.error, errors: handle.errors });
+
+        return res.status(500).json({ success: false, error: error.message });
     }
-
-    return res.status(status).json({ message, data, success });
 }
 
-/* **manage_vendor logic here** */
+/*      * manage_vendor handler *      */
 export const manage_vendor = async (req, res) => {
 
-    const vendorId = req.params.id;
-    const { status, error, errors, success, data, message } = await ManageVendor(req.body.status, vendorId);
+    try {
+        const vendorId = req.params.id;
 
-    if (!success) {
-        return res.status(status).json({ error, errors, message });
+        const status = req.body.status;
+
+        if (!status) {
+            throw {
+                status: 400,
+                message: `'status' field must be required!`
+            }
+        }
+
+        const { status: statusCode, success, data, message } = await ManageVendor(status, vendorId);
+
+        return res.status(statusCode).json({ message, data, success });
+
+    } catch (error) {
+        const handle = ErrorHandle(error);
+
+        if (handle?.status)
+            return res.status(handle.status).json({ success: false, error: handle.error, errors: handle.errors });
+
+        return res.status(500).json({ success: false, error: error.message });
     }
-
-    return res.status(status).json({ message, data, success });
 }
 
-/* **manage_user logic here** */
+/*      * manage_user handler *      */
 export const manage_user = async (req, res) => {
 
-    const userId = req.params.id;
-    const { status, error, errors, success, data, message } = await ManageUser(req.body.status, userId);
+    try {
+        const userId = req.params.id;
 
-    if (!success) {
-        return res.status(status).json({ error, errors, message });
+        const status = req.body.status;
+
+        if (!status) {
+            throw {
+                status: 400,
+                message: `'status' field must be required!`
+            }
+        }
+
+        const { status: statusCode, success, data, message } = await ManageUser(status, userId);
+
+        return res.status(statusCode).json({ message, data, success });
+
+    } catch (error) {
+
+        const handle = ErrorHandle(error);
+
+        if (handle?.status)
+            return res.status(handle.status).json({ success: false, error: handle.error, errors: handle.errors });
+
+        return res.status(500).json({ success: false, error: error.message });
     }
-
-    return res.status(status).json({ message, data, success });
 }
 
-/* **manage_product logic here** */
+/*      * manage_product handler *      */
 export const manage_product = async (req, res) => {
 
-    const key = req.params.id.startsWith('SKU-') ? { sku: key } : { _id: key };
+    try {
+        const productId = req.params.pId;
 
-    if (!status) {
-        return res.status(400).json({
-            error: `Please provide 'status' field with value from either 'pending', 'approved', 'rejected', or, 'inactive'`,
-            success: false,
-        });
+        const status = req.body.status;
+
+        if (!status) {
+            throw {
+                status: 400,
+                message: `'status' field must be required!`
+            }
+        }
+
+        const { status: statusCode, success, data, message } = await ManageProduct(status, productId);
+
+        return res.status(statusCode).json({ message, data, success });
+    } catch (error) {
+        const handle = ErrorHandle(error);
+
+        if (handle?.status)
+            return res.status(handle.status).json({ success: false, error: handle.error, errors: handle.errors });
+
+        return res.status(500).json({ success: false, error: error.message });
     }
+}
 
-    const { status, error, errors, success, data, message } = await ManageProduct(status, key);
+/*      * manage_user handler *      */
+export const manage_permission = async (req, res) => {
+    try {
+        const permissionId = req.params.permissionId
 
-    if (!success) {
-        return res.status(status).json({ error, errors, message });
+        const { addModules, removeModules, actions } = req.body;
+
+        if (!modules && !actions) {
+            throw {
+                status: 400,
+                message: `Either 'modules' or 'action' field must be required!`
+            }
+        }
+
+        const permissionData = {
+            addModules: Array.isArray(addModules)
+                ? addModules
+                : (typeof addModules === 'object')
+                    ? Object.values(addModules)
+                    : (typeof addModules === 'string')
+                        ? addModules.split(',').map(w => w.trim())
+                        : [],
+            removeModules: Array.isArray(removeModules)
+                ? removeModules
+                : (typeof removeModules === 'object')
+                    ? Object.values(removeModules)
+                    : (typeof removeModules === 'string')
+                        ? removeModules.split(',').map(w => w.trim())
+                        : [],
+            actions: ''
+        }
+
+    } catch (error) {
+        const handle = ErrorHandle(error);
+
+        if (handle?.status)
+            return res.status(handle.status).json({ success: false, error: handle.error, errors: handle.errors });
+
+        return res.status(500).json({ success: false, error: error.message });
     }
-
-    return res.status(status).json({ message, data, success });
 }

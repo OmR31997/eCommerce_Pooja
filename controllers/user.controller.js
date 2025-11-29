@@ -1,10 +1,7 @@
-import { User } from '../models/user.model.js';
-import { Vendor } from '../models/vendor.model.js';
-import bcrypt from 'bcryptjs'
-import { BuildUserQuery, Pagination } from '../utils/fileHelper.js';
+import { GetOrderById } from '../services/order.service.js';
 import { GetAllUsers, GetUser, RemoveAllUsers, RemoveUser, UpdateUser } from '../services/user.service.js';
 
-/*      *get_me handler*      */
+/*      * get_me handler *      */
 export const get_me = async (req, res) => {
     try {
         const { status, success, message, data } = await GetUser(req.user.id);
@@ -15,11 +12,11 @@ export const get_me = async (req, res) => {
             return res.status(error.status).json({ success: false, error: error.message });
         }
 
-        return res.status(500).json({ success: false, error: 'Internal Server Error' });
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
     }
 }
 
-/*      *get_user_byId handler*      */
+/*      * get_user_byId handler *      */
 export const get_user_byId = async (req, res) => {
     try {
         const userId = req.params.id;
@@ -33,11 +30,11 @@ export const get_user_byId = async (req, res) => {
             return res.status(error.status).json({ success: false, error: error.message });
         }
 
-        return res.status(500).json({ success: false, error: 'Internal Server Error' });
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
     }
 }
 
-/* **get_users logic here** */
+/*      * get_users handler *       */
 export const get_users = async (req, res) => {
     try {
         if (req.user.role === 'user')
@@ -60,17 +57,18 @@ export const get_users = async (req, res) => {
             {}
         );
 
-        return res.status(status).json({ message, pagination, data, success });
+        return res.status(status).json({ message, pagination, success, data });
 
     } catch (error) {
         if (error.status) {
             return res.status(error.status).json({ success: false, error: error.message });
         }
 
-        return res.status(500).json({ success: false, error: 'Internal Server Error' });
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
     }
 }
 
+/*      * users_filters handler *       */
 export const users_filters = async (req, res) => {
     try {
         const {
@@ -104,11 +102,11 @@ export const users_filters = async (req, res) => {
             return res.status(error.status).json({ success: false, error: error.message });
         }
 
-        return res.status(500).json({ success: false, error: 'Internal Server Error' });
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
     }
 };
 
-/* **update_user_profile logic here** */
+/*      * update_user_profile handler *       */
 export const update_user_profile = async (req, res) => {
     try {
         const {
@@ -126,9 +124,9 @@ export const update_user_profile = async (req, res) => {
             segment: segment || undefined,
         }
 
-        const isExist = Object.keys(userData).filter(key => userData[key] !== undefined);
+        const hasAnyField = Object.values(userData).some(value => value !== undefined)
 
-        if(isExist.length === 0) {
+        if(!hasAnyField) {
             throw {
                 status: 400, 
                 message: 'Atleast one field must be required for update',
@@ -149,7 +147,7 @@ export const update_user_profile = async (req, res) => {
     }
 }
 
-/* **delete_user_profile logic here** */
+/*      * remove_user_profile handler *       */
 export const remove_user_profile = async (req, res) => {
     try {
         const userId = req.params.id;
@@ -167,7 +165,7 @@ export const remove_user_profile = async (req, res) => {
     }
 }
 
-/* **clear_users logic here** */
+/*      * clear_users handler *       */
 export const clear_users = async (req, res) => {
     try {
         if(['admin', 'super_admin'].includes(req.user.role)) {
@@ -181,6 +179,79 @@ export const clear_users = async (req, res) => {
             message: `Unauthorized: You haven't accessibility to clear action`,
             success: false
         }
+
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
+        }
+
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+    }
+}
+
+// ---------------------------
+// PRODUCT
+
+export const get_orders_ByUser = async (req, res) => {
+    try {
+        const {
+            page = 1, limit = 10, offset,
+            search, userIds,
+            paymentMethod, paymentStatus, status,
+            sortBy = 'createdAt', orderSequence = 'desc'
+        } = req.query;
+
+        const options = {
+            userId: req.user.role === 'user' ? req.user.id : req.query.userId,
+
+            pagingReq: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                offset,
+                sortBy, orderSequence
+            },
+
+            baseUrl: `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`,
+
+            filter: {
+                search,
+                paymentMethod, paymentStatus, status
+            },
+
+            populates: {
+                user: { path: 'userId', select: 'name status totalSpents' },
+                product: { path: 'items.productId', select: 'name status' },
+            }
+        }
+
+        const { status: statusCode, message, data, success } = await GetOrders(options);
+
+        return res.status(statusCode).json({ message, data, success });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
+        }
+
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+    }
+}
+
+export const get_order_byId = async (req, res) => {
+    try {
+        const options = {
+            populates: {
+                vendor: { path: 'vendorId', select: 'businessName businessEmail status' },
+                user: { path: 'userId', select: 'name status totalSpents' },
+                product: { path: 'items.productId', select: 'name status' },
+            },
+
+            userId: req.user.role === 'user' ? req.user.id : req.query.userId,
+            orderId: req.params.orderId
+        }
+
+        const { status, message, data, success } = await GetOrderById(options);
+
+        return res.status(status).json({ message, data, success });
 
     } catch (error) {
         if (error.status) {

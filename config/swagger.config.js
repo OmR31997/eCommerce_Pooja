@@ -39,7 +39,8 @@ const doc = {
     { name: 'Cart', description: 'Cart management routes' },
     { name: 'Order', description: 'Order management routes' },
     { name: 'Payment', description: 'Payment management routes' },
-    { name: 'API Testing', description: 'Health check & testing endpoints' }
+    { name: 'API Testing', description: 'Health check & testing endpoints' },
+    { name: 'Backup System', description: 'Backup Routes' }
   ],
 
   components: {
@@ -96,6 +97,7 @@ const getTagFromRoute = (route) => {
     '/cart': 'Cart',
     '/order': 'Order',
     '/payment': 'Payment',
+    '/backup': 'Backup System',
     '/health': 'API Testing'
   };
 

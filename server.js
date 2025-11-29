@@ -22,6 +22,7 @@ import CartRoute from './routes/cart.route.js';
 import PaymentRoute from './routes/payment.route.js';
 import OrderRoute from './routes/order.route.js';
 import DashboardRoute from './routes/dashboard.route.js';
+import BackupRoute from './routes/backup.route.js';
 import { Authentication } from './middlewares/auth.middleware.js';
 
 const appServer = express();
@@ -80,6 +81,7 @@ appServer.use('/api/payment', Authentication, PaymentRoute);
 appServer.use('/api/order', Authentication, OrderRoute);
 appServer.use('/api/user', Authentication, UserRoute);
 appServer.use('/api/dashboard', Authentication, DashboardRoute);
+appServer.use('/api/backup', Authentication, BackupRoute);
 
 const port = process.env.PORT;
 
