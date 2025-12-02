@@ -6,108 +6,9 @@ import { Role } from '../models/role.model.js';
 import { Order } from '../models/order.model.js';
 import { Vendor } from '../models/vendor.model.js';
 import { User } from '../models/user.model.js';
-import { BuildVendorQuery, DeleteLocalFile, Pagination, ToDeleteLocalFilesParallel, ValidateDocs, ValidateLogo } from '../utils/fileHelper.js';
+import { BuildVendorQuery, DeleteLocalFile, Pagination, ValidateDocs, ValidateLogo } from '../utils/fileHelper.js';
 import { ToDeleteFilesParallel, ToDeleteFromCloudStorage, ToSaveCloudStorage, ToUploadParallel } from '../utils/cloudUpload.js';
-
-export const VendorRegistration = async (vendorData, filePayload) => {
-
-    const SALT = parseInt(process.env.HASH_SALT) || 10;
-
-    const { documents, logoUrl } = filePayload;
-
-    const existing = await User.findById(vendorData.userId);
-
-    if (!existing) {
-        throw {
-            status: 404,
-            message: `User account not exist for ID: ${vendorData.userId}`,
-            success: false
-        }
-    }
-
-    // Validate
-    if (documents?.length > 0) {
-        await ValidateDocs(documents);
-    };
-
-    if (logoUrl) {
-        await ValidateLogo(logoUrl);
-    };
-
-    const uploadedFiles = {
-        documents: [],
-        logoUrl: null
-    }
-
-    try {
-
-        if (documents?.length > 0) {
-            if (ENV.IS_PROD) {
-                // Upload to cloud (already returns array of objects)
-                uploadedFiles.documents = await ToUploadParallel(
-                    documents,
-                    'eCommerce/Product/Documents',
-                    'DOC-'
-                );
-            }
-            else {
-                // DEV MODE -> return array of objects for consistency
-                uploadedFiles.documents = documents.map((doc) => (
-                    { secure_url: doc.path, public_id: null }
-                ));
-            }
-        }
-
-        if (logoUrl) {
-            if (ENV.IS_PROD) {
-
-                // Upload to cloud (already returns array of objects)
-                uploadedFiles.logoUrl = await ToSaveCloudStorage(
-                    logoUrl,
-                    'eCommerce/Product/logoUrls',
-                    `LOGO-${crypto.randomBytes(12).toString('hex')}`
-                )
-            }
-            else {
-
-                // DEV MODE -> return array of objects for consistency
-                uploadedFiles.logoUrl = logoUrl ? { secure_url: logoUrl.path, public_id: null } : {};
-            }
-        }
-
-        // Assign uploaded files to vendorData
-        if (uploadedFiles.documents.length > 0) vendorData.documents = uploadedFiles.documents;
-        if (uploadedFiles.logoUrl) vendorData.logoUrl = uploadedFiles.logoUrl;
-
-        // Set role & hash password
-        const role = await Role.findOne({ name: 'vendor' })
-
-        vendorData.role = role._id;
-        vendorData.permission = role.permissions[0];
-
-        vendorData.password = await bcrypt.hash(vendorData.password, SALT);
-
-        const data = await Vendor.create(vendorData);
-
-        return { status: 200, message: 'Vendor registration done successfully', data, success: true };
-
-    } catch (error) {
-        if (uploadedFiles.documents.length > 0) {
-            await ToDeleteFilesParallel(uploadedFiles.documents);
-        }
-
-        if (uploadedFiles.logoUrl?.public_id) {
-            await ToDeleteFromCloudStorage(uploadedFiles.logoUrl.public_id)
-        }
-
-        if (ENV.IS_DEV) {
-            const temp = [...documents, logoUrl].filter(Boolean);
-            await Promise.all(temp.map(f => DeleteLocalFile(f.path)));
-        }
-        throw error;
-
-    }
-}
+import { Notification } from '../models/notification.model.js';
 
 export const GetVendor = async (userId) => {
     const vendor = await Vendor.findById(userId);
@@ -120,8 +21,6 @@ export const GetVendor = async (userId) => {
         }
     }
 
-    vendor.logoUrl = ToCloudUrl(vendor?.logoUrl);
-    vendor.documents = vendor?.documents.map(id => ToCloudUrl(id));
     return { status: 200, message: 'Vendor account fetched successfully.', data: vendor, success: false };
 }
 
@@ -219,7 +118,7 @@ export const UpdateVendor = async (vendorData, filePayload, vendorId) => {
 
             if (vendor.logoUrl?.public_id && ENV.IS_PROD)
                 await ToDeleteFromCloudStorage(vendor.logoUrl.public_id);
-            else if (vendor.logoUrl?.secure_url) 
+            else if (vendor.logoUrl?.secure_url)
                 await DeleteLocalFile(vendor.logoUrl.secure_url);
 
             uploadedLogo = ENV.IS_PROD
@@ -259,10 +158,10 @@ export const UpdateVendor = async (vendorData, filePayload, vendorId) => {
             await ToDeleteFilesParallel(uploadedDocs)
         }
 
-        if(uploadedLogo?.public_id) {
+        if (uploadedLogo?.public_id) {
             await ToDeleteFromCloudStorage(uploadedLogo.public_id);
         }
-        else if(uploadedLogo?.secure_url && ENV.IS_DEV) {
+        else if (uploadedLogo?.secure_url && ENV.IS_DEV) {
             await DeleteLocalFile(uploadedLogo.secure_url);
         }
 
@@ -371,6 +270,7 @@ export const RemoveAllVendors = async () => {
         success: true,
     };
 }
+
 
 // ------------------------------------------------------------------------
 

@@ -1,13 +1,11 @@
 import { User } from '../models/user.model.js';
 import { Vendor } from '../models/vendor.model.js';
 import { DeleteLocalFile, ErrorHandle, } from '../utils/fileHelper.js';
-import { GetAllVendors, GetVendor, RemoveAllVendors, RemoveVendor, UpdateVendor, VendorRegistration } from '../services/vendor.service.js';
+import { GetAllVendors, GetVendor, RemoveAllVendors, RemoveVendor, UpdateVendor } from '../services/vendor.service.js';
 import { GetSecuredAllProducts, GetSecuredProductByIdOrSku } from '../services/product.service.js';
 import { GetOrderById, GetOrders } from '../services/order.service.js';
 
-// -----------------------------------------------------------------------------------------------------|
-// CRUD OPERATION FOR VENDOR
-
+// --------------------------------------CRUD OPERATION FOR VENDOR---------------------------------------|
 /*      * get_me handler *      */
 export const get_me = async (req, res) => {
     try {
@@ -115,54 +113,6 @@ export const vendor_filters = async (req, res) => {
         });
     }
 };
-
-/*      * vendor_signup handler *      */
-export const vendor_signup = async (req, res) => {
-    try {
-        const {
-            userId,
-            businessName, businessEmail, businessPhone, password,
-            businessDescription,
-            accountNumber, ifsc, bankName,
-            gstNumber, address, type,
-        } = req.body;
-
-        const files = req.files || {};
-
-        const filePayload = {
-            logoUrl: files.logoUrl?.[0] || null,
-            documents: files.documents || []
-        }
-
-        if (!userId) throw { status: 400, message: `'userId' field must be required`, success: false };
-
-        const { status, success, message, data } = await VendorRegistration({
-            userId: req.user.role === 'user' ? req.user.id : userId,
-            businessName, businessEmail, businessPhone,
-            businessDescription, password, gstNumber,
-            status: ['admin', 'super_admin', 'staff'].includes(req.user.role) ? 'approved' : 'pending',
-            bankDetails: {
-                accountNumber,
-                ifsc,
-                bankName
-            },
-            type, address
-        }, filePayload);
-
-        return res.status(status).json({
-            message, data, success
-        });
-
-    } catch (error) {
-
-        const handle = ErrorHandle(error);
-
-        if (handle?.status)
-            return res.status(handle.status).json({ error: handle.error, errors: handle.errors, success: false });
-
-        return res.status(500).json({ error: error.message });
-    }
-}
 
 /*      * update_vendor_profile handler *      */
 export const update_vendor_profile = async (req, res) => {

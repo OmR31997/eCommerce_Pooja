@@ -5,6 +5,8 @@ import { Admin } from '../models/admin.model.js';
 import { Staff } from '../models/staff.model.js';
 import { Vendor } from '../models/vendor.model.js';
 import { User } from '../models/user.model.js';
+import { CreateNotification } from './notification.service.js';
+import { Return } from '../models/return.model.js';
 
 export const CreateAdmin = async (adminData) => {
     const { email, password } = adminData;
@@ -98,9 +100,9 @@ export const ManageStaff = async (staffData, staffId) => {
     };
 }
 
-export const ManageVendor = async (vendorData, vendorId) => {
+export const ManageVendor = async (vendorId, status) => {
 
-    const updatedVendor = await Vendor.findByIdAndUpdate(vendorId, vendorData);
+    const updatedVendor = await Vendor.findByIdAndUpdate(vendorId, { status }).lean();
 
     if (!updatedVendor) {
         throw {
@@ -109,7 +111,26 @@ export const ManageVendor = async (vendorData, vendorId) => {
         };
     }
 
-    return { status: 200, message: `Vendor managed successfully`, data: updatedVendor, success: true };
+    try {
+        await CreateNotification({
+            receiver: {
+                receiverId: vendorId,
+                role: 'vendor'
+            },
+            title: 'Account Status Update',
+            message: `You vendor account has been ${status}.`,
+            type: 'vendor'
+        });
+    } catch (NotifyError) {
+        console.log("Notification failed:", NotifyError.message);
+    }
+
+    return {
+        status: 200,
+        message: `Vendor managed successfully`,
+        data: { name: updatedVendor.name, status },
+        success: true
+    };
 }
 
 export const ManageUser = async (userData, userId) => {
@@ -126,9 +147,9 @@ export const ManageUser = async (userData, userId) => {
     return { status: 200, message: `User managed successfully`, data: staffData, success: true };
 }
 
-export const ManageProduct = async (productData, productId) => {
+export const ManageProduct = async (productId, status) => {
 
-    const updatedProduct = await User.findByIdAndUpdate(productData, productId);
+    const updatedProduct = await User.findByIdAndUpdate(productId, { status });
 
     if (!updatedProduct) {
 
@@ -138,10 +159,77 @@ export const ManageProduct = async (productData, productId) => {
         }
     }
 
+    try {
+        await CreateNotification({
+            receiver: {
+                receiverId: updatedProduct.vendorId,
+                role: 'vendor'
+            },
+            title: 'Product Status Updated',
+            message: `Your product ${updatedProduct.name} has been ${status}.`,
+            type: 'vendor'
+        });
+    } catch (NotifyError) {
+        console.log("Notification failed:", NotifyError.message);
+    }
+
     return {
         status: 200,
         message: 'Product managed successfully',
-        data: updatedProduct,
+        data: { name: updatedProduct, status },
         success: true
     };
+}
+
+export const MangeReturn = async (returnId, returnStatus) => {
+    const returnProduct = await Return.findByIdAndUpdate(returnId, { status: returnStatus }, { new: true })
+        .populate({ path: 'productId', select: 'vendorId name' });
+
+    if (!returnProduct) {
+        throw {
+            status: 404,
+            message: `Product not found for ID: '${returnId}'`
+        }
+    }
+
+    const vendorId = returnProduct.productId.vendorId;
+    const productName = returnProduct.productId.name;
+    try {
+        await CreateNotification({
+            receiver: {
+                receiverId: vendorId,
+                role: 'vendor'
+            },
+            title: 'Product Return Status Updated',
+            message: `Your product ${productName} return has been updated to ${returnStatus}.`,
+            type: 'return'
+        });
+    } catch (NotifyError) {
+        console.log("Notification failed:", NotifyError.message);
+    }
+
+    return { status: 200, message: 'Return status updated successfully', success: true };
+}
+
+export const NotifyAdmins = async (options = {}) => {
+
+    const { title, message, type } = options;
+
+    const emails = [
+        process.env.ADMIN_EMAIL ?? 'admin@support.com',
+        process.env.SUPER_ADMIN_EMAIL ?? 'super@admin.com'
+    ].filter(Boolean); //remove undefined values
+
+    const admins = await Admin.find({ email: { $in: emails } }).populate({ path: 'role', select: 'name' });
+
+    const notifyData = { title, message, type }
+
+    for (const admin of admins) {
+        notifyData.receiver = {
+            receiverId: admin._id,
+            role: admin.role.name
+        }
+
+        await CreateNotification(notifyData);
+    }
 }

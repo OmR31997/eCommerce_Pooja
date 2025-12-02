@@ -1,4 +1,4 @@
-import { GetOrderById } from '../services/order.service.js';
+import { GetOrderById, GetOrders } from '../services/order.service.js';
 import { GetAllUsers, GetUser, RemoveAllUsers, RemoveUser, UpdateUser } from '../services/user.service.js';
 
 /*      * get_me handler *      */
@@ -259,5 +259,52 @@ export const get_order_byId = async (req, res) => {
         }
 
         return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+    }
+}
+
+// ------------------------------------------------------------------------
+// VENDOR
+/*      * vendor_signup handler *      */
+export const vendor_registration_ByUser = async (req, res) => {
+    try {
+        const {
+            businessName, businessEmail, businessPhone, password,
+            businessDescription,
+            accountNumber, ifsc, bankName,
+            gstNumber, address, type,
+        } = req.body;
+
+        const files = req.files || {};
+        
+        const filePayload = {
+            logoUrl: files.logoUrl?.[0] || null,
+            documents: files.documents || []
+        }
+
+        const { status, success, message, data } = await VendorRegistration({
+            userId: req.params.userId,
+            businessName, businessEmail, businessPhone,
+            businessDescription, password, gstNumber,
+            status: ['admin', 'super_admin', 'staff'].includes(req.user.role) ? 'approved' : 'pending',
+            bankDetails: {
+                accountNumber,
+                ifsc,
+                bankName
+            },
+            type, address
+        }, filePayload);
+
+        return res.status(status).json({
+            message, data, success
+        });
+
+    } catch (error) {
+
+        const handle = ErrorHandle(error);
+
+        if (handle?.status)
+            return res.status(handle.status).json({ error: handle.error, errors: handle.errors, success: false });
+
+        return res.status(500).json({ error: error.message });
     }
 }

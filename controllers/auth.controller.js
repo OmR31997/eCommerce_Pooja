@@ -1,6 +1,6 @@
 import { User } from '../models/user.model.js';
 import bcrypt from 'bcryptjs';
-import { ChangePassword, ConfirmOtp, ForgotPassword, GoogleCallback, Refresh_Token, ResetPassword, SendOtp, SignIn, SignOut, SignOutAll, SignUp, SignWithGoogle } from '../services/auth.service.js';
+import { ChangePassword, ConfirmOtp, ForgotPassword, GoogleCallback, Refresh_Token, ResetPassword, SendOtp, SignIn, SignOut, SignOutAll, SignUp, SignWithGoogle, VendorRegistration } from '../services/auth.service.js';
 import { ErrorHandle } from '../utils/fileHelper.js';
 
 /*  *test_protected handler*  */
@@ -46,7 +46,7 @@ export const refresh_token = async (req, res) => {
 export const sign_in = async (req, res) => {
     try {
         const { email, phone,
-            businessEmail, businessPhone,  
+            businessEmail, businessPhone,
             staffEmail, staffPhone,
             password } = req.body;
 
@@ -225,6 +225,60 @@ export const sign_up = async (req, res) => {
 
     return res.status(status).json({ error, errors, message, data, success });
 
+}
+
+/*      * vendor_registration handler *      */
+export const vendor_registration = async (req, res) => {
+    try {
+        const {
+            businessName, businessEmail, businessPhone, password,
+            businessDescription,
+            accountNumber, ifsc, bankName,
+            gstNumber, address, type,
+        } = req.body;
+
+        const files = req.files || {};
+        const filePayload = {
+            logoUrl: files.logoUrl?.[0] || null,
+            documents: files.documents || []
+        }
+
+        const { role } = req.user;
+        const userId = req.query.userId;
+
+        if (userId && role === 'user' && req.user.id !== userId) {
+            throw {
+                status: 401,
+                message: `Unauthorized: You don't have permission`
+            }
+        }
+
+        const { status, success, message, data } = await VendorRegistration({
+            userId: role === 'user' ? req.user.id : userId,
+            businessName, businessEmail, businessPhone,
+            businessDescription, password, gstNumber,
+            status: ['admin', 'super_admin', 'staff'].includes(req.user.role) ? 'approved' : 'pending',
+            bankDetails: {
+                accountNumber,
+                ifsc,
+                bankName
+            },
+            type, address
+        }, filePayload);
+
+        return res.status(status).json({
+            message, data, success
+        });
+
+    } catch (error) {
+
+        const handle = ErrorHandle(error);
+
+        if (handle?.status)
+            return res.status(handle.status).json({ error: handle.error, errors: handle.errors, success: false });
+
+        return res.status(500).json({ error: error.message });
+    }
 }
 
 /*  *sign_in_withGoogle handler*  */

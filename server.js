@@ -23,6 +23,7 @@ import PaymentRoute from './routes/payment.route.js';
 import OrderRoute from './routes/order.route.js';
 import DashboardRoute from './routes/dashboard.route.js';
 import BackupRoute from './routes/backup.route.js';
+import NotificationRoute from './routes/notification.route.js';
 import { Authentication } from './middlewares/auth.middleware.js';
 
 const appServer = express();
@@ -77,6 +78,7 @@ appServer.use('/api/vendor', Authentication, VendorRoute);
 appServer.use('/api/category', Authentication, CategoryRoute);
 appServer.use('/api/product', ProductRoute);
 appServer.use('/api/cart', Authentication, CartRoute);
+appServer.use('/api/notification', Authentication, NotificationRoute)
 appServer.use('/api/payment', Authentication, PaymentRoute);
 appServer.use('/api/order', Authentication, OrderRoute);
 appServer.use('/api/user', Authentication, UserRoute);

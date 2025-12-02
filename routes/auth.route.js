@@ -1,6 +1,8 @@
 import express from 'express';
-import { change_passoword, confirm_signIn_otp, forgot_password, google_Callback, refresh_token, reset_password, send_otp, sign_in, sign_in_withGoogle, sign_out, sign_out_all_devices, sign_up, test_protected } from '../controllers/auth.controller.js';
-import { Authentication } from '../middlewares/auth.middleware.js';
+import { change_passoword, confirm_signIn_otp, forgot_password, google_Callback, refresh_token, reset_password, send_otp, sign_in, sign_in_withGoogle, sign_out, sign_out_all_devices, sign_up, test_protected, vendor_registration } from '../controllers/auth.controller.js';
+import { AuthAccess, Authentication } from '../middlewares/auth.middleware.js';
+import { Upload } from '../middlewares/upload.middleware.js';
+
 const router = express.Router();
 
 router.get('/protected', Authentication, test_protected);
@@ -22,6 +24,18 @@ router.post('/send-otp', send_otp);
    @methtod -> POST
 */
 router.post('/sign-up', sign_up);
+
+/* @description -> To sign-up as vendor
+   @end-Point -> /api/auth/vendor/sign-up
+   @methtod -> POST
+   @access -> Private (user) 
+*/
+const MAX_VENDOR_DOCUMENTS = parseInt(process.env.MAX_VENDOR_DOCUMENTS) ?? 5;
+router.post('/vendor/registration', Authentication, AuthAccess('User', 'create'),
+   Upload('VEND-').fields([
+      { name: 'logoUrl', maxCount: 1 },
+      { name: 'documents', maxCount: MAX_VENDOR_DOCUMENTS }
+   ]), vendor_registration);
 
 /* @description -> Sign Credential 
    @end-Point -> /api/auth/sign-in

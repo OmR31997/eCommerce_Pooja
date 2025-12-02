@@ -51,6 +51,7 @@ export const create_product = async (req, res) => {
                 ? 'approved'
                 : 'pending',
             stock: stock || 0,
+            notifiedLowStock: parseInt(stock) <= parseInt(process.env.MIN_STOCK_THRESHOLD) || 5
         }
 
         const { status, success, message, data } = await CreateProduct(productData, filePayload);
@@ -193,6 +194,7 @@ export const update_product = async (req, res) => {
         price: parseFloat(price) || undefined,
         discount: parseFloat(discount) || undefined,
         stock: parseInt(stock) || undefined,
+        notifiedLowStock: parseInt(stock) <= parseInt(process.env.MIN_STOCK_THRESHOLD) || 5
     }
 
     const { status, error, errors, success, message, data } = await UpdateProduct(productData, { key, files: files || [], user: req.user });

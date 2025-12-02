@@ -1,21 +1,9 @@
 import express from 'express';
-import { clear_vendors, confirm_otp, get_me, get_order_byId, get_orders_ByVendor, get_product_by_pId, get_product_bySku, get_products_ByVendor, get_vendor_byId, get_vendors, remove_vendor_profile, update_vendor_profile, vendor_filters, vendor_signup } from '../controllers/vendor.controller.js';
+import { clear_vendors, confirm_otp, get_me, get_order_byId, get_orders_ByVendor, get_product_by_pId, get_product_bySku, get_products_ByVendor, get_vendor_byId, get_vendors, remove_vendor_profile, update_vendor_profile, vendor_filters} from '../controllers/vendor.controller.js';
 import { Upload } from '../middlewares/upload.middleware.js';
 import { AuthAccess } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
-const MAX_VENDOR_DOCUMENTS = parseInt(process.env.MAX_VENDOR_DOCUMENTS) ?? 5;
-
-/* @description -> To sign-up as vendor
-   @end-Point -> /api/vendor/sign-up
-   @methtod -> POST
-   @access -> Private (user) 
-*/
-router.post('/sign-up', AuthAccess('Vendor', 'create'),
-   Upload('VEND-').fields([
-      { name: 'logoUrl', maxCount: 1 },
-      { name: 'documents', maxCount: MAX_VENDOR_DOCUMENTS }
-   ]), vendor_signup);
 
 /* @description -> To confirm-otp and update in vendor & user records
    @end-Point -> /api/vendor/confirm-otp
@@ -50,6 +38,7 @@ router.get('/view/:id', AuthAccess('Vendor', 'read'), get_vendor_byId);
    @methtod -> PATCH
    @access -> Private (vendor/admin) 
 */
+const MAX_VENDOR_DOCUMENTS = parseInt(process.env.MAX_VENDOR_DOCUMENTS) ?? 5;
 router.patch('/:id/update', AuthAccess('Vendor', 'update'),
    Upload('VEND-').fields([
       { name: 'logoUrl', maxCount: 1 },
@@ -76,9 +65,7 @@ router.delete('/clear', AuthAccess('Vendor', 'delete'), clear_vendors);
 */
 router.get('/filters', AuthAccess('Vendor', 'read'), vendor_filters);
 
-//----------------------------------------------------------------------------------------------------|
-
-// PRODUCT
+//---------------------------------------------PRODUCT--------------------------------------------------|
 
 /* @description -> To view product by productId which already created by own
    @end-Point -> /api/products
@@ -101,9 +88,8 @@ router.get('/product/:pId/', AuthAccess('Vendor', 'read'), get_product_by_pId);
 */
 router.get('/product/via-sku/:sku', AuthAccess('Vendor', 'read'), get_product_bySku);
 
-// --------------------------------------------------------------------------------------------------|
+// ----------------------------------------------ORDER--------------------------------------------------|
 
-// ORDER
 /* @description -> To view product by productId which already created by own
    @end-Point -> /api/orders
    @methtod -> GET

@@ -23,7 +23,7 @@ const ProductSchema = new mongoose.Schema({
         required: [true, `'name' field must be required`],
     },
     features: {
-        type:[String],
+        type: [String],
         default: []
     },
     description: {
@@ -33,11 +33,14 @@ const ProductSchema = new mongoose.Schema({
     price: {
         type: mongoose.Schema.Types.Decimal128,
         required: [true, `'price' field must be required`],
-        get: v => v ? `₹${parseInt(v.toString()).toFixed(2)}` : null
+        get: v => v ? Number(v.toString()) : null
     },
     stock: {
         type: Number,
         default: 0,
+    },
+    notifiedLowStock: {
+        type: Boolean,
     },
     sku: {  //"Stock Keeping Unit"
         type: String,
@@ -51,7 +54,7 @@ const ProductSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['approved', 'pending', 'rejected', 'under_process'],
+        enum: ['approved', 'pending', 'rejected'],
         default: 'pending',
     },
     sales: {
@@ -71,8 +74,13 @@ const ProductSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
-ProductSchema.set('toJSON', {getters: true});
-ProductSchema.set('toObject', {getters: true});
+ProductSchema.set('toJSON', { getters: true, virtuals: true });
+ProductSchema.set('toObject', { getters: true, virtuals: true });
+
+ProductSchema.virtual('priceFormatted').get(function () {
+    if (!this.price) return null;
+    return `₹${Number(this.price).toFixed(2)}`;
+});
 
 ProductSchema.index({ name: 'text', description: 'text' }, {
     name: 'product_text_index',

@@ -1,3 +1,4 @@
+import { NotifyAdmins } from '../services/admin.service.js';
 import { User } from '../models/user.model.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
@@ -14,6 +15,8 @@ import { Staff } from '../models/staff.model.js';
 import { Vendor } from '../models/vendor.model.js';
 import axios from 'axios';
 import qs from 'qs';
+import { ENV } from '../config/env.config.js';
+import mongoose from 'mongoose';
 
 export const GenerateAndSendToken = async ({ res, logId, logRole, ip }) => {
     try {
@@ -265,6 +268,130 @@ export const SignUp = async (userData) => {
     }
 }
 
+export const VendorRegistration = async (vendorData, filePayload) => {
+
+    const SALT = parseInt(process.env.HASH_SALT) || 10;
+    const { documents, logoUrl } = filePayload;
+    
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    const uploadedFiles = {
+        documents: [],
+        logoUrl: null
+    }
+
+    let data = null;
+
+    try {
+
+        const existing = await User.findById(vendorData.userId);
+
+        if (!existing) {
+            throw {
+                status: 404,
+                message: `User account not exist for ID: ${vendorData.userId}`,
+                success: false
+            }
+        }
+
+        // Validate
+        if (documents?.length > 0) {
+            await ValidateDocs(documents);
+        };
+
+        if (logoUrl) {
+            await ValidateLogo(logoUrl);
+        };
+
+        if (documents?.length > 0) {
+            if (ENV.IS_PROD) {
+                // Upload to cloud (already returns array of objects)
+                uploadedFiles.documents = await ToUploadParallel(
+                    documents,
+                    'eCommerce/Product/Documents',
+                    'DOC-'
+                );
+            }
+            else {
+                // DEV MODE -> return array of objects for consistency
+                uploadedFiles.documents = documents.map((doc) => (
+                    { secure_url: doc.path, public_id: null }
+                ));
+            }
+        }
+
+        if (logoUrl) {
+            if (ENV.IS_PROD) {
+
+                // Upload to cloud (already returns array of objects)
+                uploadedFiles.logoUrl = await ToSaveCloudStorage(
+                    logoUrl,
+                    'eCommerce/Product/logoUrls',
+                    `LOGO-${crypto.randomBytes(12).toString('hex')}`
+                )
+            }
+            else {
+
+                // DEV MODE -> return array of objects for consistency
+                uploadedFiles.logoUrl = logoUrl ? { secure_url: logoUrl.path, public_id: null } : {};
+            }
+        }
+
+        // Assign uploaded files to vendorData
+        if (uploadedFiles.documents.length > 0) vendorData.documents = uploadedFiles.documents;
+        if (uploadedFiles.logoUrl) vendorData.logoUrl = uploadedFiles.logoUrl;
+
+        // Set role & hash password
+        const role = await Role.findOne({ name: 'vendor' }).session(session);
+
+        vendorData.role = role._id;
+        vendorData.permission = role.permissions[0];
+
+        vendorData.password = await bcrypt.hash(vendorData.password, SALT);
+
+        const [created] = await Vendor.create([vendorData], { session });
+        data = created;
+
+        await session.commitTransaction();
+        session.endSession();
+    }
+    catch (error) {
+        await session.abortTransaction();
+        session.endSession();
+
+        if (uploadedFiles.documents.length > 0) {
+            await ToDeleteFilesParallel(uploadedFiles.documents);
+        }
+
+        if (uploadedFiles.logoUrl?.public_id) {
+            await ToDeleteFromCloudStorage(uploadedFiles.logoUrl.public_id)
+        }
+
+        if (ENV.IS_DEV) {
+            const temp = [...documents, logoUrl].filter(Boolean);
+            await Promise.all(temp.map(f => DeleteLocalFile(f.path)));
+        }
+        throw error;
+    }
+
+    try {
+
+        if (vendorData.status === 'pending') {
+            // Notification to admins
+            await NotifyAdmins({
+                title: 'New Vendor Registered',
+                message: `${data.businessName} required approval`,
+                type: 'vendor'
+            });
+        }
+
+    } catch (NotifyError) {
+        console.log("Notification failed:", NotifyError.message)
+    }
+
+    return { status: 200, message: 'Vendor registration done successfully', data, success: true };
+}
 
 /*  *3PARTY BASED SERVICE SYNCHRONIZATION*    */
 

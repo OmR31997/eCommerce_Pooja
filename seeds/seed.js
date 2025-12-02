@@ -1811,75 +1811,6 @@ const DummyVendors = async () => {
   console.log('Vendors seeded successfully!');
 }
 
-const DummyCategories = async () => {
-  const categories = [
-    { name: 'Automobiles', slug: 'automobiles', description: 'All automobile products and services', imageUrl: null, status: 'active', parent: null },
-    { name: 'Electronics', slug: 'electronics', description: 'Electronic gadgets, devices, and accessories', imageUrl: null, status: 'active', parent: null },
-    { name: 'Fashion', slug: 'fashion', description: 'Clothing, footwear, and fashion accessories', imageUrl: null, status: 'active', parent: null },
-    { name: 'Home Appliances', slug: 'home-appliances', description: 'Appliances for home use', imageUrl: null, status: 'active', parent: null },
-    { name: 'Sports', slug: 'sports', description: 'Sports and fitness equipment', imageUrl: null, status: 'active', parent: null },
-    { name: 'Books', slug: 'books', description: 'Books for all ages and genres', imageUrl: null, status: 'active', parent: null },
-    { name: 'Toys & Games', slug: 'toys-games', description: 'Toys, board games, and educational games', imageUrl: null, status: 'active', parent: null },
-    { name: 'Health & Beauty', slug: 'health-beauty', description: 'Health and beauty products', imageUrl: null, status: 'active', parent: null },
-    { name: 'Office Supplies', slug: 'office-supplies', description: 'Stationery and office products', imageUrl: null, status: 'active', parent: null },
-    { name: 'Pet Supplies', slug: 'pet-supplies', description: 'Products for pets and animals', imageUrl: null, status: 'active', parent: null },
-    { name: 'Music & Instruments', slug: 'music-instruments', description: 'Musical instruments and accessories', imageUrl: null, status: 'active', parent: null },
-    { name: 'Groceries', slug: 'groceries', description: 'Daily grocery items', imageUrl: null, status: 'active', parent: null },
-    { name: 'Furniture', slug: 'furniture', description: 'Furniture for home and office', imageUrl: null, status: 'active', parent: null },
-    { name: 'Garden & Outdoors', slug: 'garden-outdoors', description: 'Gardening tools, outdoor furniture, and decor', imageUrl: null, status: 'active', parent: null },
-    { name: 'Jewelry', slug: 'jewelry', description: 'Jewelry and accessories', imageUrl: null, status: 'active', parent: null },
-    { name: 'Automobile Parts', slug: 'automobile-parts', description: 'Spare parts and accessories for vehicles', imageUrl: null, status: 'active', parent: null },
-    { name: 'Baby Products', slug: 'baby-products', description: 'Baby care and products', imageUrl: null, status: 'active', parent: null },
-    { name: 'Travel & Luggage', slug: 'travel-luggage', description: 'Travel bags, luggage, and accessories', imageUrl: null, status: 'active', parent: null },
-    { name: 'Shoes', slug: 'shoes', description: 'Footwear for men, women, and kids', imageUrl: null, status: 'active', parent: null },
-    { name: 'Watches', slug: 'watches', description: 'Watches and smartwatches', imageUrl: null, status: 'active', parent: null },
-    { name: 'Cameras & Photography', slug: 'cameras-photography', description: 'Cameras, lenses, and accessories', imageUrl: null, status: 'active', parent: null },
-    { name: 'Computers & Accessories', slug: 'computers-accessories', description: 'Desktops, laptops, and computer peripherals', imageUrl: null, status: 'active', parent: null },
-    { name: 'Software', slug: 'software', description: 'Software products and licenses', imageUrl: null, status: 'active', parent: null },
-    { name: 'Mobile Accessories', slug: 'mobile-accessories', description: 'Chargers, cases, and mobile gadgets', imageUrl: null, status: 'active', parent: null },
-    { name: 'Smart Home', slug: 'smart-home', description: 'Home automation and smart devices', imageUrl: null, status: 'active', parent: null },
-    { name: 'DIY & Tools', slug: 'diy-tools', description: 'Tools, DIY kits, and repair products', imageUrl: null, status: 'active', parent: null },
-    { name: 'Art & Crafts', slug: 'art-crafts', description: 'Art supplies, crafting materials, and kits', imageUrl: null, status: 'active', parent: null },
-    { name: 'Automotive Services', slug: 'automotive-services', description: 'Services related to vehicles and repairs', imageUrl: null, status: 'active', parent: null },
-    { name: 'Catering & Food Services', slug: 'catering-food-services', description: 'Food delivery and catering services', imageUrl: null, status: 'active', parent: null },
-    { name: 'Events & Party Supplies', slug: 'events-party-supplies', description: 'Decorations and supplies for parties', imageUrl: null, status: 'active', parent: null },
-    { name: 'Photography Services', slug: 'photography-services', description: 'Professional photography and editing', imageUrl: null, status: 'active', parent: null },
-    { name: 'Cleaning Services', slug: 'cleaning-services', description: 'Home and office cleaning services', imageUrl: null, status: 'active', parent: null },
-    { name: 'Legal Services', slug: 'legal-services', description: 'Lawyers, consultation, and legal advice', imageUrl: null, status: 'active', parent: null },
-    { name: 'Financial Services', slug: 'financial-services', description: 'Banks, loans, and financial assistance', imageUrl: null, status: 'active', parent: null },
-    { name: 'Education & Training', slug: 'education-training', description: 'Schools, courses, and training programs', imageUrl: null, status: 'active', parent: null },
-    { name: 'Fitness & Gyms', slug: 'fitness-gyms', description: 'Gyms, fitness centers, and workout classes', imageUrl: null, status: 'active', parent: null },
-    { name: 'Restaurants & Cafes', slug: 'restaurants-cafes', description: 'Dining, cafes, and food outlets', imageUrl: null, status: 'active', parent: null },
-    { name: 'Hotels & Accommodation', slug: 'hotels-accommodation', description: 'Hotels, hostels, and lodging services', imageUrl: null, status: 'active', parent: null },
-    { name: 'Travel & Tourism', slug: 'travel-tourism', description: 'Travel agencies, tour packages, and guides', imageUrl: null, status: 'active', parent: null },
-    { name: 'Electronics Repair', slug: 'electronics-repair', description: 'Repair and maintenance of electronic devices', imageUrl: null, status: 'active', parent: null },
-    { name: 'Real Estate', slug: 'real-estate', description: 'Properties, rentals, and real estate services', imageUrl: null, status: 'active', parent: null },
-    { name: 'Construction & Building', slug: 'construction-building', description: 'Construction materials and services', imageUrl: null, status: 'active', parent: null },
-    { name: 'Automotive Insurance', slug: 'automotive-insurance', description: 'Vehicle insurance and policies', imageUrl: null, status: 'active', parent: null },
-    { name: 'Electronics Insurance', slug: 'electronics-insurance', description: 'Insurance for electronics and gadgets', imageUrl: null, status: 'active', parent: null },
-    { name: 'Gaming', slug: 'gaming', description: 'Video games, consoles, and accessories', imageUrl: null, status: 'active', parent: null },
-    { name: 'Photography Equipment', slug: 'photography-equipment', description: 'Cameras, tripods, and lighting', imageUrl: null, status: 'active', parent: null },
-    { name: 'Stationery', slug: 'stationery', description: 'Office and school stationery items', imageUrl: null, status: 'active', parent: null },
-    { name: 'Home Decor', slug: 'home-decor', description: 'Decor items for homes and offices', imageUrl: null, status: 'active', parent: null },
-    { name: 'Kitchenware', slug: 'kitchenware', description: 'Utensils, cookware, and kitchen gadgets', imageUrl: null, status: 'active', parent: null },
-    { name: 'Footwear', slug: 'footwear', description: 'Shoes, sandals, sneakers for all', imageUrl: null, status: 'active', parent: null },
-    { name: 'Clothing Accessories', slug: 'clothing-accessories', description: 'Belts, scarves, hats, and other accessories', imageUrl: null, status: 'active', parent: null },
-    { name: 'Safety & Security', slug: 'safety-security', description: 'Safety equipment and home security products', imageUrl: null, status: 'active', parent: null },
-    { name: 'Outdoors & Adventure', slug: 'outdoors-adventure', description: 'Camping, hiking, and adventure gear', imageUrl: null, status: 'active', parent: null },
-    { name: 'DIY Craft Kits', slug: 'diy-craft-kits', description: 'Creative DIY craft kits for all ages', imageUrl: null, status: 'active', parent: null },
-    { name: 'Collectibles', slug: 'collectibles', description: 'Collectible items and memorabilia', imageUrl: null, status: 'active', parent: null },
-    { name: 'Luxury Goods', slug: 'luxury-goods', description: 'Premium and luxury items', imageUrl: null, status: 'active', parent: null },
-    { name: 'Stationery & Office Decor', slug: 'stationery-office-decor', description: 'Stationery and office decorative items', imageUrl: null, status: 'active', parent: null },
-    { name: 'Photography Services Max', slug: 'photography-services-max', description: 'Professional photography and photo editing', imageUrl: null, status: 'active', parent: null },
-  ];
-
-  for (const category of categories) {
-    await Category.create(category);
-  }
-
-  console.log('Categories created successfully!');
-}
-
 const DummySubCTG = async () => {
   const subs = [
     {
@@ -1910,7 +1841,7 @@ const DummySubCTG = async () => {
     },*/
   ]
 
-  for(const sub of subs) {
+  for (const sub of subs) {
     const result = await Category.create(sub);
   }
 
@@ -2045,78 +1976,27 @@ const DummyOrders = async () => {
   ]
 }
 
-const permissionsSeed = async () => {
-  const permission = await Permission.countDocuments();
+// (4)
+const categorySeed = async () => {
+  const categories = [
+    { _id: new mongoose.Types.ObjectId('691dd5f80bb4b64ed750f4d5'), name: 'Automobiles', slug: 'automobiles', description: 'All automobile products and services', imageUrl: null, status: 'active', parent: null },
+    { _id: new mongoose.Types.ObjectId('691de84dd491c015e3343f29'), name: 'Electronics', slug: 'electronics', description: 'Electronic gadgets, devices, and accessories', imageUrl: null, status: 'active', parent: null },
+    { _id: new mongoose.Types.ObjectId('691de84ed491c015e3343f38'), name: 'Fashions', slug: 'fashion', description: 'Electronic gadgets, devices, and accessories', imageUrl: null, status: 'active', parent: null },
+    { _id: new mongoose.Types.ObjectId('691dd5f80bb4b64ed750f4d5'), name: 'Decoration', slug: 'decoration', description: 'Decoration things like: lights, curtain (drapes)', imageUrl: null, status: 'active', parent: null },
+    { _id: new mongoose.Types.ObjectId('691de84ed491c015e3343f40'), name: 'Sports', slug: 'decoration', description: 'Decoration things like: lights, curtain (drapes)', imageUrl: null, status: 'active', parent: null },
 
-  if (permission === 0) {
-    const permissions = [
-      {
-        name: 'super_admin',
-        modules: ['Admin', 'Staff', 'Vendor', 'User', 'Permission', 'Role', 'Category', 'Product', 'Cart', 'Order', 'Discount', 'Account', 'Payment'],
-        description: 'Globally access for CRUD operations including admin.',
-        actions: { create: true, read: true, update: true, delete: true, approve: true, backup: true },
-      },
-      {
-        name: 'admin',
-        modules: ['Staff', 'Vendor', 'User', 'Permission', 'Role', 'Category', 'Product', 'Cart', 'Order', 'Discount', 'Account', 'Payment'],
-        description: 'Globally access for CRUD operations.',
-        actions: { create: true, read: true, update: true, delete: true, approve: true, backup: true },
-      },
-      {
-        name: 'staff_manager',
-        modules: ['Staff'],
-        description: 'Can read, and update staff accounts',
-        actions: { create: true, read: true, update: true, delete: false, approve: true },
-      },
-      {
-        name: 'vendor_manager',
-        modules: ['Product'],
-        description: 'Can read, update, delete products.',
-        actions: { create: true, read: true, update: true, approve: true },
-      },
-      {
-        name: 'user_manager',
-        modules: ['User'],
-        description: 'Can read, and update customer accounts',
-        actions: { create: true, read: true, update: true, delete: false, approve: true },
-      },
-      {
-        name: 'product_manager',
-        modules: ['Product'],
-        description: 'Can read, update, delete products.',
-        actions: { create: true, read: true, update: true, approve: true },
-      },
-      {
-        name: 'order_manager',
-        modules: ['Order'],
-        description: 'Can view and update orders',
-        actions: { create: true, read: true, update: true, delete: false, approve: true },
-      },
-      {
-        name: 'account_manager',
-        modules: ['Account'],
-        description: 'Can read, and update staff accounts',
-        actions: { create: true, read: true, update: true, delete: false, approve: true },
-      },
-      {
-        name: 'user',
-        modules: ['Product', 'Order', 'Cart', 'Payment'],
-        description: 'Can read, and update staff accounts',
-        actions: { create: true, read: true, update: true, delete: true, approve: true },
-      },
-      {
-        name: 'vendor',
-        modules: ['Product', 'Order', 'Cart', 'Discount'],
-        description: 'Can read, and update staff accounts',
-        actions: { idCreate: true, isRead: true, isUpdate: true, isApproved: true },
-      },
-    ];
+    { _id: new mongoose.Types.ObjectId('6926b9778d0971e2704aa13b'), name: 'Mobile & Computer Accessories', slug: 'mobile-and-computer-accessories', description: 'Regarding mobile & computer accessories', imageUrl: null, status: 'active', parent: new mongoose.Types.ObjectId('691de84dd491c015e3343f29') },
 
-    await Permission.insertMany(permissions, { ordered: false });
-    console.log('Permissions seeded successfully!');
+  ];
+
+  for (const category of categories) {
+    await Category.create(category);
   }
+
+  console.log('Categories created successfully!');
 }
 
+// (3)
 const rolesSeed = async () => {
   const permissions = await Permission.find();
   const roles = await Role.countDocuments();
@@ -2124,32 +2004,32 @@ const rolesSeed = async () => {
   if (roles === 0) {
     const superAdmin = {
       name: 'super_admin',
-      permissions: permissions.filter(perm => perm.name === 'super_admin').map(perm => perm._id),
+      permissions: permissions.filter(p => p.name === 'super_admin').map(perm => perm._id),
       description: 'Full Access To All Modules',
     }
 
     const admin = {
       name: 'admin',
-      permissions: permissions.filter(perm => perm.name === 'admin').map(perm => perm._id),
+      permissions: permissions.filter(p => p.name === 'admin').map(perm => perm._id),
       description: 'Can manage everything'
     }
 
     const staff = {
       name: 'staff',
-      permissions: permissions.filter((perm) => !['super_admin', 'admin'].includes(perm.name)).map(perm => perm._id),
+      permissions: permissions.filter(p => p.name === 'staff').map(perm => perm._id),
       description: 'Can manage orders only.',
     }
 
     const vendor = {
       name: 'vendor',
       description: 'Can manage own profile, products, orders only.',
-      permissions: permissions.filter(perm => perm.name === 'vendor').map(perm => perm._id)
+      permissions: permissions.filter(p => p.name === 'vendor').map(perm => perm._id)
     }
 
     const user = {
       name: 'user',
       description: 'Regular customer role.',
-      permissions: permissions.filter(perm => perm.name === 'user').map(perm => perm._id),
+      permissions: permissions.filter(p => p.name === 'user').map(perm => perm.id),
     }
 
     for (const role of [superAdmin, admin, staff, vendor, user]) {
@@ -2159,10 +2039,92 @@ const rolesSeed = async () => {
 
     console.log("Roles seeded successfully.");
   }
-  else  
+  else
     console.log('⚠️ Roles already exists.');
 }
 
+// (2)
+const permissionsSeed = async () => {
+  const permission = await Permission.countDocuments();
+
+  if (permission === 0) {
+    const permissions = [
+      {
+        name: 'super_admin',
+        modules: [
+          'Admin', 'Staff', 'Vendor', 'User',
+          'Permission', 'Role', 'Category',
+          'Product', 'Cart', 'Order',
+          'Discount', 'Account', 'Payment', 'Backup'],
+        description: 'Globally access for CRUD operations including admin.',
+        actions: { create: true, read: true, update: true, delete: true, approve: true, backup: true },
+      },
+      {
+        name: 'admin',
+        modules: [
+          'Admin', 'Staff', 'Vendor', 'User',
+          'Permission', 'Role', 'Category',
+          'Product', 'Cart', 'Order',
+          'Discount', 'Account', 'Payment', 'Backup'],
+        description: 'Globally access for CRUD operations.',
+        actions: { create: true, read: true, update: true, delete: true, approve: true, backup: false },
+      },
+      {
+        name: 'staff_manager',
+        modules: ['Staff'],
+        description: 'Can read, and update staff accounts',
+        actions: { create: true, read: true, update: true, delete: false, approve: true },
+      },
+      {
+        name: 'vendor_manager',
+        modules: ['Vendor'],
+        description: 'Can manage (CRUD) vendor accounts.',
+        actions: { create: true, read: true, update: true, delete: true, approve: true },
+      },
+      {
+        name: 'user_manager',
+        modules: ['User'],
+        description: 'Can manage (CRUD) customer accounts',
+        actions: { create: true, read: true, update: true, delete: true, approve: true },
+      },
+      {
+        name: 'product_manager',
+        modules: ['Product'],
+        description: 'Can manage (CRUD) products.',
+        actions: { create: true, read: true, update: true, approve: true },
+      },
+      {
+        name: 'order_manager',
+        modules: ['Order'],
+        description: 'Can (CRUD) orders',
+        actions: { create: true, read: true, update: true, delete: false, approve: true },
+      },
+      {
+        name: 'account_manager',
+        modules: ['Account'],
+        description: 'Can mange account',
+        actions: { create: true, read: true, update: true, delete: false, approve: true },
+      },
+      {
+        name: 'user',
+        modules: ['User', 'Order', 'Cart', 'Payment'],
+        description: 'Can read, and update staff accounts',
+        actions: { create: true, read: true, update: true, delete: true, approve: true },
+      },
+      {
+        name: 'vendor',
+        modules: ['Vendor', 'Product', 'Order', 'Cart', 'Discount'],
+        description: 'Can read, and update staff accounts',
+        actions: { create: true, read: true, update: true, delete: true, approve: true },
+      },
+    ];
+
+    await Permission.insertMany(permissions, { ordered: false });
+    console.log('Permissions seeded successfully!');
+  }
+}
+
+// (1)
 const adminSeed = async () => {
 
   const existingSuper = await Admin.findOne({ email: process.env.SUPER_ADMIN_EMAIL });
@@ -2174,7 +2136,7 @@ const adminSeed = async () => {
     const hashedPassword_SuperAdmin = await bcrypt.hash(process.env.SUPER_ADMIN_PASSWORD, 10);
 
     await Admin.create({
-      name: 'Raj Malhotra (Super Admin)',
+      name: process.env.SUPER_ADMIN_NAME,
       email: process.env.SUPER_ADMIN_EMAIL,
       password: hashedPassword_SuperAdmin,
       role: role._id,
@@ -2196,7 +2158,7 @@ const adminSeed = async () => {
     const hashedPassword_Admin = await bcrypt.hash(process.env.ADMIN_PASSWORD, 10);
 
     await Admin.create({
-      name: 'Amar Malhotra (Admin)',
+      name: process.env.ADMIN_NAME,
       email: process.env.ADMIN_EMAIL,
       password: hashedPassword_Admin,
       role: role_1,

@@ -81,18 +81,29 @@ const OrderSchema = new mongoose.Schema({
     },
     paymentStatus: {
         type: String,
-        enum: ['pending', 'paid',  'failed'],
+        enum: ['pending', 'paid', 'failed', 'initiating'],
         default: 'pending',
     },
     status: {
         type: String,
-        enum: ['pending', 'shipped', 'cancelled', 'refunded'],
+        enum: ['pending', 'delivered', 'cancelled', 'returned', 'refunded'],
         default: 'pending'
     },
     shippingAddress: {
         type: ShippingSchema,
         required: [true, `'shippingAddress' field must be required`]
     },
+    refundStatus: {
+        type: String,
+        enum: ['none', 'requested', 'approved', 'processing', 'completed', 'rejected'],
+        default: 'none'
+    },
+    refundId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Refund',
+        default: null
+    },
+
     trackingId: {
         type: String,
         default: null,

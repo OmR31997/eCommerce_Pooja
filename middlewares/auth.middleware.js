@@ -54,7 +54,7 @@ export const AuthAccess = (moduleName, actionKey, options = {}) => {
 
       const existing = await Models[model].findById(logId).populate('permission');
 
-      // Super Admin / Admin Override
+      // Super Admin Override
       if (logRole?.toLowerCase() === 'super_admin') return next();
 
       // Self-Access Rule (Reusable)

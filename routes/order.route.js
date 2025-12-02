@@ -1,5 +1,5 @@
 import express from 'express';
-import { cancel_order, checkout, update_order_status, view_order_by_id, view_user_orders } from '../controllers/order.controller.js';
+import { cancel_order, checkout,  download_reciept,  exchange_order, return_order, update_order, view_order_by_id,  view_user_orders } from '../controllers/order.controller.js';
 import { AuthAccess } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
@@ -30,13 +30,36 @@ router.get('/view/:id',  AuthAccess('Order', 'read'), view_order_by_id);
    @methtod -> PATCH
    @access -> Private (user/order_manager/admin/super_admin) 
 */
-router.patch('/:id/status', AuthAccess('Order', 'update'), update_order_status);
+router.patch('/:id/status', AuthAccess('Order', 'update'), update_order);
 
 /* @description -> To cancel the order
    @end-Point -> /api/order/:id/cancel
-   @methtod -> PATCH
+   @methtod -> DELETE
    @access -> Private (user/order/order_manager/admin/super_admin) 
 */
-router.patch('/:id/cancel', AuthAccess('Permission', 'delete'), cancel_order);
+router.patch('/:orderId/cancel', AuthAccess('Order', 'update'), cancel_order);
+
+/* @description -> To return the order
+   @end-Point -> /api/order/:pId/:orderId/return
+   @methtod -> PATCH
+   @access -> Private (user/order_manager/admin/super_admin) 
+*/
+router.patch('/:orderId/return', AuthAccess('Order', 'update'), return_order);
+
+/* @description -> To exchange the order
+   @end-Point -> /api/order/:pId/:orderId/exhange
+   @methtod -> PATCH
+   @access -> Private (user//order_manager/admin/super_admin) 
+*/
+router.patch('/:pId/:orderId/exhange', AuthAccess('Order', 'update'), exchange_order);
+
+/* @description -> To update 
+   @end-Point -> /api/order/:orderId/update
+   @methtod -> PATCH
+   @access -> Private (user//order_manager/admin/super_admin) 
+*/
+router.patch('/:orderId/update', AuthAccess('Order', 'update'), update_order);
+
+router.get('/:orderId/receipt/download', AuthAccess('Order', 'read'), download_reciept);
 
 export default router;

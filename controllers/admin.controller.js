@@ -3,7 +3,9 @@ import {
     ManageProduct, ManageStaff, ManageUser, ManageVendor,
     GetAdmin
 } from "../services/admin.service.js";
+import { Refund } from '../models/refund.model.js'
 import { ErrorHandle } from "../utils/fileHelper.js";
+import { Order } from "../models/order.model.js";
 
 /*      * create_admin handler *      */
 export const create_admin = async (req, res) => {
@@ -154,7 +156,7 @@ export const manage_vendor = async (req, res) => {
             }
         }
 
-        const { status: statusCode, success, data, message } = await ManageVendor(status, vendorId);
+        const { status: statusCode, success, data, message } = await ManageVendor(vendorId, status);
 
         return res.status(statusCode).json({ message, data, success });
 
@@ -213,7 +215,7 @@ export const manage_product = async (req, res) => {
             }
         }
 
-        const { status: statusCode, success, data, message } = await ManageProduct(status, productId);
+        const { status: statusCode, success, data, message } = await ManageProduct(productId, status);
 
         return res.status(statusCode).json({ message, data, success });
     } catch (error) {
@@ -267,3 +269,19 @@ export const manage_permission = async (req, res) => {
         return res.status(500).json({ success: false, error: error.message });
     }
 }
+
+export const ApproveRefund = async (req, res) => {
+    const { refundId } = req.params;
+
+    const refund = await Refund.findById(refundId);
+    if (!refund) return res.status(404).json({ msg: "Refund not found" });
+
+    refund.status = "approved";
+    await refund.save();
+
+    const order = await Order.findById(refund.orderId);
+    order.refundStatus = "approved";
+    await order.save();
+
+    res.json({ msg: "Refund approved" });
+};
