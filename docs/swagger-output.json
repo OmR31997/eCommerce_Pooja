@@ -69,6 +69,10 @@
       "description": "Payment management routes"
     },
     {
+      "name": "Payout",
+      "description": "Payout management routes"
+    },
+    {
       "name": "API Testing",
       "description": "Health check & testing endpoints"
     },

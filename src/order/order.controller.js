@@ -142,7 +142,7 @@ export const exchange_order = async (req, res) => {
         const options = {
             userId: req.user.role === 'user' ? req.user.id : userId,
             orderId: req.params.orderId,
-            newProductId: req.params.productId
+            newProductId: req.params.pId
         }
 
         const { status, success, message } = await ExchangeOrder(options);

@@ -17,7 +17,7 @@ export const GetCategories = async (keyVal = {}, options = {}) => {
     const sortDirection = pagingReq.orderSequence === 'asc' ? 1 : -1;
     const sortOption = { [sortField]: sortDirection };
 
-    const categories = await Category.find(keyVal)
+    const categories = await Category.find(matchedQuery)
         .skip(pagination.skip)
         .limit(pagingReq.limit)
         .sort(sortOption)

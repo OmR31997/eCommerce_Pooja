@@ -50,7 +50,7 @@ router.patch('/:orderId/return', AuthAccess('Order', 'update'), return_order);
    @methtod -> PATCH
    @access -> Private (user//order_manager/admin/super_admin) 
 */
-router.patch('/:productId/:orderId/exhange', AuthAccess('Order', 'update'), exchange_order);
+router.patch('/:pId/:orderId/exhange', AuthAccess('Order', 'update'), exchange_order);
 
 router.get('/:orderId/receipt/download', AuthAccess('Order', 'read'), download_reciept);
 

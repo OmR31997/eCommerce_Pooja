@@ -82,8 +82,8 @@ export const get_cart_by_cartId = async (req, res) => {
 
 export const get_cart_by_productId = async (req, res) => {
     try {
-        const cartId = req.params.id;
-        const productId = req.params.productId;
+        const cartId = req.params.cartId;
+        const productId = req.params.pId;
 
         const keyVal = req.user.role === 'user'
             ? { userId: req.user.id }
@@ -205,8 +205,8 @@ export const add_to_cart = async (req, res) => {
 export const delete_item_from_cart = async (req, res) => {
     try {
 
-        const cartId = req.params.id;
-        const productId = req.params.productId;
+        const cartId = req.params.cartId;
+        const productId = req.params.pId;
 
         if (req.user.role !== 'user') {
             throw {

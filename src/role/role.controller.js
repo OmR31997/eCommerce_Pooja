@@ -95,11 +95,11 @@ export const get_roles = async (req, res) => {
 
 export const update_roles = async (req, res) => {
     try {
-        const { id } = req.params;
+        const roleId = req.params.roleId;
         const { name, permissionIds, description } = req.body;
 
         //Find role
-        const role = await Role.findById(id);
+        const role = await Role.findById(roleId);
         if (!role) {
             return res.status(404).json({
                 message: "Role not found",
@@ -179,9 +179,9 @@ export const update_roles = async (req, res) => {
 };
 
 export const delete_role = async (req, res) => {
-    const { id } = req.params;
+    const roleId = req.params.roleId;
 
-    const role = await Role.findById(id);
+    const role = await Role.findById(roleId);
 
     if (!role) {
         return res.status(404).json({
@@ -190,7 +190,7 @@ export const delete_role = async (req, res) => {
         });
     }
 
-    await Role.findByIdAndDelete(id);
+    await Role.findByIdAndDelete(roleId);
 
     return res.status(200).json({
         message: "Data deleted successfully",

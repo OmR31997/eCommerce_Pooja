@@ -5,6 +5,6 @@ const router = express.Router();
 
 router.get('/all', AuthAccess('Admin', 'read'), get_user_notification);
 
-router.patch('/:id/read', AuthAccess('Admin', 'read'), mark_read_notification);
+router.patch('/:notifyId/read', AuthAccess('Admin', 'read'), mark_read_notification);
 
 export default router;

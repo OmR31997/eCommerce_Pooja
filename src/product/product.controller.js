@@ -1,6 +1,6 @@
 import { Product } from './product.model.js';
 import { BuildProductQuery, Pagination } from '../../utils/fileHelper.js';
-import { ClearProducts, DeleteProduct, GetPublicProductById, GetPublicProducts, GetSecuredProducts, ProductFilter, UpdateProduct, UpdateRating, UpdateStock, } from './product.service.js';
+import { ClearProducts, DeleteProduct, GetPublicProductById, GetPublicProducts, GetSecuredProductByIdOrSku, GetSecuredProducts, ProductFilter, UpdateProduct, UpdateRating, UpdateStock, } from './product.service.js';
 import { ErrorHandle_H } from '../../utils/helper.js';
 
 // READ

@@ -7,6 +7,7 @@ export const get_categories = async (req, res) => {
     try {
         const {
             page = 1, limit = 10,
+            search,
             sortBy = '-createdAt', orderSequence = '-1'
         } = req.query;
 
@@ -28,14 +29,14 @@ export const get_categories = async (req, res) => {
                 : '_id name description',
         }
 
-        const { status: statusCode, success, message, count, pagination, data } = await GetCategories(keyVal, options);
+        const { status: statusCode, success, message, count, pagination, data } = await GetCategories(options);
 
         return res.status(statusCode).json({
             success, message, count, pagination, data
         });
 
     } catch (error) {
-        return res.status(error.status).json({
+        return res.status(error.status || 500).json({
             error: error.message || `Internal Server Error '${error}'`
         });
     }
@@ -56,7 +57,7 @@ export const get_category_by_id = async (req, res) => {
 
         return res.status(status).json({ message, data, success });
     } catch (error) {
-        return res.status(error.status).json({
+        return res.status(error.status || 500).json({
             error: error.message || `Internal Server Error '${error}'`
         });
     }
@@ -77,7 +78,7 @@ export const get_category_by_slug = async (req, res) => {
 
         return res.status(status).json({ message, data, success });
     } catch (error) {
-        return res.status(error.status).json({
+        return res.status(error.status || 500).json({
             error: error.message || `Internal Server Error '${error}'`
         });
     }
@@ -111,7 +112,7 @@ export const create_category = async (req, res) => {
         if (handle?.status)
             return res.status(handle.status).json({ error: handle.error, errors: handle.errors, success: false });
 
-        return res.status(500).json({ error: error.message })
+        return res.status(error.status || 500).json({ error: error.message })
     }
 }
 
@@ -215,7 +216,7 @@ export const clear_Category = async (req, res) => {
         return res.status(status).json({ message, success });
 
     } catch (error) {
-        return res.status(error.status).json({
+        return res.status(error.status || 500).json({
             error: error.message || `Internal Server Error '${error}'`
         });
     }

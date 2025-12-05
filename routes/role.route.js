@@ -23,7 +23,7 @@ router.post('/create', AuthAccess('Role', 'create'), create_roles);
    @methtod -> PATCH
    @access -> Private (super_admin/admin/update)
 */
-router.patch('/:id/update', AuthAccess('Role', 'update'), update_roles);
+router.patch('/:roleId/update', AuthAccess('Role', 'update'), update_roles);
 
 /* @description -> To delete role
    @end-Point -> /api/role/:id/delete

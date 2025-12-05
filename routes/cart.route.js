@@ -80,14 +80,14 @@ router.get('/:cartId/view-id', AuthAccess('Cart', 'read'), get_cart_by_cartId);
    @methtod -> GET
    @access -> Private (/user/admin/super_admin/staff) 
 */
-router.get('/:cartId/:productId/view-id', AuthAccess('Cart', 'read'), get_cart_by_productId);
+router.get('/:cartId/:pId/view-id', AuthAccess('Cart', 'read'), get_cart_by_productId);
 
 /* @description -> to decrement quantity of item from the cart  
    @end-Point -> /:cartId/:productId/delete-to-cart
    @methtod -> DELETE
    @access -> Private (user) 
 */
-router.delete('/:cartId/:productId/delete-item-cart', AuthAccess('Cart', 'delete'), delete_item_from_cart);
+router.delete('/:cartId/:pId/delete-item-cart', AuthAccess('Cart', 'delete'), delete_item_from_cart);
 
 /* @description -> to remove item from the carted items 
    @end-Point -> /api/cart/:cartId/delete
