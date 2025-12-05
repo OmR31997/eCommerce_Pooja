@@ -1,6 +1,6 @@
 import express from 'express';
 import { Upload } from '../middlewares/upload.middleware.js';
-import { clear_staff, create_staff, get_me, read_staff_byId, read_staffs, remove_staff, update_staff, } from '../controllers/staff.controller.js';
+import { clear_staff, create_staff, get_me, read_staff_byId, read_staffs, remove_staff, update_staff, } from '../src/staff/staff.controller.js';
 import { AuthAccess } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();

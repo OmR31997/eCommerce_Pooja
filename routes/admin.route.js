@@ -1,5 +1,5 @@
 import express from 'express';
-import { create_admin, delete_admin, get_admin, manage_permission, manage_product, manage_staff, manage_user, manage_vendor, update_profile } from '../controllers/admin.controller.js';
+import { create_admin, delete_admin, get_admin, manage_permission, manage_product, manage_staff, manage_user, manage_vendor, update_profile } from '../src/admin/admin.controller.js';
 import { AuthAccess } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();

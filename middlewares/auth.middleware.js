@@ -1,8 +1,8 @@
 import jwt from 'jsonwebtoken';
-import { User } from '../models/user.model.js';
-import { Vendor } from '../models/vendor.model.js';
-import { Staff } from '../models/staff.model.js';
-import { Admin } from '../models/admin.model.js';
+import { User } from '../src/customer/user.model.js';
+import { Vendor } from '../src/vendor/vendor.model.js';
+import { Staff } from '../src/staff/staff.model.js';
+import { Admin } from '../src/admin/admin.model.js';
 import { GetModelByRole } from '../utils/fileHelper.js';
 
 

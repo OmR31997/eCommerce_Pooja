@@ -1,11 +1,42 @@
 import express from 'express';
-import { create_product, product_filters, public_product_byId, public_products, rate_product, secured_product_by_pId, secured_product_by_sku, secured_products, update_product } from '../controllers/product.controller.js';
+import { create_product, delete_product, product_filters, public_product_byId, public_products, rating_product, secured_product_by_productId, secured_product_by_sku, secured_products, stock_product, update_product } from '../src/product/product.controller.js';
 import { Upload } from '../middlewares/upload.middleware.js';
 import { AuthAccess, Authentication } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 const MAX_PRODUCT_IMAGES = parseInt(process.env.MAX_PRODUCT_IMAGES) || 5;
 
+// READ-----------------|
+
+/* @description -> To get secured products
+   @end-Point -> /api/product/all-secured
+   @methtod -> GET
+   @access -> (admin, super_admin, product_manager(staff), user) 
+*/
+router.get('/all-secured', Authentication, AuthAccess('Product', 'read'), secured_products);
+
+/* @description -> To get single product byProductId 
+   @end-Point -> /api/product/via-product-pId/:pId
+   @methtod -> GET
+   @access -> (admin, super_admin, product_manager(staff)) 
+*/
+router.get('/secured-via-pId/:pId', Authentication, AuthAccess('Product', 'read'), secured_product_by_productId);
+
+/* @description -> To get single product bySku
+   @end-Point -> /api/product/via-product-sku/:sku
+   @methtod -> GET
+   @access -> (admin, super_admin, product_manager(staff)) 
+*/
+router.get('/secured-via-sku/:sku', Authentication, AuthAccess('Product', 'read'), secured_product_by_sku);
+
+/* @description -> To give rating to the product
+   @end-Point -> /api/product/filter?
+   @methtod -> GET
+   @access -> Public 
+*/
+router.get('/filter', Authentication, AuthAccess('Product', 'read'), product_filters);
+
+// CREATE----------------|
 /* @description -> To create a new product via vendor
    @end-Point -> /api/product/create
    @methtod -> POST
@@ -15,49 +46,35 @@ router.post('/create', Authentication, AuthAccess('Product', 'create'),
    Upload('PROD-').array('images', MAX_PRODUCT_IMAGES),
    create_product);
 
+// UPDATE----------------|
 /* @description -> To update product by productId
    @end-Point -> /api/product/:id/update
    @methtod -> PATCH
    @access -> Private (vendor/vendor_manager/admin/super_admin) 
 */
-router.patch('/:id/update', Authentication, AuthAccess('Product', 'update'), update_product);
+router.patch('/:pId/update', Authentication, AuthAccess('Product', 'update'), update_product);
 
+/* @description -> To give rating to the product
+   @end-Point -> /api/product/:id/rating
+   @methtod -> PATCH
+   @access -> Private (user) 
+*/
+router.patch('/:pId/rating', Authentication, AuthAccess('Product', 'update'), rating_product);
+
+/* @description -> To give rating to the product
+   @end-Point -> /api/product/:id/stock
+   @methtod -> PATCH
+   @access -> Private (user) 
+*/
+router.patch('/:pId/stock', Authentication, AuthAccess('Product', 'update'), stock_product);
+
+// DELETE----------------|
 /* @description -> To delete product by productId
    @end-Point -> /api/product/:id/delet
    @methtod -> DELETE
    @access -> Private (vendor/vendor_manager/admin/super_admin) 
 */
-router.delete('/:id/delete', Authentication, AuthAccess('Product', 'delete'), update_product);
-
-/* @description -> To give rating to the product
-   @end-Point -> /api/product/:id/rate
-   @methtod -> PATCH
-   @access -> Private (user) 
-*/
-router.patch('/:id/rate', Authentication, AuthAccess('Product', 'update'), rate_product);
-
-/* @description -> To give rating to the product
-   @end-Point -> /api/product/filter?
-   @methtod -> GET
-   @access -> Public 
-*/
-router.get('/filter', Authentication, AuthAccess('Product', 'read'), product_filters);
-
-router.get('/all-secured', Authentication, AuthAccess('Product', 'read'), secured_products);
-
-/* @description -> To get single product byProductId 
-   @end-Point -> /api/product/via-product-pId/:pId
-   @methtod -> GET
-   @access -> (admin, super_admin, product_manager(staff)) 
-*/
-router.get('/via-product-id/:pId', Authentication, AuthAccess('Product', 'read'), secured_product_by_pId);
-
-/* @description -> To get single product bySku
-   @end-Point -> /api/product/via-product-sku/:sku
-   @methtod -> GET
-   @access -> (admin, super_admin, product_manager(staff)) 
-*/
-router.get('/via-product-sku/:sku', Authentication, AuthAccess('Product', 'read'), secured_product_by_sku);
+router.delete('/:pId/delete', Authentication, AuthAccess('Product', 'delete'), delete_product);
 
 //-----------------------------------------------------------------------------------------------------
 
@@ -69,6 +86,10 @@ router.get('/via-product-sku/:sku', Authentication, AuthAccess('Product', 'read'
 */
 router.get('/view', public_products);
 
-router.get('/:id', public_product_byId);
+/* @description -> To view products
+   @end-Point -> /api/product/pId
+   @methtod -> GET
+*/
+router.get('/:pId', public_product_byId);
 
 export default router;

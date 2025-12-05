@@ -40,6 +40,7 @@ const doc = {
     { name: 'Order', description: 'Order management routes' },
     { name: 'Notification', description: 'Notification Routes' },
     { name: 'Payment', description: 'Payment management routes' },
+    { name: 'Payout', description: 'Payout management routes' },
     { name: 'API Testing', description: 'Health check & testing endpoints' },
     { name: 'Backup System', description: 'Backup Routes' }
   ],
@@ -99,6 +100,7 @@ const getTagFromRoute = (route) => {
     '/order': 'Order',
     '/notification': 'Notification',
     '/payment': 'Payment',
+    '/payout': 'Payment',
     '/backup': 'Backup System',
     '/health': 'API Testing'
   };

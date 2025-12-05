@@ -1,5 +1,5 @@
 import express from 'express';
-import { clear_roles, create_roles, delete_role, get_roles, update_roles } from '../controllers/role.controller.js';
+import { clear_roles, create_roles, delete_role, get_roles, update_roles } from '../src/role/role.controller.js';
 import { AuthAccess } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();

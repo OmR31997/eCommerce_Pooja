@@ -1,5 +1,5 @@
 import express from 'express';
-import { create_backup, download_backup, restore_backup } from '../controllers/backup.controller.js';
+import { backup_in_excel, create_backup, restore_backup } from '../src/backup/backup.controller.js';
 
 const router = express.Router();
 
@@ -22,6 +22,6 @@ router.post('/restore', restore_backup);
    @methtod -> POST
    @access -> (super_admin)
 */
-router.get('/download', download_backup);
+router.get('/download', backup_in_excel);
 
 export default router;

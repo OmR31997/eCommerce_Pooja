@@ -1,6 +1,6 @@
 import express from 'express';
 import { AuthAccess } from '../middlewares/auth.middleware.js';
-import { clear_all_permissions, create_permissions, delete_permission, get_permissions, update_permission } from '../controllers/permission.controller.js';
+import { clear_all_permissions, create_permissions, delete_permission, get_permissions, update_permission } from '../src/permission/permission.controller.js';
 
 const router = express.Router();
 

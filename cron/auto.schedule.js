@@ -1,10 +1,10 @@
 import mongoose from 'mongoose';
 import cron from 'node-cron';
-import { Order } from '../models/order.model.js';
-import { Product } from '../models/product.model.js';
-import { } from '../models/admin.model.js';
-import { NotifyAdmins } from '../services/admin.service.js';
-import { CreateNotification } from '../services/notification.service.js';
+import { Order } from '../src/order/order.model.js';
+import { Product } from '../src/product/product.model.js';
+import { Transaction } from '../src/transaction/transaction.model.js';
+import { CheckPayoutStatus } from '../src/payout/payout.service.js';
+import { Notify } from '../src/notification/notification.service.js';
 
 cron.schedule('*/1 * * * *', async () => {
   const session = await mongoose.startSession();
@@ -46,6 +46,7 @@ cron.schedule('*/1 * * * *', async () => {
   }
 })
 
+// Schedule For Product 
 cron.schedule('0 * * * *', async () => {
 
   const MIN_STOCK_THRESHOLD = parseInt(process.env.MIN_STOCK_THRESHOLD) || 5;
@@ -100,18 +101,14 @@ cron.schedule('0 * * * *', async () => {
     await Promise.all(lowProductsData.map(product => {
       return Promise.all([
         // Send notification to admins
-        NotifyAdmins({
+        Notify.admin({
           title: 'Low stock alert',
           message: `${product.name} has critically low stock (${product.stock})`,
           type: 'stock'
         }),
 
         // Send Notification to vendor
-        CreateNotification({
-          receiver: {
-            receiverId: product.vendorId,
-            role: 'vendor'
-          },
+        Notify.vendor(product.vendorId, {
           title: 'Low Stock Alert',
           message: `${product.name} stock is critically low (${product.stock} units left).`,
           type: 'stock'
@@ -123,6 +120,15 @@ cron.schedule('0 * * * *', async () => {
   }
 });
 
+cron.schedule('*/10, * * * *', async () => {
+  const pendings = await Transaction.find({ status: 'processing' });
+
+  for (let trx of pendings) {
+    await CheckPayoutStatus(trx.razorpayPayoutId, trx.vendorId, trx.amount);
+  }
+
+  console.log('Checked payout status');
+})
 cron.schedule("30 2 * * *", async () => {
   try {
     const orders = await Order.find({

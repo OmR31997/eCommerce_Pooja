@@ -1,5 +1,5 @@
 import express from 'express';
-import { clear_Category, create_product_category, remove_category, search_category, update_category, view_categories, view_category_byId, view_category_bySlug } from '../controllers/category.controller.js';
+import { clear_Category, create_category, create_sub_category, delete_category, get_categories, get_category_by_id, get_category_by_slug, update_category } from '../src/category/category.controller.js';
 import { Upload } from '../middlewares/upload.middleware.js';
 import { AuthAccess } from '../middlewares/auth.middleware.js';
 
@@ -12,7 +12,7 @@ const router = express.Router()
 */
 router.post('/create', AuthAccess('Category', 'create'),
    Upload('CTG-').single('imageUrl'),
-   create_product_category);
+   create_category);
 
 /* @description -> To a create subcategory
    @end-Point -> /api/category/create/:parent/sub
@@ -21,31 +21,31 @@ router.post('/create', AuthAccess('Category', 'create'),
 */
 router.post('/create/:parent/sub', AuthAccess('Category', 'create'),
    Upload('CTG-').single('imageUrl'),
-   create_product_category);
+   create_sub_category);
 
 /* @description -> To view categories
    @end-Point -> /api/category/view
    @methtod -> GET 
 */
-router.get('/view', AuthAccess('Category', 'read'), view_categories);
+router.get('/view', AuthAccess('Category', 'read'), get_categories);
 
 /* @description -> To view category by categoryId
    @end-Point -> /api/category/:id/view
    @methtod -> GET 
 */
-router.get('/:id/view-id', AuthAccess('Category', 'read'), view_category_byId);
+router.get('/:categoryId/view-id', AuthAccess('Category', 'read'), get_category_by_id);
 
 /* @description -> To view category bySlug
    @end-Point -> /api/category/:slug/view-slug
    @methtod -> GET 
 */
-router.get('/:slug/view-slug', AuthAccess('Category', 'read'), view_category_bySlug);
+router.get('/:slug/view-slug', AuthAccess('Category', 'read'), get_category_by_slug);
 
 /* @description -> To update category by categoryId
    @end-Point -> /api/category/:id/update
    @methtod -> PATCH 
 */
-router.patch('/:id/update', AuthAccess('Category', 'update'),
+router.patch('/:categoryId/update', AuthAccess('Category', 'update'),
    Upload('CTG-').single('imageUrl'),
    update_category)
 
@@ -53,9 +53,9 @@ router.patch('/:id/update', AuthAccess('Category', 'update'),
    @end-Point -> /api/category/:id/delete
    @methtod -> DELETE 
 */
-router.delete('/:id/delete', AuthAccess('Category', 'delele'),
+router.delete('/:categoryId/delete', AuthAccess('Category', 'delele'),
    Upload('CTG-').single('imageUrl'),
-   remove_category);
+   delete_category);
 
 /* @description -> To cleared categories
    @end-Point -> /api/category/clear
@@ -67,6 +67,6 @@ router.delete('/clear', AuthAccess('Category', 'delete'), clear_Category);
    @end-Point -> /api/category/?find=
    @methtod -> GET 
 */
-router.get('/', AuthAccess('Category', 'read'), search_category);
+router.get('/filter', AuthAccess('Category', 'read'), get_categories);
 
 export default router;

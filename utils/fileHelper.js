@@ -1,40 +1,86 @@
 import fs from 'fs/promises';
 import path from 'path';
 import slugify from 'slugify';
-import { Category } from '../models/category.model.js';
+import { Category } from '../src/category/category.model.js';
 import crypto from 'crypto';
 import { ENV } from '../config/env.config.js';
 import mongoose from 'mongoose';
 
-export const ErrorHandle = (error) => {
+export const ValidateFiles_H = async (files, allowedTypes, {maxSizeMB = null, maxSizeKB = null}) => {
+    
+    // Determine maxBytes based on provided options
+    let maxBytes = null;
+    let readableLimit = null;
 
-    if (error.name === 'CastError') {
-        return {
-            status: 400,
-            success: false,
-            error: `Invalid ID format for field '${error.path}'`,
+    if(maxSizeKB !== null) {
+        maxBytes = 1024 * maxSizeKB;
+        readableLimit = `${maxSizeKB} KB`;
+    }
+    else if(maxSizeMB !== null) {
+        maxBytes = 1024 * 1024 * maxSizeMB;
+        readableLimit = `${maxSizeMB} MB`;
+    }
+    else {
+        maxBytes = 1024 * 1024; //Default 1 MB
+        readableLimit = `1 MB`;
+    }
+
+    if(!files || files.length === 0) return true;
+
+    const sessionPaths = [];
+
+    try {
+        for(const file of files) {
+
+            // Track for cleanup (DEV time)
+            if(file.path) {
+                sessionPaths.push(file.path);
+            }
+
+            // Validate mimtype
+            if(!allowedTypes.includes(file.mimetype)) {
+                throw {
+                    status: 415,
+                    message: `Invalid file type for '${file.originalname}'`
+                };
+            }
+
+            // Validate size
+            if(file.size > maxBytes) {
+                throw {
+                    status: 413,
+                    message: `File '${file.originalname}' exceeds ${readableLimit} limit`
+                };
+            }
         }
+
+        return true;
+    } catch (error) {
+        if(ENV.IS_DEV) {
+            await Promise.all(sessionPaths.map(path => DeleteLocalFile(path)))
+        }
+
+        throw error;
     }
+}
 
-    if (error.name === 'ValidationError') {
-        const errors = {};
-        Object.keys(error.errors).forEach(key => {
-            errors[key] = error.errors[key].message
-        });
-
-        return { status: 400, success: false, errors };
-    }
-
-    if (error.code === 11000) {
-        const field = Object.keys(error.keyValue)[0];
-        return { status: 409, success: false, error: `${field} already exists` };
+export const DeleteLocalFile_H = async (filePath) => {
+    try {
+        await fs.access(filePath);
+        await fs.unlink(filePath);
+    } catch (error) {
+        if (error.code === "ENOENT") {
+            // File doesn't exist → ignore safely
+            return;
+        }
+        throw new Error(`Error deleting file: ${error.message}`);
     }
 }
 
 export const ValidateFiles = async (files, allowedTypes, maxSizeMB = 1) => {
     const maxBytes = 1024 * 1024 * maxSizeMB;
 
-    // if (!files || files.length === 0) return true;
+    if (!files || files.length === 0) return true;
 
     const sessionPaths = [];
 
@@ -87,11 +133,18 @@ export const DeleteLocalFile = async (filePath) => {
     }
 }
 
+
+
 export const ToDeleteLocalFilesParallel = async (files) => {
     if (!files || !Array.isArray(files)) return;
 
     return Promise.all(files.map(file => file?.secure_url ? DeleteLocalFile(file.secure_url) : null))
 }
+
+
+
+
+
 
 export const GenerateEmail = (email, role) => {
 
@@ -126,19 +179,6 @@ export const IdentifyModel = (logKey) => {
     return { role: 'user', model: 'User', logValue: value };
 };
 
-export const IdentifyModelByGoogleEmail = (email) => {
-
-    const lower = email.toLowerCase();
-    const prefix = lower.split('@')[0];
-
-    if (prefix.endsWith('super')) return { role: 'super_admin', model: 'Admin', key: 'email' };
-    if (prefix.endsWith('admin')) return { role: 'admin', model: 'Admin', key: 'email' };
-    if (prefix.endsWith('vendor')) return { role: 'vendor', model: 'Vendor', key: 'businessEmail' };
-    if (prefix.endsWith('support')) return { role: 'staff', model: 'Staff', key: 'staffEmail' };
-
-    return { role: 'user', model: 'User', key: 'email' };
-};
-
 export const GetModelByRole = (role) => {
 
     switch (role) {
@@ -157,22 +197,6 @@ export const GetModelByRole = (role) => {
     }
 };
 
-export const GenerateSlug = async (name) => {
-    if (!name) {
-        throw new Error(`'name' field must be required`);
-    }
-
-    let baseSlug = slugify(name, { lower: true, strict: true, trim: true });
-
-    let slug = baseSlug;
-    let counter = 1;
-
-    while (await Category.countDocuments({ slug })) {
-        slug = `${baseSlug}-${counter++}`;
-    }
-
-    return slug;
-}
 
 export const GenerateSku = (categoryName, vendorId, productName, stock) => {
     // CATGEORY + VENDOR + PRODUCT + UNIT = sku (mostly)
@@ -239,23 +263,42 @@ export const ValidateDocs = async (docs, maxSizeMB = 3) => {
 }
 
 export const ValidateImages = async (images, maxSizeMB = 2) => {
-    return ValidateFiles(images, ["image/jpeg", "image/png", "image/webp"], maxSizeMB)
+    return ValidateFiles(images, ["image/jpeg", "image/png", "image/webp", "image/jpg"], maxSizeMB)
 }
 
-const search = {
-    order: (textVal) => {
+const searchConfig = {
+    order: (searchVal) => {
         return [
-            { shippingAddress: { $regex: textVal, $options: 'i' } }
+            { shippingAddress: { $regex: searchVal, $options: 'i' } }
         ]
-    }
+    },
+
+    category: (searchVal) => [
+        { name: { $regex: searchVal, $options: 'i' } },
+        { slug: { $regex: searchVal, $options: 'i' } },
+    ],
+
+    product: (searchVal) => [
+        { name: { $regex: searchVal, $options: 'i' } },
+        { sku: { $regex: searchVal, $options: 'i' } },
+        { 'category.name': { $regex: searchVal, $options: 'i' }},
+        { 'vendor.name': {$regex: searchVal, $options: 'i'}},
+        { description: { $regex: searchVal, $options: 'i' } }
+    ],
+
+    cart: (searchVal) => [
+        { 'items.productId.name': { $regex: searchVal, $options: 'i' } },
+        { 'items.productId.businessName': { $regex: searchVal, $options: 'i' } },
+        { 'name': { $regex: searchVal, $options: 'i' } },
+    ]
 }
 
 export const BuildQuery = (filter, moduleName) => {
     try {
         const query = {};
 
-        if (filter.search) {
-            query.$or = search.order(filter.search);
+        if (filter.search && searchConfig) {
+            query.$or = searchConfig[moduleName](filter.search);
         }
 
         if (filter.userIds) {
@@ -276,6 +319,49 @@ export const BuildQuery = (filter, moduleName) => {
             };
         }
 
+        if (filter.categoryIds) {
+            query.categoryIds = {
+                $in: filter.categoryIds
+                    .replace(/^\[|\]|\{|\}$/g, '')
+                    .split(',')
+                    .map(w => w.trim()) ?? []
+            };
+        }
+
+        // Price range (min-max) //example:  100-500
+        if (filter.priceRange) {
+            const [min, max] = filter.priceRange.split('-').map(Number);
+            query.price = { $gte: min, $lte: max };
+        }
+
+        if (filter.rating !== undefined) {
+            query['rating.average'] = { $gte: filter.rating };
+        }
+
+        if (filter.discount !== undefined) {
+            query.discount = { $gte: filter.discount };
+        }
+
+        if (filter.status) query.status = filter.status;
+        
+        if (filter.stockStatus) {
+            switch (filter.stockStatus) {
+                case 'in_stock':
+                    query.stock = { $gt: 0 };
+                    break;
+                case 'low_stock':
+                    query.stock = { $gt: 0, $lt: 5 };
+                    break;
+                case 'out_of_stock':
+                    query.stock = { $lte: 0 };
+                    break;
+            }
+        }
+
+        if (filter.stock && filter.stock.$gte !== undefined) {
+            query.stock = { $gte: filter.stock.$gte }
+        }
+        
         if (filter.status) {
             query.status = filter.status;
         }
@@ -537,7 +623,7 @@ export const BuildPopulateStages = (populates = {}) => {
                 projection[field] = `$${key}.${field}`;
             });
 
-            stages.push({ $addFields: {[key]:projection} });
+            stages.push({ $addFields: { [key]: projection } });
         }
     }
 

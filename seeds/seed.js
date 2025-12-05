@@ -1,14 +1,14 @@
 import { config } from 'dotenv';
 import path from 'path';
 import { DB_Connect, DB_Disconnect } from '../config/db.config.js';
-import { Admin } from "../models/admin.model.js";
+import { Admin } from "../src/admin/admin.model.js";
 import bcrypt from 'bcryptjs';
-import { Permission } from '../models/permission.model.js';
-import { Staff } from '../models/staff.model.js';
-import { Role } from '../models/role.model.js';
-import { User } from '../models/user.model.js';
-import { Vendor } from '../models/vendor.model.js';
-import { Category } from '../models/category.model.js';
+import { Permission } from '../src/permission/permission.model.js';
+import { Staff } from '../src/staff/staff.model.js';
+import { Role } from '../src/role/role.model.js';
+import { User } from '../src/customer/user.model.js';
+import { Vendor } from '../src/vendor/vendor.model.js';
+import { Category } from '../src/category/category.model.js';
 import mongoose from 'mongoose';
 
 const DummyCustomers = async () => {

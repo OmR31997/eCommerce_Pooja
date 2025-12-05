@@ -1,5 +1,5 @@
 import express from 'express';
-import { clear_vendors, confirm_otp, get_me, get_order_byId, get_orders_ByVendor, get_product_by_pId, get_product_bySku, get_products_ByVendor, get_vendor_byId, get_vendors, remove_vendor_profile, update_vendor_profile, vendor_filters} from '../controllers/vendor.controller.js';
+import { clear_vendors, confirm_otp, get_me, get_order_byId, get_orders_ByVendor, get_product_by_pId, get_product_bySku, get_products_ByVendor, get_vendor_byId, get_vendors, remove_vendor_profile, update_vendor_profile, vendor_filters} from '../src/vendor/vendor.controller.js';
 import { Upload } from '../middlewares/upload.middleware.js';
 import { AuthAccess } from '../middlewares/auth.middleware.js';
 

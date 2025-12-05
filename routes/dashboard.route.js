@@ -1,5 +1,5 @@
 import express from 'express';
-import { account_manager_dashboard, admin_dashboard, order_manager_dashboard, product_manager_dashboard, staff_manager_dashboard, super_admin_dashboard, user_manager_dashboard, vendor_dashboard, vendor_manager_dashboard } from '../controllers/dashboard.controller.js';
+import { account_manager_dashboard, admin_dashboard, order_manager_dashboard, product_manager_dashboard, staff_manager_dashboard, super_admin_dashboard, user_manager_dashboard, vendor_dashboard, vendor_manager_dashboard } from '../src/dashboard/dashboard.controller.js';
 import { AuthAccess } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();

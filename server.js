@@ -87,6 +87,6 @@ appServer.use('/api/backup', Authentication, BackupRoute);
 
 const port = process.env.PORT;
 
-const baseUrl = process.env.NODE_ENV === 'development' ? `http://localhost:${port}/api/health` : `${process.env.BASE_URL}/health`;
+const baseUrl = process.env.NODE_ENV === 'development' ? `http://localhost:${port}/api-docs` : `${process.env.BASE_URL}`;
 
 appServer.listen(port, () => console.log(`Server is running at ${baseUrl}`));

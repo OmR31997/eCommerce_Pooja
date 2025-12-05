@@ -1,0 +1,260 @@
+import { CancelOrder, CreateOrderBeforePayment, ExchangeOrder, GetOrderById, GetOrders, ReturnOrder } from "./order.service.js";
+import { GenerateReceiptPDF } from '../../utils/generateReceipt.js';
+import { ErrorHandle_H } from "../../utils/helper.js";
+// READ ORDER CONTROLLERS-----------------------------------------|
+
+export const get_orders = async (req, res) => {
+    try {
+        const {
+            page = 1, limit = 10, offset,
+            search, userIds, vendorIds,
+            paymentMethod, paymentStatus, status,
+            sortBy = 'createdAt', orderSequence = 'desc'
+        } = req.query;
+
+        if (req.user.role === 'user') {
+            throw {
+                status: 405,
+                message: `Method Not Allowed`
+            }
+        }
+
+        const options = {
+            pagingReq: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                offset,
+                sortBy, orderSequence
+            },
+
+            baseUrl: `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`,
+
+            filter: {
+                search,
+                userIds, vendorIds,
+                status, paymentStatus,
+                paymentMethod
+            },
+
+            populates: {
+                vendor: { path: 'vendorId', select: 'businessName businessEmail status' },
+                user: { path: 'userId', select: 'name status totalSpents' },
+                product: { path: 'items.productId', select: 'name status' },
+            }
+
+        }
+
+        const { status: statusCode, message, pagination, success, data, } = await GetOrders(options);
+
+        return res.status(statusCode).json({ message, pagination, success, data, });
+
+    } catch (error) {
+        return res.status(error.status || 500).json({
+            success: false,
+            error: error.message || `Internal Server Error ${error}`
+        });
+    }
+}
+
+export const get_order_by_orderId = async (req, res) => {
+    try {
+        if (!['admin', 'super_admin', 'staff'].includes(req.user.role)) {
+            throw {
+                status: 405,
+                message: `Method Not Allowed`
+            }
+        }
+
+        const keyVal = req.user.role === 'user'
+            ? { userId: req.user.id }
+            : req.user.role === 'vendor'
+                ? { vendorId: req.user.id }
+                : {}
+
+        const orderId = req.params.orderId;
+
+        const { status, message, data, success } = await GetOrderById(orderId, keyVal, productId);
+
+        return res.status(status).json({ message, data, success });
+
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
+        }
+
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+    }
+}
+
+// -------------------------------------CREATE ORDER CONTROLLER----------------------------------------|
+export const checkout_before_payment = async (req, res) => {
+
+    try {
+
+        const {
+            shippingTo, phone, postalCode,
+            addressLine, city, state,
+            paymentMethod, userId } = req.body;
+
+        if (userId && req.user.role === 'user' && userId !== req.user.id) {
+            throw {
+                status: 401,
+                message: `Unauthorized: You don't have permission to create for anothe customer`
+            }
+        }
+
+        const orderData = {
+            userId: req.user.role === 'user' ? req.user.id : userId,
+            shippingAddress: {
+                name: shippingTo,
+                phone, addressLine, city, state,
+                postalCode
+            }, paymentMethod
+        }
+
+        const { status, success, message, data, count } = await CreateOrderBeforePayment(orderData);
+
+        return res.status(status).json({ message, data, created: count, success });
+
+    } catch (error) {
+
+        const handle = ErrorHandle_H(error);
+
+        if (handle?.status)
+            return res.status(handle.status).json({ error: handle.error, errors: handle.errors, success: false });
+
+        return res.status(500).json({ success: false, error: error.message });
+    }
+}
+
+// -------------------------------------UPDATE ORDER CONTROLLER----------------------------------------|
+export const exchange_order = async (req, res) => {
+    try {
+        const userId = req.query.userId;
+
+        if (userId && req.user.role === 'user' && req.user.id !== userId) {
+            throw {
+                status: 401,
+                message: `Unauthorized: You don't have permission`
+            }
+        }
+
+        const options = {
+            userId: req.user.role === 'user' ? req.user.id : userId,
+            orderId: req.params.orderId,
+            newProductId: req.params.productId
+        }
+
+        const { status, success, message } = await ExchangeOrder(options);
+
+        return res.status(status).json({ message, success });
+
+    } catch (error) {
+
+        return res.status(error.status || 500).json({
+            success: false,
+            error: error.message || `Internal Server Error ${error}`
+        });
+    }
+}
+
+export const return_order = async (req, res) => {
+    try {
+        const userId = req.query.userId;
+
+        if (userId && req.user.role === 'user' && req.user.id !== userId) {
+            throw {
+                status: 401,
+                message: `Unauthorized: You don't have permission`
+            }
+        }
+
+        const options = {
+            userId: req.user.role === 'user' ? req.user.id : userId,
+            orderId: req.params.orderId
+        }
+
+        const { status, success, message } = await ReturnOrder(options);
+
+        return res.status(status).json({ message, success });
+    } catch (error) {
+
+        return res.status(error.status || 500).json({
+            success: false,
+            error: error.message || `Internal Server Error ${error}`
+        });
+    }
+}
+
+
+// -------------------------------------DELETE ORDER CONTROLLER----------------------------------------|
+export const cancel_order = async (req, res) => {
+    try {
+
+        const userId = req.query.userId;
+
+        if (userId && req.user.role === 'user' && req.user.id !== userId) {
+            throw {
+                status: 401,
+                message: `Unauthorized: You don't have permission`
+            }
+        }
+
+        const options = {
+            userId: req.user.role === 'user' ? req.user.id : userId,
+            orderId: req.params.orderId
+        }
+
+        const { status, success, message } = await CancelOrder(options);
+
+        return res.status(status).json({ message, success });
+
+    } catch (error) {
+
+        return res.status(error.status || 500).json({
+            success: false,
+            error: error.message || `Internal Server Error ${error}`
+        });
+    }
+}
+
+//-------------------------------------RECIEPT GENRATE CONTROLLER--------------------------------------|
+export const download_reciept = async (req, res) => {
+    try {
+        const userId = req.query.userId;
+
+        if (userId && req.role === 'user' && req.user.id !== userId) {
+            throw {
+                status: 401,
+                message: `Unauthorized: You don't have permission to get reciept`
+            }
+        }
+
+        const options = {
+            userId: req.user.role === 'user' ? req.user.id : userId,
+            orderId: req.params.orderId,
+
+            populates: {
+                vendor: { path: 'vendorId', select: 'businessName' },
+                product: { path: 'items.productId', select: 'name quantity price subtotal totalAmount' },
+            },
+        }
+
+        const { data: order } = await GetOrderById(options);
+
+        if (!order.items.length === 0) {
+            throw {
+                status: 404,
+                message: 'Item not found'
+            }
+        }
+
+        await GenerateReceiptPDF(order, res);
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
+        }
+
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+    }
+}

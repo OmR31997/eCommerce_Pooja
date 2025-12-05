@@ -1,5 +1,5 @@
 import express from 'express';
-import { change_passoword, confirm_signIn_otp, forgot_password, google_Callback, refresh_token, reset_password, send_otp, sign_in, sign_in_withGoogle, sign_out, sign_out_all_devices, sign_up, test_protected, vendor_registration } from '../controllers/auth.controller.js';
+import { change_passoword, confirm_signIn_otp, forgot_password, google_Callback, refresh_token, reset_password, send_otp, sign_in, sign_in_withGoogle, sign_out, sign_out_all_devices, sign_up, test_protected, vendor_registration } from '../src/auth/auth.controller.js';
 import { AuthAccess, Authentication } from '../middlewares/auth.middleware.js';
 import { Upload } from '../middlewares/upload.middleware.js';
 
@@ -9,9 +9,9 @@ router.get('/protected', Authentication, test_protected);
 
 router.post('/refresh-token', refresh_token);
 
-router.post('/logged-out', sign_out);
+router.post('/logged-out', Authentication, sign_out);
 
-router.post('/logged-out-from-all-device', sign_out_all_devices);
+router.post('/logged-out-from-all-device', Authentication, sign_out_all_devices);
 
 /* @description -> To generate otp
    @end-Point -> /api/auth/send-otp

@@ -1,4 +1,4 @@
-import { ParseDurationToMs } from '../utils/tokens.js';
+import { ParseDurationToMs } from '../src/token/tokens.service.js';
 
 const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || '30d';
 const REFRESH_TOKEN_COOKIE_NAME = process.env.REFRESH_TOKEN_COOKIE_NAME || 'defaultRefreshToken'
