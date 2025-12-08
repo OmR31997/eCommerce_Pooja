@@ -1,7 +1,7 @@
 import { ErrorHandle_H } from "../../utils/helper.js";
 import { AddToCart, DecrementItemQty, DeleteCart, GetCartById, GetCarts, SaveShipping } from "./cart.service.js";
 
-// ---------------------------------------READ CART CONTROLLERS----------------------------------------|
+// \READ CART CONTROLLERS--------------------|
 
 export const get_carts = async (req, res) => {
     try {
@@ -107,7 +107,7 @@ export const get_cart_by_productId = async (req, res) => {
     }
 }
 
-// ---------------------------------UPDATE & CREATE CONTROLLERS---------------------------------------------------|
+// UPDATE & CREATE CONTROLLERS-----------------------|
 export const checkout_shipping = async (req, res) => {
     try {
         const {
@@ -201,7 +201,7 @@ export const add_to_cart = async (req, res) => {
     }
 }
 
-// ---------------------------------UPDATE & DELETE CONTROLLERS---------------------------------------------------|
+// UPDATE & DELETE CONTROLLERS---------------------------|
 export const delete_item_from_cart = async (req, res) => {
     try {
 

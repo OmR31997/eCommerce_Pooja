@@ -7,7 +7,7 @@ import { Permission } from '../src/permission/permission.model.js';
 import { Role } from '../src/role/role.model.js';
 import { Vendor } from '../src/vendor/vendor.model.js';
 import mongoose from 'mongoose';
-import { insertDummyCustomers, insertDummyVendors, insertDummyProducts, insertDummyCategories, insertDummySubCTG, insertDummyOrders } from "./dummy.js";
+// import { insertDummyCustomers, insertDummyVendors, insertDummyProducts, insertDummyCategories, insertDummySubCTG, insertDummyOrders } from "./dummy.js";
 
 // (4)
 const staffsSeed = async () => {
