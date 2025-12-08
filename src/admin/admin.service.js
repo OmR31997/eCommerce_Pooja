@@ -1,4 +1,4 @@
-import { GenerateEmail } from '../../utils/fileHelper.js';
+import { GenerateEmail_H } from "../../utils/helper.js";
 import bcrypt from 'bcryptjs';
 import { Role } from '../role/role.model.js';
 import { Admin } from './admin.model.js';
@@ -15,7 +15,7 @@ export const CreateAdmin = async (adminData) => {
 
     adminData.role = AdminRoleId;
     adminData.permission = AdminRoleId.permissions[0];
-    adminData.email = email ? GenerateEmail(email, 'admin') : undefined;
+    adminData.email = email ? GenerateEmail_H(email, 'admin') : undefined;
     adminData.password = password ? await bcrypt.hash(password, 10) : undefined;
 
     const result = await Admin.create(adminData)
@@ -169,7 +169,7 @@ export const ManageProduct = async (productId, status) => {
     return {
         status: 200,
         message: 'Product managed successfully',
-        data: { name: updatedProduct, status },
+        data: { name: updatedProduct.name, status: updatedProduct.status },
         success: true
     };
 }

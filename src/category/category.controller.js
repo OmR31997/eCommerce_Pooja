@@ -21,12 +21,9 @@ export const get_categories = async (req, res) => {
             },
 
             filter: {
-                search
+                search,
+                status: ['admin', 'super_admin'].includes(req.user.role) ? undefined : 'active'
             },
-
-            select: ['admin', 'super_admin'].includes(req.user.role)
-                ? '_id name description +status'
-                : '_id name description',
         }
 
         const { status: statusCode, success, message, count, pagination, data } = await GetCategories(options);
@@ -45,13 +42,13 @@ export const get_categories = async (req, res) => {
 /*      *get_category_by_id req/res handler*     */
 export const get_category_by_id = async (req, res) => {
     try {
+
+        const isAdmin = ['admin', 'super_admin'].includes(req.user.role);
+
         const keyVal = {
             _id: req.params.categoryId,
+            ...(isAdmin ? {} : {status: 'active'})
         }
-
-        select = ['admin', 'super_admin'].includes(req.user.role)
-            ? '_id name slug description +status'
-            : '_id name slug description';
 
         const { status, success, message, data } = await GetCategoryById(keyVal);
 
@@ -66,13 +63,13 @@ export const get_category_by_id = async (req, res) => {
 /*      *get_category_by_slug req/res handler*     */
 export const get_category_by_slug = async (req, res) => {
     try {
+
+        const isAdmin = ['admin', 'super_admin'].includes(req.user.role);
+
         const keyVal = {
             slug: req.params.slug,
+            ...(isAdmin ? {} : {status: 'active'})
         }
-
-        select = ['admin', 'super_admin'].includes(req.user.role)
-            ? '_id name slug description +status'
-            : '_id name slug description';
 
         const { status, success, message, data } = await GetCategoryById(keyVal);
 
@@ -93,7 +90,7 @@ export const create_category = async (req, res) => {
         } = req.body;
 
         const reqData = {
-            name, description, parent
+            name, description
         }
 
         const filePayload = {
@@ -106,13 +103,15 @@ export const create_category = async (req, res) => {
 
     } catch (error) {
 
-
-        const handle = ErrorHandle_H(error);
-
-        if (handle?.status)
-            return res.status(handle.status).json({ error: handle.error, errors: handle.errors, success: false });
-
-        return res.status(error.status || 500).json({ error: error.message })
+        try {
+            ErrorHandle_H(error);
+        } catch (handled) {
+            return res.status(handled.status || 500).json({
+                success: false,
+                message: handled.message,
+                errors: handled.errors || null
+            });
+        }
     }
 }
 
@@ -138,15 +137,15 @@ export const create_sub_category = async (req, res) => {
         return res.status(status).json({ success, message, data });
 
     } catch (error) {
-        const handle = ErrorHandle_H(error);
-
-        if (handle?.status)
-            return res.status(handle.status).json({ error: handle.error, errors: handle.errors, success: false });
-
-        return res.status(error.status || 500).json({
-            error: error.message || `Internal Server Error: '${error}'`,
-            success: false
-        });
+        try {
+            ErrorHandle_H(error);
+        } catch (handled) {
+            return res.status(handled.status || 500).json({
+                success: false,
+                message: handled.message,
+                errors: handled.errors || null
+            });
+        }
     }
 }
 
@@ -163,13 +162,14 @@ export const update_category = async (req, res) => {
             imageFile: req.file
         }
 
-        if (!name || !description) {
+        if (!name && !description) {
             throw {
                 status: 400,
                 message: `Atleast a field required either 'name' or 'description'`
             }
         }
-        reqData = {
+
+        const reqData = {
             name, description
         }
 
@@ -178,15 +178,15 @@ export const update_category = async (req, res) => {
         return res.status(status).json({ message, data, success });
 
     } catch (error) {
-        const handle = ErrorHandle_H(error);
-
-        if (handle?.status)
-            return res.status(handle.status).json({ error: handle.error, errors: handle.errors, success: false });
-
-        return res.status(error.status || 500).json({
-            error: error.message || `Internal Server Error: '${error}'`,
-            success: false
-        });
+        try {
+            ErrorHandle_H(error);
+        } catch (handled) {
+            return res.status(handled.status || 500).json({
+                success: false,
+                message: handled.message,
+                errors: handled.errors || null
+            });
+        }
     }
 }
 
@@ -211,6 +211,14 @@ export const delete_category = async (req, res) => {
 /*      *clear_Category req/res handler*     */
 export const clear_Category = async (req, res) => {
     try {
+
+        if(req.user.role !== 'super_admin') {
+            throw {
+                status: 405,
+                message: "Method Not Allowed"
+            }
+        }
+
         const { status, message, success } = await ClearCategories();
 
         return res.status(status).json({ message, success });

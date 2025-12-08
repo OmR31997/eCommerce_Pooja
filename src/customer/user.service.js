@@ -1,8 +1,8 @@
 import mongoose from 'mongoose';
 import { User } from './user.model.js';
 import { Order } from '../order/order.model.js';
-import { BuildUserQuery, Pagination } from '../../utils/fileHelper.js';
 import { Vendor } from '../vendor/vendor.model.js';
+import { BuildQuery_H, Pagination_H } from '../../utils/helper.js';
 
 export const GetUser = async (userId) => {
     const user = await User.findById(userId).
@@ -28,7 +28,7 @@ export const GetAllUsers = async (baseUrl, pagingReq, filterReq) => {
         }
     }
 
-    const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
+    const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination_H(
         pagingReq.page,
         pagingReq.limit,
         pagingReq.offset,
@@ -41,7 +41,7 @@ export const GetAllUsers = async (baseUrl, pagingReq, filterReq) => {
     const sortOption = { [sortField]: sortDirection };
 
     // Build Mongo query
-    const query = BuildUserQuery(filterReq);
+    const query = BuildQuery_H(filterReq);
 
     const users = await User.find(query)
         .skip(skip)

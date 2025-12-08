@@ -1,9 +1,5 @@
 import mongoose from 'mongoose';
-
-const File = new mongoose.Schema({
-    public_id: { type: String, default: null },
-    secure_url: { type: String, default: null },
-}, { _id: false });
+import { FileSchema } from '../../common_models/file.model.js';
 
 const VendorSchema = new mongoose.Schema({
     userId: {
@@ -18,6 +14,14 @@ const VendorSchema = new mongoose.Schema({
         trim: true,
         required: [true, `'type' field must be required`],
         index: true,
+    },
+    isGoogleAuth: {
+        type: Boolean,
+        default: false,
+    },
+    isVerified: {
+        type: Boolean,
+        default: false
     },
     status: {
         type: String,
@@ -68,7 +72,10 @@ const VendorSchema = new mongoose.Schema({
         type: String,
         required: [true, `'address' field must be required`],
     },
-    logoUrl: File,
+    logoUrl: {
+        type: FileSchema,
+        default: null
+    },
     bankDetails: {
         accountNumber: {
             type: String,
@@ -94,7 +101,10 @@ const VendorSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
-    documents: [File],
+    documents: {
+        type: [FileSchema],
+        default: []
+    },
     commision: {
         type: Number,
         default: 0,

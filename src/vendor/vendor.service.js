@@ -1,281 +1,283 @@
 import mongoose from 'mongoose';
-import crypto from "crypto";
 import { ENV } from '../../config/env.config.js';
 import { Order } from '../order/order.model.js';
 import { Vendor } from '../vendor/vendor.model.js';
 import { User } from '../customer/user.model.js';
-import { BuildVendorQuery, DeleteLocalFile, Pagination, ValidateDocs, ValidateLogo } from '../../utils/fileHelper.js';
-import { ToDeleteFilesParallel, ToDeleteFromCloudStorage, ToSaveCloudStorage, ToUploadParallel } from '../../utils/cloudUpload.js';
+import { DeleteLocalFile_H, } from '../../utils/fileHelper.js';
+import { ToDeleteFromCloudStorage_H } from '../../utils/cloudUpload.js';
 import { Notify } from '../notification/notification.service.js';
+import { BuildQuery_H, Pagination_H, ToDeleteFilesParallel_H, ToDeleteSelectedFiles_H, UploadFilesWithRollBack_H, UploadImageWithRollBack_H } from '../../utils/helper.js';
 
-export const GetVendor = async (userId) => {
-    const vendor = await Vendor.findById(userId);
+export const GetVendor = async (vendorId) => {
+    const vendor = await Vendor.findById(vendorId);
 
     if (!vendor) {
         throw {
             status: 404,
-            message: `Account not found for ID: ${userId}`,
-            success: false
+            message: `Account not found for ID: ${vendorId}`
         }
     }
 
     return { status: 200, message: 'Vendor account fetched successfully.', data: vendor, success: false };
 }
 
-export const GetAllVendors = async (baseUrl, pagingReq, filterReq) => {
-    const total = await Vendor.countDocuments();
+export const GetVendors = async (options) => {
 
-    // Count total vendors
-    if (total === 0)
-        throw { status: 400, message: 'No one vendor registered', success: false };
+    const { filter = {}, pagingReq = {}, baseUrl, select } = options;
 
-    const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
-        pagingReq.page,
-        pagingReq.limit,
-        pagingReq.offset,
-        total,
-        baseUrl, filterReq
-    );
+    const matchedQuery = BuildQuery_H(filter, 'vendor');
 
-    // Sorting
-    const sortField = ['businessName', 'businessDescription', 'createdAt'].includes(pagingReq.sortBy) ? pagingReq.sortBy : 'createdAt';
+    const total = await Vendor.countDocuments(matchedQuery);
+
+    const pagination = Pagination_H(pagingReq.page, pagingReq.limit, undefined, total, baseUrl, matchedQuery);
+
+    const sortField = ['name', 'createdAt'].includes(pagingReq.sortBy) ? pagingReq.sortBy : 'createdAt';
     const sortDirection = pagingReq.orderSequence === 'asc' ? 1 : -1;
     const sortOption = { [sortField]: sortDirection };
 
-    // Build Mongo query
-    const query = BuildVendorQuery(filterReq);
-
-    const vendors = await Vendor.find(query).lean()
-        .skip(skip)
+    const vendors = await Vendor.find(matchedQuery)
+        .skip(pagination.skip)
         .limit(pagingReq.limit)
-        .sort(sortOption);
+        .sort(sortOption)
+        .select(select)
+        .lean();
+
+    delete pagination.skip;
 
     return {
         status: 200,
-        message: 'Vendor fetched successfully',
-        pagination: {
-            count: total,
-            prevUrl,
-            nextUrl,
-            currentPage,
-            totalPages
-        },
         success: true,
-        data: vendors
+        message: 'Data fetched successfully',
+        count: total,
+        pagination,
+        data: vendors || []
     }
 }
 
-export const UpdateVendor = async (vendorData, filePayload, vendorId) => {
-    const { logoUrl = null, documents = [], removeDocuments = [] } = filePayload;
+export const UpdateVendor = async (keyVal={}, reqData={}, filePayload={}) => {
+
+    const { removeDocPaths, ...rest } = reqData;
+    const { logoFile, documents } = filePayload;
+
+    let uploaded = {
+        logoUrl: null,
+        documents: []
+    }
 
     let updateOps = { $set: {}, $push: {}, $pull: {} };
 
-    let uploadedDocs = [];
-    let uploadedLogo = null;
-
-    // Assign normal field for operation
-    for (const [key, val] of Object.entries(vendorData)) {
-        if (val !== undefined) updateOps.$set[key] = val;
-    }
-
-    // Validate logo & docs
-    if (documents?.length > 0) ValidateDocs(documents);
-
-    if (logoUrl) ValidateLogo(logoUrl);
-
     try {
-        // Handle: removeDocument Case
-        if (removeDocuments?.length > 0) {
-            const vendor = await Vendor.findById(vendorId).select("documents");
 
-            const docsToRemove = vendor.documents.filter(
-                idx => removeDocuments.includes(idx.secure_url)
-            );
+        const vendor = await Vendor.findOne(keyVal).select("documents logoUrl").lean();
 
-            // Remove from cloud / local storage
-            await ToDeleteFilesParallel(docsToRemove);
+        if (!vendor) {
+            throw {
+                status: 404,
+                message: `Vendor account not found for ID: ${keyVal?.id || keyVal?.businessEmail}`
+            }
+        }
+        if (logoFile) {
+            uploaded.logoUrl = await UploadImageWithRollBack_H(logoFile, "eCommerce/logoUrls");
 
-            // Remove from cloud/dev
-            updateOps.$pull.documents = { secure_url: { $in: removeDocuments } }
+            if (ENV.IS_PROD && vendor?.logoUrl?.public_id) {
+                await ToDeleteFromCloudStorage_H(vendor.logoUrl.public_id)
+            }
+
+            if (!ENV.IS_PROD && vendor?.logoUrl?.secure_url) {
+                await DeleteLocalFile_H(vendor.logoUrl.secure_url)
+            }
+
+            updateOps.$set.logoUrl = uploaded.logoUrl
         }
 
         if (documents?.length > 0) {
+            // Only upload documents
+            uploaded.documents = await UploadFilesWithRollBack_H(documents, "eCommerce/documents");
 
-            uploadedDocs = await ToUploadParallel(
-                documents,
-                'eCommerce/Vendors/Documents',
-                'DOC-'
-            );
-
-            updateOps.$push.documents = { $each: uploadedDocs }
+            updateOps.$push.documents = { $each: uploaded.documents }
         }
 
-        // Add in not exist or Replace while exist logo
-        if (logoUrl) {
-            const vendor = await Vendor.findById(vendorId).select('logoUrl');
-
-            if (vendor.logoUrl?.public_id && ENV.IS_PROD)
-                await ToDeleteFromCloudStorage(vendor.logoUrl.public_id);
-            else if (vendor.logoUrl?.secure_url)
-                await DeleteLocalFile(vendor.logoUrl.secure_url);
-
-            uploadedLogo = ENV.IS_PROD
-                ? await ToSaveCloudStorage(
-                    logoUrl,
-                    'eCommerce/Vendors/LogoUrls',
-                    `LOGO-${crypto.randomBytes(12).toString('hex')}`
-                )
-                : { secure_url: logoUrl.path, public_id: null }
-
-            updateOps.$set.logoUrl = uploadedLogo;
+        for (const [key, val] of Object.entries(rest)) {
+            if (val !== undefined) updateOps.$set[key] = val;
         }
 
-        // Remove empty operators   
-        if (!updateOps.$push.documents) delete updateOps.$push;
-        if (!updateOps.$pull.documents) delete updateOps.$pull;
+        // Only remove documents
+        if (removeDocPaths?.length > 0) {
 
-        if (Object.keys(updateOps.$set).length === 0) delete updateOps.$set;
+            const finalDeletePath = await ToDeleteSelectedFiles_H(removeDocPaths, vendor.documents);
 
-        // Finalae Update
-        const result = await Vendor.findByIdAndUpdate(vendorId, updateOps, { new: true });
-
-        if (!result) {
-            throw {
-                status: 404,
-                message: `Vendor account not found for ID: ${vendorId}`,
-                success: false
+            if (finalDeletePath.length > 0) {
+                updateOps.$pull.documents = { $or: finalDeletePath };
             }
         }
 
-        return { status: 200, message: 'Vendor profile updated successfully', data: result };
+        // Remove empty operators   
+        if (!updateOps.$push.documents || !updateOps.$push.documents.$each?.length) {
+            delete updateOps.$push;
+        }
+
+        if (!updateOps.$pull.documents || !updateOps.$pull.documents.$or?.length) {
+            delete updateOps.$pull;
+        }
+
+
+        if (Object.keys(updateOps.$set).length === 0) delete updateOps.$set;
+
+        // Final Update
+        const updated = await Vendor.findOneAndUpdate(keyVal, updateOps, { new: true, runValidators: true });
+
+        return { status: 200, message: 'Vendor profile updated successfully', data: updated, success: true };
+
     } catch (error) {
 
         // ROLLBACK
 
-        if (uploadedDocs.length > 0) {
-            await ToDeleteFilesParallel(uploadedDocs)
+        if (uploaded.documents?.length > 0) {
+            // Rollback uploaded cloud files
+            if (ENV.IS_PROD) {
+                await Promise.all(uploaded.documents.map(uploadedFile => uploadedFile?.public_id ? ToDeleteFromCloudStorage_H(uploadedFile.public_id) : null));
+            }
+
+            // Rollback local files
+            if (!ENV.IS_PROD) {
+                await Promise.all(uploaded.documents.map(uploadedFile => DeleteLocalFile_H(uploadedFile.secure_url)));
+            }
         }
 
-        if (uploadedLogo?.public_id) {
-            await ToDeleteFromCloudStorage(uploadedLogo.public_id);
-        }
-        else if (uploadedLogo?.secure_url && ENV.IS_DEV) {
-            await DeleteLocalFile(uploadedLogo.secure_url);
+        if (uploaded.logoUrl) {
+            // Rollback uploaded cloud file
+            if (ENV.IS_PROD && uploaded.logoUrl?.public_id) {
+                await ToDeleteFromCloudStorage_H(uploaded.logoUrl.public_id);
+            }
+
+            // Rollback local file
+            if (!ENV.IS_PROD && uploaded.logoUrl?.secure_url) {
+                await DeleteLocalFile_H(uploaded.logoUrl.secure_url);
+            }
         }
 
-        throw error;
+        throw {
+            status: error.status || 500,
+            message: error.message || "Internal Server Error"
+        };
     }
 }
 
-export const RemoveVendor = async (vendorId) => {
+export const RemoveVendor = async (keyVal) => {
 
-    const vendor = await Vendor.findById(vendorId);
-    if (!vendor) {
+    try {
+        // Fetch vendor
+        const vendor = await Vendor.findOne(keyVal).lean();
+        if (!vendor) {
+            throw {
+                status: 404,
+                message: `Vendor account not found for '${keyVal?._id || keyVal?.businessEmail}'`,
+            }
+        }
+
+        // Remove vendor role from User
+        if (vendor.userId && vendor.role) {
+            await User.findByIdAndUpdate(vendor.userId, { $pull: { roles: vendor.role } });
+        }
+
+        // Delete Logo & Documents (if exists)
+        const filesToDelete = [];
+        if (vendor.logoUrl) filesToDelete.push(vendor.logoUrl);
+        if (vendor.documents) filesToDelete.push(...vendor.documents);   //Spread all documents
+
+        if (filesToDelete.length > 0) {
+            await ToDeleteFilesParallel_H(filesToDelete);
+        }
+
+        // Delete vendor record
+        const deleted = await Vendor.findOneAndDelete(keyVal);
+
+        if (deleted) {
+            await Notify.super({
+                title: 'Vendor Delete',
+                message: `Vendor who has ID: ${deleted._id} deleted by admin`,
+                type: 'delete'
+            });
+        }
+
+        return {
+            status: 200,
+            message: 'Vendor deleted successfully',
+            data: deleted,
+            success: true,
+        };
+    } catch (error) {
         throw {
-            status: 404,
-            message: `Vendor account not found for '${vendorId}'`,
-            success: false
-        }
+            status: error.status || 500,
+            message: error.message || "Internal Server Error"
+        };
     }
-
-    // Remove vendor role from User
-    await User.findByIdAndUpdate(vendor.userId, { $pull: { roles: vendor.role } });
-
-    // Delete Logo (if exists)
-    if (vendor?.logoUrl?.public_id) {
-        if (ENV.IS_PROD) {
-            await ToDeleteFromCloudStorage(vendor.logoUrl.public_id);
-        } else {
-            // secure_url contains local file path
-            await DeleteLocalFile(vendor.logoUrl.secure_url || vendor.logoUrl.public_id);
-        }
-    }
-
-    if (vendor?.documents?.length > 0) {
-        await ToDeleteFilesParallel(vendor.documents)
-    }
-
-    const deletedVendor = await Vendor.findByIdAndDelete(vendorId);
-
-    await Notify.super({
-        title: 'Vendor Delete',
-        message: `Vendor who has ID: ${deletedVendor._id} deleted by admin`,
-        type: 'delete'
-    });
-
-    return {
-        status: 200,
-        message: 'Vendor deleted successfully',
-        data: deletedVendor,
-        success: true,
-    };
 }
 
 export const RemoveAllVendors = async () => {
-    const vendors = await Vendor.find().populate('role').lean();
+    try {
+        const vendors = await Vendor.find().populate('role').lean();
 
-    if (vendors.length === 0) {
-        return {
-            status: 400,
-            error: 'No vendor found to delete',
-            success: false,
-        };
-    }
-
-    await Promise.all(vendors.map(vendor =>
-        User.findByIdAndUpdate(
-            vendor.userId,
-            { $pull: { roles: vendor.role?._id } },
-            { new: true })));
-
-    for (const vendor of vendors) {
-        // Delete logo
-        if (ENV.IS_PROD) {
-            if (vendor?.logoUrl?.public_id) {
-                await ToDeleteFromCloudStorage(vendor.logoUrl.public_id);
-            }
-        } else {
-            if (vendor?.logoUrl?.secure_url) {
-                await DeleteLocalFile(vendor.logoUrl.secure_url);
-            }
+        if (vendors.length === 0) {
+            return {
+                status: 400,
+                error: 'No vendor found to delete',
+                success: false,
+            };
         }
 
+        const filesToDelete = [];
+        const roleRemovals = [];
 
-        if (vendor?.documents?.length > 0) {
-            if (ENV.IS_PROD) {
-                const publicIds = vendor.documents
-                    .filter(doc => doc.public_id)
-                    .map(doc => doc.public_id)
+        for (const vendor of vendors) {
+            if (vendor.userId && vendor.role) {
 
-                if (publicIds.length > 0) {
-                    await ToDeleteFilesParallel(publicIds);
-                }
+                // Collect role for update to user
+                roleRemovals.push({
+                    updateOne: {
+                        filter: { _id: vendor.userId },
+                        update: { $pull: { roles: vendor.role } }
+                    }
+                });
             }
-            else {
-                await Promise.all(vendor.documents
-                    .filter(doc => doc.secure_url)
-                    .map(doc => DeleteLocalFile(doc.secure_url))
-                )
-            }
+
+            // Collect logo & document files
+            if (vendor.logoUrl) filesToDelete.push(vendor.logoUrl);
+            if (vendor.documents) filesToDelete.push(...vendor.documents);
         }
-    }
-    const result = await Vendor.deleteMany({});
 
-    if (result.deletedCount === 0) {
+        // Apply role removal updates in bulk if any
+        if (roleRemovals.length > 0) {
+            await User.bulkWrite(roleRemovals);
+        }
+
+        // Delete files (logo & document from cloud)
+        if (filesToDelete.length > 0) {
+            await ToDeleteFilesParallel_H(filesToDelete);
+        }
+
+        const deleted = await Vendor.deleteMany({});
+
+        if (deleted.deletedCount > 0) {
+            await Notify.super({
+                title: "Vendor Cleared",
+                message: `Deleted ${deleted.deletedCount} vendors`,
+                type: "Delete"
+            });
+        }
+
         return {
-            status: 404,
-            error: 'No vendors found to delete',
-            success: false,
+            status: 200,
+            message: `All vendors cleared successfully (${deleted.deletedCount} deleted)`,
+            success: true,
+        };
+    } catch (error) {
+        throw {
+            status: error.status || 500,
+            message: error.message || "Internal Server Error"
         };
     }
-
-    return {
-        status: 200,
-        message: `All vendors cleared successfully (${result.deletedCount} deleted)`,
-        success: true,
-    };
 }
-
 
 // ------------------------------------------------------------------------
 

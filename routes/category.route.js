@@ -53,7 +53,7 @@ router.patch('/:categoryId/update', AuthAccess('Category', 'update'),
    @end-Point -> /api/category/:id/delete
    @methtod -> DELETE 
 */
-router.delete('/:categoryId/delete', AuthAccess('Category', 'delele'),
+router.delete('/:categoryId/delete', AuthAccess('Category', 'delete'),
    Upload('CTG-').single('imageUrl'),
    delete_category);
 

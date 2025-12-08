@@ -1,6 +1,6 @@
+import { Pagination_H } from '../../utils/helper.js';
 import { Staff } from './staff.model.js';
 import { CreateStaff, UpdateStaff } from './staff.service.js';
-import { Pagination } from '../../utils/fileHelper.js';
 
 export const get_me = async (req, res) => {
     const staffId = req.user.id;
@@ -64,7 +64,7 @@ export const read_staffs = async (req, res) => {
         // Count total records
         const total = await Staff.countDocuments();
 
-        const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination(
+        const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination_H(
             parseInt(page),
             parsedLimit,
             offset,

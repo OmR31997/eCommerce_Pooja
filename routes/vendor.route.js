@@ -1,5 +1,5 @@
 import express from 'express';
-import { clear_vendors, confirm_otp, get_me, get_order_byId, get_orders_ByVendor, get_product_by_pId, get_product_bySku, get_products_ByVendor, get_vendor_byId, get_vendors, remove_vendor_profile, update_vendor_profile, vendor_filters} from '../src/vendor/vendor.controller.js';
+import { clear_vendors, confirm_otp, get_me, get_order_by_vendor_via_orderId, get_orders_by_vendor, get_product_by_pId, get_product_by_sku, get_products_by_vendor, get_vendor_byId, get_vendors, remove_vendor_profile, update_vendor_profile, vendor_filters } from '../src/vendor/vendor.controller.js';
 import { Upload } from '../middlewares/upload.middleware.js';
 import { AuthAccess } from '../middlewares/auth.middleware.js';
 
@@ -67,12 +67,12 @@ router.get('/filters', AuthAccess('Vendor', 'read'), vendor_filters);
 
 //---------------------------------------------PRODUCT--------------------------------------------------|
 
-/* @description -> To view product by productId which already created by own
+/* @description -> To get products
    @end-Point -> /api/products
    @methtod -> GET
    @access -> Private (vendor/vendor_manager/admin/super_admin) 
 */
-router.get('/products', AuthAccess('Vendor', 'read'), get_products_ByVendor);
+router.get('/products', AuthAccess('Vendor', 'read'), get_products_by_vendor);
 
 /* @description -> To view single product by _id/sku
    @end-Point -> /api/vendor/product/view/:id
@@ -86,7 +86,7 @@ router.get('/product/:pId/', AuthAccess('Vendor', 'read'), get_product_by_pId);
    @methtod -> GET
    @access -> Private (vendor/vendor_manager/admin/super_admin) 
 */
-router.get('/product/via-sku/:sku', AuthAccess('Vendor', 'read'), get_product_bySku);
+router.get('/product/via-sku/:sku', AuthAccess('Vendor', 'read'), get_product_by_sku);
 
 // ----------------------------------------------ORDER--------------------------------------------------|
 
@@ -95,13 +95,13 @@ router.get('/product/via-sku/:sku', AuthAccess('Vendor', 'read'), get_product_by
    @methtod -> GET
    @access -> Private (vendor/vendor_manager/admin/super_admin) 
 */
-router.get('/orders', AuthAccess('Vendor', 'read'), get_orders_ByVendor);
+router.get('/orders', AuthAccess('Vendor', 'read'), get_orders_by_vendor);
 
 /* @description -> To view single product by orderId
    @end-Point -> /api/vendor/order/:orderId
    @methtod -> GET
    @access -> Private (vendor/vendor_manager/admin/super_admin) 
 */
-router.get('/order/:orderId/', AuthAccess('Vendor', 'read'), get_order_byId);
+router.get('/order/:orderId/', AuthAccess('Vendor', 'read'), get_order_by_vendor_via_orderId);
 
 export default router;

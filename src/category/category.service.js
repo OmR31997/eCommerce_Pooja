@@ -1,17 +1,18 @@
 import { ENV } from "../../config/env.config.js";
 import { ToDeleteFromCloudStorage_H } from "../../utils/cloudUpload.js";
-import { BuildQuery, DeleteLocalFile_H, Pagination } from "../../utils/fileHelper.js";
-import { GenerateSlug_H, UploadImageWithRollBack_H } from "../../utils/helper.js";
+import { DeleteLocalFile_H } from "../../utils/fileHelper.js";
+import { BuildQuery_H, GenerateSlug_H, Pagination_H, UploadImageWithRollBack_H } from "../../utils/helper.js";
 import { Category } from "./category.model.js";
+import { Notify } from "../notification/notification.service.js";
 
-export const GetCategories = async (keyVal = {}, options = {}) => {
+export const GetCategories = async (options = {}) => {
     const { filter = {}, pagingReq = {}, baseUrl, select } = options;
 
-    const matchedQuery = BuildQuery(filter, 'category');
+    const matchedQuery = BuildQuery_H(filter, 'category');
 
-    const total = await Category.countDocuments();
+    const total = await Category.countDocuments(matchedQuery);
 
-    const pagination = Pagination(pagingReq.page, pagingReq.limit, undefined, total, baseUrl, matchedQuery);
+    const pagination = Pagination_H(pagingReq.page, pagingReq.limit, undefined, total, baseUrl, matchedQuery);
 
     const sortField = ['name', 'slug', 'createdAt'].includes(pagingReq.sortBy) ? pagingReq.sortBy : 'createdAt';
     const sortDirection = pagingReq.orderSequence === 'asc' ? 1 : -1;
@@ -31,14 +32,13 @@ export const GetCategories = async (keyVal = {}, options = {}) => {
         message: 'Data fetched successfully',
         count: total,
         pagination,
-        success: true,
         data: categories || []
     }
 }
 
-export const GetCategoryById = async (keyVal = {}, select) => {
+export const GetCategoryById = async (keyVal = {}) => {
 
-    const category = await Category.findOne(keyVal).select(select);
+    const category = await Category.findOne(keyVal);
 
     if (!category) {
         throw {
@@ -61,7 +61,7 @@ export const CreateCategory = async (reqData, filePayload) => {
 
         reqData.imageUrl = uploadedImage;
 
-        reqData.slug = GenerateSlug_H(reqData.name);
+        reqData.slug = await GenerateSlug_H(reqData.name);
 
         const newCategory = await Category.create(reqData);
 
@@ -96,7 +96,7 @@ export const UpdateCategory = async (keyVal, reqData, filePayload) => {
     if (!category) {
         throw {
             status: 404,
-            message: `Category not found for ID: '${keyVal._id}'`
+            message: `Category not found for ID: '${keyVal?._id || keyVal?.slug}'`
         }
     };
 
@@ -120,7 +120,7 @@ export const UpdateCategory = async (keyVal, reqData, filePayload) => {
             reqData.imageUrl = uploadedImage;
         }
 
-        if (reqData.name) reqData.slug = GenerateSlug_H(reqData.name);
+        if (reqData.name) reqData.slug = await GenerateSlug_H(reqData.name);
 
         const updated = await Category.findOneAndUpdate(keyVal, reqData, { new: true, runValidators: true });
 
@@ -148,7 +148,7 @@ export const DeleteCategory = async (keyVal) => {
     if (!category) {
         throw {
             status: 404,
-            message: `Category not found for ID: '${keyVal._id || keyVal.slug}'`
+            message: `Category not found for ID: '${keyVal?._id || keyVal?.slug}'`
         }
     }
 
@@ -162,11 +162,19 @@ export const DeleteCategory = async (keyVal) => {
 
     const deleted = await Category.findOneAndDelete(keyVal);
 
+    // Notify to super_admin
+    await Notify.super({
+        title: `Category Delete`,
+        message: `Category (${deleted.name}) deleted by admin`,
+        type: 'delete'
+    });
+
     return { status: 200, message: 'Category deleted successfully', data: deleted, success: true }
 
 }
 
 export const ClearCategories = async () => {
+    
     const categories = await Category.find();
 
     if (categories.length === 0) {

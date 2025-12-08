@@ -30,7 +30,7 @@ router.patch('/:roleId/update', AuthAccess('Role', 'update'), update_roles);
    @methtod -> DELETE
    @access -> Private (super_admin/admin)
 */
-router.delete('/:id/delete', AuthAccess('Role', 'delete'), delete_role);
+router.delete('/:roleId/delete', AuthAccess('Role', 'delete'), delete_role);
 
 /* @description -> To clear role
    @end-Point -> /api/role/clear

@@ -1,5 +1,5 @@
 import { CreateAdmin, DeleteAdmin, UpdateAdmin, ManageProduct, ManageStaff, ManageUser, ManageVendor, GetAdmin } from "./admin.service.js";
-import { Refund } from '../../models/refund.model.js'
+import { Refund } from "../../common_models/refund.model.js"
 import { Order } from "../order/order.model.js";
 import { ErrorHandle_H } from "../../utils/helper.js";
 

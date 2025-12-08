@@ -2,15 +2,15 @@ import { Cart } from '../cart/cart.model.js';
 import { Order } from './order.model.js';
 import { Notify } from '../notification/notification.service.js';
 import { GenerateReceiptPDF } from '../../utils/generateReceipt.js';
-import { BuildPopulateStages, BuildQuery } from '../../utils/fileHelper.js';
+import { BuildPopulateStages_H, BuildQuery_H } from '../../utils/helper.js';
 
 // ------------------------------------READ ORDER SERVICES---------------------------------------------|
 export const GetOrders = async (options = {}) => {
 
     const { filter = {}, pagingReq = {}, populates = {}, baseUrl, vendorId, userId } = options;
 
-    const matchedQuery = BuildQuery(filter, 'order');
-    const populateStages = BuildPopulateStages(populates);
+    const matchedQuery = BuildQuery_H(filter, 'order');
+    const populateStages = BuildPopulateStages_H(populates);
 
     const pipeline = [
         { $match: matchedQuery },
@@ -104,18 +104,36 @@ export const GetOrders = async (options = {}) => {
     }
 }
 
-export const GetOrderById = async (orderId, keyVal, productId) => {
+export const GetOrderById = async (keyVal, productId = null) => {
 
-    const order = await Order.findOne({ _id: orderId, keyVal })
-    .populate({path: 'items.productId', select: 'name status'})
-    .populate({path: 'vendorId', select: 'businessName businessEmail status'})
-    .populate({path: 'userId'})
-    .lean();
+    let query = Order.findOne(keyVal);
+    if (keyVal.userId) {
+        query = query
+            .populate({ path: 'items.productId', select: 'name' })
+            .populate({ path: 'vendorId', select: 'businessName businessEmail' });
+    }
 
-    if (!existing) {
+    if (keyVal.vendorId) {
+        query = query
+            .populate({ path: 'items.productId', select: 'name' })
+            .populate({ path: 'userId', select: 'name address email' })
+            .select('vendorId userId items price quantity subtotal')
+    }
+
+    if (keyVal.main) {
+        delete keyVal.main
+        query = Order.findOne(keyVal)
+            .populate({ path: 'items.productId', select: 'name status' })
+            .populate({ path: 'vendorId', select: 'businessName businessEmail status' })
+            .populate({ path: 'userId' })
+    }
+
+    const order = await query;
+
+    if (!order) {
         throw {
             status: 404,
-            message: `Data not found for ID: '${orderId}'`
+            message: `Data not found for ID: '${keyVal?.orderId}'`
         }
     }
 

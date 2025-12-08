@@ -3,7 +3,7 @@ import { User } from '../src/customer/user.model.js';
 import { Vendor } from '../src/vendor/vendor.model.js';
 import { Staff } from '../src/staff/staff.model.js';
 import { Admin } from '../src/admin/admin.model.js';
-import { GetModelByRole } from '../utils/fileHelper.js';
+import { IdentifyModelByRole_H } from '../utils/helper.js';
 
 
 export const Authentication = async (req, res, next) => {
@@ -48,7 +48,7 @@ export const AuthAccess = (moduleName, actionKey, options = {}) => {
     try {
       const { id: logId, role: logRole } = req.user;
       
-      const { model } = GetModelByRole(logRole);
+      const { model } = IdentifyModelByRole_H(logRole);
 
       const Models = { Admin, Staff, Vendor, User };
 
@@ -89,7 +89,7 @@ export const AuthAccess = (moduleName, actionKey, options = {}) => {
       const hasAccess =
         existing.permission?.modules.includes(moduleName) &&
         existing.permission?.actions?.[actionKey] === true;
-
+        
       if (!hasAccess) {
         return res.status(403).json({
           error: `Access denied: You don't have permission to ${actionKey} on ${moduleName}`,

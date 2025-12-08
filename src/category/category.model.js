@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-
+import { FileSchema } from "../../common_models/file.model.js";
 const CategorySchema = new mongoose.Schema({
     name: {
         type: String,
@@ -24,14 +24,13 @@ const CategorySchema = new mongoose.Schema({
         required: [true, `'description' field must be required`],
     },
     imageUrl: {
-        type: String,
-        default: null
+        type: FileSchema,
+        default: null,
     },
     status: {
         type: String,
         enum: ['active', 'inactive'],
         default: 'active',
-        select: false
     },
     parent: {
         type: mongoose.Schema.Types.ObjectId,

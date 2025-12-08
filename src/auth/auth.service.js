@@ -1,24 +1,24 @@
-import { User } from '../customer/user.model.js';
+import { ENV } from '../../config/env.config.js';
+import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import axios from 'axios';
+import qs from 'qs';
+import { User } from '../customer/user.model.js';
 import { RefreshToken } from '../token/token.model.js';
 import { CreateAccessToken, CreateRefreshTokenString, RevokeRefreshToken, SaveRefreshToken } from '../token/tokens.service.js';
 import { ClearRefreshCookie, SetRefreshCookie } from '../../utils/cookies.js';
 import { Admin } from '../admin/admin.model.js';
-import { DeleteLocalFile, GetModelByRole, IdentifyModel, ValidateDocs, ValidateLogo } from '../../utils/fileHelper.js';
+import { DeleteLocalFile_H } from '../../utils/fileHelper.js';
 import { SendEmail } from '../../utils/sendEmail.js';
 import { GenerateOtp, otpStore, VerifyOtp } from '../../utils/otp.js';
 import { Permission } from '../permission/permission.model.js';
 import { Role } from '../role/role.model.js';
 import { Staff } from '../staff/staff.model.js';
 import { Vendor } from '../vendor/vendor.model.js';
-import axios from 'axios';
-import qs from 'qs';
-import { ENV } from '../../config/env.config.js';
-import mongoose from 'mongoose';
 import { Notify } from '../notification/notification.service.js';
-import { FindUserFail_H, IdentifyModelByGoogleEmail_H } from '../../utils/helper.js';
-import { ToDeleteFilesParallel, ToSaveCloudStorage_H, ToUploadParallel } from '../../utils/cloudUpload.js';
+import { FindUserFail_H, IdentifyModel_H, IdentifyModelByGoogleEmail_H, IdentifyModelByRole_H, UploadFilesWithRollBack_H, UploadImageWithRollBack_H } from '../../utils/helper.js';
+import { ToDeleteFromCloudStorage_H } from '../../utils/cloudUpload.js';
 
 // CREATE---------------------------------| SERVICES
 export const GenerateAndSendToken = async ({ res, logId, logRole, ip }) => {
@@ -72,7 +72,7 @@ export const Refresh_Token = async (tokenData) => {
 
 export const SignIn = async (res, logKey, password, ip) => {
 
-    const { model, role } = IdentifyModel(logKey);
+    const { model, role } = IdentifyModel_H(logKey);
 
     const Models = { Admin, Staff, Vendor, User };
 
@@ -93,7 +93,7 @@ export const SignIn = async (res, logKey, password, ip) => {
 
     if (!isMatch) throw { status: 409, message: `Invalid Password`, success: false };
 
-    if (['admin', 'super_admin', 'staff'].includes(role)) {
+    if (['admin', 'super_admin', 'staff', 'vendor'].includes(role)) {
 
         const tokens = await GenerateAndSendToken({ res, logId: existing._id, logRole: role, ip });
 
@@ -218,12 +218,12 @@ export const SignUp = async (userData) => {
 
 export const VendorRegistration = async (reqData, filePayload) => {
 
-    const { documents, logoUrl } = filePayload;
+    const { documents, logoFile } = filePayload;
 
     const session = await mongoose.startSession();
     session.startTransaction();
 
-    const uploadedFiles = {
+    const uploaded = {
         logoUrl: null,
         documents: []
     }
@@ -231,51 +231,25 @@ export const VendorRegistration = async (reqData, filePayload) => {
     let data = null;
 
     try {
-        await FindUserFail_H({ _id: reqData.userId }, "userId");
+        const user = await FindUserFail_H({ _id: reqData.userId }, "userId roles");
 
-        // Validate
-        if (documents?.length > 0) {
-            await ValidateDocs(documents);
-        };
-
-        if (logoUrl) {
-            await ValidateLogo(logoUrl);
-        };
-
-        if (documents?.length > 0) {
-
-            // Upload to cloud (already returns array of objects)
-            uploadedFiles.documents = await ToUploadParallel(
-                documents,
-                'eCommerce/Product/Documents',
-                'DOC'
-            );
-        }
-
-        if (logoUrl) {
-            if (ENV.IS_PROD) {
-
-                // Upload to cloud (already returns array of objects)
-                uploadedFiles.logoUrl = await ToSaveCloudStorage_H(
-                    logoUrl,
-                    'eCommerce/Product/logoUrls',
-                    `LOGO-${crypto.randomBytes(12).toString('hex')}`
-                )
-            }
-            else {
-
-                // DEV MODE -> return array of objects for consistency
-                uploadedFiles.logoUrl = logoUrl ? { secure_url: logoUrl.path, public_id: null } : {};
-            }
-        }
+        uploaded.logoUrl = await UploadImageWithRollBack_H(logoFile, "eCommerce/logoUrls");
+        uploaded.documents = await UploadFilesWithRollBack_H(documents, "eCommerce/documents");
 
         // Assign uploaded files to vendorData
-        if (uploadedFiles.documents.length > 0) reqData.documents = uploadedFiles.documents;
-        if (uploadedFiles.logoUrl) reqData.logoUrl = uploadedFiles.logoUrl;
+        if (uploaded.logoUrl) reqData.logoUrl = uploaded.logoUrl;
+        if (uploaded.documents?.length > 0) reqData.documents = uploaded.documents;
+
 
         // Set role & hash password
         const role = await Role.findOne({ name: 'vendor' }).select("_id").session(session);
         const permission = await Permission.findOne({ name: 'vendor' }).select("_id").session(session);
+
+        if (!user.roles.includes(role._id)) {
+            // Update user roles 
+            user.roles.push(role._id);
+            await user.save();
+        }
 
         reqData.role = role._id;
         reqData.permission = permission._id;
@@ -292,17 +266,29 @@ export const VendorRegistration = async (reqData, filePayload) => {
         await session.abortTransaction();
         session.endSession();
 
-        if (uploadedFiles.documents.length > 0) {
-            await ToDeleteFilesParallel(uploadedFiles.documents);
+        if (uploaded.documents?.length > 0) {
+            // Rollback uploaded cloud files
+            if (ENV.IS_PROD) {
+                await Promise.all(uploaded.documents.map(uploadedFile => uploadedFile?.public_id ? ToDeleteFromCloudStorage_H(uploadedFile.public_id) : null));
+            }
+
+            // Rollback local files
+            if (!ENV.IS_PROD) {
+                await Promise.all(uploaded.documents.map(uploadedFile => DeleteLocalFile_H(uploadedFile.secure_url)));
+            }
         }
 
-        if (uploadedFiles.logoUrl?.public_id) {
-            await ToDeleteFromCloudStorage(uploadedFiles.logoUrl.public_id)
-        }
 
-        if (ENV.IS_DEV) {
-            const temp = [...documents, logoUrl].filter(Boolean);
-            await Promise.all(temp.map(f => DeleteLocalFile(f.path)));
+        if (uploaded.logoUrl) {
+            // Rollback uploaded cloud file
+            if (ENV.IS_PROD && uploaded.logoUrl?.public_id) {
+                await ToDeleteFromCloudStorage_H(uploaded.logoUrl.public_id);
+            }
+
+            // Rollback local file
+            if (!ENV.IS_PROD && uploaded.logoUrl?.secure_url) {
+                await DeleteLocalFile_H(uploaded.logoUrl.secure_url);
+            }
         }
 
         throw error;
@@ -433,7 +419,7 @@ export const ChangePassword = async (reqData, user) => {
 
     const { oldPassword, newPassword } = reqData;
 
-    const { model } = GetModelByRole(user.role);
+    const { model } = IdentifyModelByRole_H(user.role);
 
     const Models = { Admin, Staff, Vendor, User };
 
@@ -464,7 +450,7 @@ export const ChangePassword = async (reqData, user) => {
 
 export const ForgotPassword = async (logKey) => {
 
-    const { role, model } = IdentifyModel(logKey);
+    const { role, model } = IdentifyModel_H(logKey);
 
     const Models = { Admin, Vendor, Staff, User };
 
@@ -472,9 +458,9 @@ export const ForgotPassword = async (logKey) => {
 
     if (!existing) {
         throw {
-        status: 404,
-        message: `Account not found!`,
-    }
+            status: 404,
+            message: `Account not found!`,
+        }
     }
 
     if (!['active', 'approved'].includes(existing.status) && !['admin', 'super_admin'].includes(role)) {
@@ -506,7 +492,7 @@ export const ForgotPassword = async (logKey) => {
 export const ResetPassword = async (logKey, otp, newPassword) => {
 
     /*   *OTP-Case*   */
-    const { logValue, model } = IdentifyModel(logKey);
+    const { logValue, model } = IdentifyModel_H(logKey);
 
     const Models = { Admin, Vendor, Staff, User };
 

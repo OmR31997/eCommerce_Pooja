@@ -1,27 +1,30 @@
 import { User } from '../customer/user.model.js';
 import { Vendor } from '../vendor/vendor.model.js';
-import { DeleteLocalFile } from '../../utils/fileHelper.js';
-import { GetAllVendors, GetVendor, RemoveAllVendors, RemoveVendor, UpdateVendor } from './vendor.service.js';
+import { DeleteLocalFile_H } from '../../utils/fileHelper.js';
+import { GetVendor, GetVendors, RemoveAllVendors, RemoveVendor, UpdateVendor } from './vendor.service.js';
 // import { GetSecuredAllProducts, GetSecuredProductByIdOrSku } from '../product/product.service.js';
 import { GetOrderById, GetOrders } from '../order/order.service.js';
+import { ErrorHandle_H } from '../../utils/helper.js';
 
-// --------------------------------------CRUD OPERATION FOR VENDOR---------------------------------------|
-/*      * get_me handler *      */
+// READ CONTROLLERS--------------------------------|
+/*      *get_me req/res handler*     */
 export const get_me = async (req, res) => {
     try {
+
         const { status, success, message, data } = await GetVendor(req.user.id);
 
         return res.status(status).json({ message, data, success });
-    } catch (error) {
-        if (error.status) {
-            return res.status(error.status).json({ success: false, error: error.message });
-        }
 
-        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+    } catch (error) {
+
+        return res.status(error.status || 500).json({
+            success: false,
+            error: error.message || `Internal Server Error ${error}`
+        });
     }
 }
 
-/*      * get_vendor_byId handler *      */
+/*      *get_vendor_byId req/res handler*     */
 export const get_vendor_byId = async (req, res) => {
     try {
         const vendorId = req.params.id;
@@ -31,45 +34,52 @@ export const get_vendor_byId = async (req, res) => {
         return res.status(status).json({ message, data, success });
 
     } catch (error) {
-        if (error.status) {
-            return res.status(error.status).json({ success: false, error: error.message });
-        }
 
-        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+        return res.status(error.status || 500).json({
+            success: false,
+            error: error.message || `Internal Server Error ${error}`
+        });
     }
 }
 
-/*      * get_vendors handler *      */
+/*      *get_vendors req/res handler*     */
 export const get_vendors = async (req, res) => {
     try {
-        if (req.user.role === 'vendor') {
-            throw {
-                status: 400,
-                message: `Unauthorized: You haven't accessibility`,
-                success: false
-            }
-        }
 
         const {
             page = 1,
             limit = 10,
-            offset,
             sortBy = 'createdAt',
-            orderSequence = 'desc' } = req.query;
+            orderSequence = 'desc'
+        } = req.query;
 
-        const { status, success, message, pagination, data } = await GetAllVendors(
-            `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`,
-            { page: parseInt(page), limit: parseInt(limit), offset, sortBy, orderSequence },
-            {}
-        );
-
-        return res.status(status).json({ message, pagination, success, data })
-    } catch (error) {
-        if (error.status) {
-            return res.status(error.status).json({ success: false, error: error.message });
+        if (req.user.role === 'vendor') {
+            throw {
+                status: 400,
+                message: `Unauthorized: You don't have permission to access`,
+                success: false
+            }
         }
 
-        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+        const options = {
+            baseUrl: `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`,
+
+            pagingReq: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                sortBy, orderSequence
+            },
+        }
+
+        const { status, success, message, pagination, data } = await GetVendors(options);
+
+        return res.status(status).json({ message, pagination, success, data })
+
+    } catch (error) {
+
+        return res.status(error.status || 500).json({ 
+            success: false, 
+            error: error.message || `Internal Server Error ${error}` });
     }
 }
 
@@ -77,10 +87,9 @@ export const get_vendors = async (req, res) => {
 export const vendor_filters = async (req, res) => {
     try {
         const {
-            search = '', status = '',
-            businessName = '', businessEmail = '', businessPhone = '',
-            joinRange = '', updatedRange = '', address = '',
-            page = 1, limit = 10, offset,
+            search, status,
+            joinRange, updatedRange, address,
+            page = 1, limit = 10,
             sortBy = 'createdAt', orderSequence = 'desc'
         } = req.query;
 
@@ -92,124 +101,132 @@ export const vendor_filters = async (req, res) => {
             }
         }
 
-        const { status: StatusCode, success, message, pagination, data } = await GetAllVendors(
-            `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`,
-            { page: parseInt(page), limit: parseInt(limit), offset, sortBy, orderSequence },
-            {
-                search, status, businessName, businessEmail, businessPhone, address,
-                joinRange: joinRange ? joinRange.split(',').map(i => i.trim()) : undefined,
-                updatedRange: updatedRange ? updatedRange.split(',').map(i => i.trim()) : undefined,
-            }
-        )
+        const options = {
+            baseUrl: `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`,
 
-        return res.status(StatusCode).json({ message, pagination, data, success });
+            pagingReq: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                sortBy, orderSequence
+            },
 
-    } catch (error) {
-        console.error('Error in vendor_filters:', error);
-        return res.status(500).json({
-            error: error.message,
-            message: 'Internal Server Error',
-            success: false,
-        });
-    }
-};
-
-/*      * update_vendor_profile handler *      */
-export const update_vendor_profile = async (req, res) => {
-    try {
-        const vendorId = req.params.id;
-
-        const {
-            businessName, businessEmail, businessPhone,
-            businessDescription, gstNumber, type,
-            address, accountNumber, ifsc, bankName,
-            onTimeDelivery,
-            removeDocuments
-        } = req.body;
-
-        const files = req.files || {};
-
-        // Convert string[] properly if sent as JSON/string
-        let removeDocs = [];
-        if (typeof removeDocuments === 'string') {
-            try {
-                removeDocs = JSON.parse(removeDocuments);
-            } catch (error) {
-                removeDocs = [removeDocuments];
-            }
-        }
-        else if (Array.isArray(removeDocuments)) removeDocs = removeDocuments;
-
-        const vendorData = {
-            businessName: businessName || undefined,
-            businessEmail: businessEmail || undefined,
-            businessPhone: businessPhone || undefined,
-            businessDescription: businessDescription || undefined,
-            gstNumber: gstNumber || undefined,
-            type: type || undefined,
-            accountNumber: accountNumber || undefined,
-            ifsc: ifsc || undefined, bankName: bankName || undefined,
-            address: address || undefined,
-            onTimeDelivery: onTimeDelivery === 'true' ? true : onTimeDelivery === 'false' ? false : undefined,
-            bankDetails: {
-                accountNumber: accountNumber || undefined,
-                ifsc: ifsc || undefined,
-                bankName: bankName || undefined
+            filter: {
+                search, //businessName = '', businessEmail = '', businessPhone = ''
+                joinRange, updatedRange, address,
+                status
             }
         }
 
-        const filePayload = {
-            logoUrl: files.logoUrl?.[0],
-            documents: files.documents,
-            removeDocuments: removeDocs
-        }
-
-        const hasBankDetails = Object.values(vendorData.bankDetails)
-            .some(value => value !== undefined);
-
-        const hasFields = Object.keys(vendorData)
-            .filter(key => key !== 'bankDetails')
-            .some(key => vendorData[key] !== undefined);
-
-        const hasFiles = files && Object.keys(files).length > 0;
-
-        if (!hasFields && !hasBankDetails && !hasFiles && removeDocs.length === 0) {
+        if (req.user.role === 'vendor') {
             throw {
-                status: 400,
-                message: 'At least one field must be required',
+                status: 401,
+                message: `Unauthorized: You haven't accessibility`,
                 success: false
             }
         }
 
-        const { status, success, data, message } = await UpdateVendor(
-            vendorData,
-            filePayload,
-            vendorId
-        );
+        const { status: statusCode, success, message, count, pagination, data } = await GetVendors(options);
+
+        return res.status(statusCode).json({ success, message, count, pagination, data });
+
+    } catch (error) {
+
+        return res.status(error.status || 500).json({
+            message: error.message || `Internal Server Error: ${error}`
+        })
+    }
+};
+
+// UPDATE CONTROLLERS--------------------------------|
+/*      * update_vendor_profile handler *      */
+export const update_vendor_profile = async (req, res) => {
+    try {
+
+        // IN SELF VENDOR CASE PARAMS && USER VALIDATION ALREADY APPLIED INSIDE THE MIDDLEWARE
+
+        const keyVal = {
+            _id: req.params.id
+        }
+
+        const {
+            businessName, businessEmail, businessPhone,
+            businessDescription, onTimeDelivery,
+            accountNumber, ifsc, bankName,
+            gstNumber, address, type,
+            removeDocumentPaths,
+        } = req.body;
+
+        const filePayload = {
+            logoFile: req.files.logoUrl?.[0] || null,
+            documents: req.files.documents || []
+        }
+
+        // Convert string[] properly if sent as JSON/string
+        let removeDocPaths = [];
+        if (typeof removeDocumentPaths === 'string') {
+            try {
+                removeDocPaths = JSON.parse(removeDocumentPaths);
+            } catch (error) {
+                removeDocPaths = [removeDocumentPaths];
+            }
+        }
+        else if (Array.isArray(removeDocumentPaths)) removeDocPaths = removeDocumentPaths;
+
+        const reqData = {
+            businessName, businessEmail, businessPhone,
+            businessDescription,
+            bankDetails: {
+                accountNumber,
+                ifsc,
+                bankName
+            },
+            gstNumber, address, type,
+            removeDocPaths,
+            onTimeDelivery,
+        }
+
+        if (!accountNumber && !ifsc && !bankName) {
+            delete reqData.bankDetails;
+        }
+
+        if (Object.keys(reqData).length === 0 &&
+            !filePayload.logoFile &&
+            filePayload.documents.length === 0) {
+            throw {
+                status: 400,
+                message: 'At least one field must be required',
+            }
+        }
+
+        const { status, success, data, message } = await UpdateVendor(keyVal, reqData, filePayload);
 
         return res.status(status).json({ message, data, success });
 
     } catch (error) {
 
-        if (error.code === 11000) {
-            const field = Object.keys(error.keyValue)[0];
-            return { status: 409, success: false, error: `${field} already exists` };
+        try {
+            ErrorHandle_H(error);
+        } catch (handled) {
+            return res.status(handled.status || 500).json({
+                success: false,
+                message: handled.message,
+                errors: handled.errors || null
+            });
         }
-
-        if (error.status) {
-            return res.status(error.status).json({ success: false, error: error.message });
-        }
-
-        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
     }
 };
 
+// DELETE CONTROLLERS--------------------------------|
 /*      * remove_vendor_profile handler *      */
 export const remove_vendor_profile = async (req, res) => {
     try {
-        const vendorId = req.params.id;
+        // IN SELF VENDOR CASE PARAMS && USER VALIDATION ALREADY APPLIED INSIDE THE MIDDLEWARE
 
-        const { status, success, message, data } = await RemoveVendor(vendorId);
+        const keyVal = {
+            _id: req.params.id
+        }
+
+        const { status, success, message, data } = await RemoveVendor(keyVal);
 
         return res.status(status).json({ message, data, success });
 
@@ -226,7 +243,7 @@ export const remove_vendor_profile = async (req, res) => {
 export const clear_vendors = async (req, res) => {
     try {
 
-        if(req.user.role !== 'super_admin') {
+        if (req.user.role !== 'super_admin') {
             throw {
                 status: 405,
                 message: `Method Not Allowed`
@@ -246,22 +263,21 @@ export const clear_vendors = async (req, res) => {
 }
 
 // -----------------------------------------------------------------------------------------------------|
-// PRODUCT
+// READ CONTROLLERS FOR PRODUCTS REGARDING VENDOR----| 
 
-export const get_products_ByVendor = async (req, res) => {
+export const get_products_by_vendor = async (req, res) => {
     try {
         const {
-            page = 1, limit = 10, offset,
+            page = 1, limit = 10,
             search, categoryIds,
-            priceRange, stockStatus,
-            discount, status,
+            priceRange, stockStatus, 
+            status,
             sortBy = 'createdAt', orderSequence = 'desc'
         } = req.query;
 
         const pagingReq = {
             page: parseInt(page),
             limit: parseInt(limit),
-            offset,
             sortBy, orderSequence
         }
 
@@ -322,7 +338,7 @@ export const get_product_by_pId = async (req, res) => {
     }
 }
 
-export const get_product_bySku = async (req, res) => {
+export const get_product_by_sku = async (req, res) => {
     try {
         const sku = req.params.sku;
         const vendorId = req.user.role === 'vendor' ? req.user.id : req.query.vendorId;
@@ -346,7 +362,7 @@ export const get_product_bySku = async (req, res) => {
 
 // -----------------------------------------------------------------------------------------------------|
 // ORDER
-export const get_orders_ByVendor = async (req, res) => {
+export const get_orders_by_vendor = async (req, res) => {
     try {
         const {
             page = 1, limit = 10, offset,
@@ -391,7 +407,7 @@ export const get_orders_ByVendor = async (req, res) => {
     }
 }
 
-export const get_order_byId = async (req, res) => {
+export const get_order_by_vendor_via_orderId = async (req, res) => {
     try {
         const options = {
             populates: {
@@ -466,7 +482,7 @@ export const confirm_otp = async (req, res) => {
         if (file) {
 
             if (!ValidateImageFileType(file.mimetype)) {
-                DeleteLocalFile(file.path);
+                DeleteLocalFile_H(file.path);
                 return res.status(400).json({
                     error: 'Invalid file type. Only images allowed.',
                     success: false,
@@ -474,7 +490,7 @@ export const confirm_otp = async (req, res) => {
             }
 
             if (!ValidateFileSize(file.size, 1)) {
-                DeleteLocalFile(file.path);
+                DeleteLocalFile_H(file.path);
                 return res.status(400).json({
                     error: 'File size exceeds 2MB limit',
                     success: false,

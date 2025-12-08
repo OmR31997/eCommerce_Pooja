@@ -1,9 +1,5 @@
 import mongoose from 'mongoose';
-
-const FileSchema = new mongoose.Schema({
-    public_id: { type: String, default: null },
-    secure_url: { type: String, required: [true, `'secure_url' field must be required`] },
-}, { _id: false });
+import { FileSchema } from '../../common_models/file.model.js';
 
 const ProductSchema = new mongoose.Schema({
     vendorId: {

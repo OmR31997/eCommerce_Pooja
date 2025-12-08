@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { Product } from "../product/product.model.js";
-import { BuildPopulateStages, BuildQuery, Pagination } from "../../utils/fileHelper.js";
 import { Cart } from "./cart.model.js";
+import { BuildPopulateStages_H, BuildQuery_H, Pagination_H } from "../../utils/helper.js";
 
 // READ CART SERVICES----------------------------------------|
 export const GetCarts = async (keyVal = {}, options = {}) => {
@@ -10,8 +10,8 @@ export const GetCarts = async (keyVal = {}, options = {}) => {
     let pagination = undefined;
     let total = 0;
 
-    const matchedQuery = BuildQuery(filter, 'cart');
-    const populateStages = BuildPopulateStages(populates);
+    const matchedQuery = BuildQuery_H(filter, 'cart');
+    const populateStages = BuildPopulateStages_H(populates);
 
     const pipeline = [
         { $match: matchedQuery },
@@ -89,7 +89,7 @@ export const GetCarts = async (keyVal = {}, options = {}) => {
 
     const carts = result[0]?.data;
 
-    pagination = Pagination(pagingReq.page, pagingReq.limit, undefined, total, baseUrl, filter);
+    pagination = Pagination_H(pagingReq.page, pagingReq.limit, undefined, total, baseUrl, filter);
     delete pagination.skip;
 
     return { status: 200, success: true, message: 'Data fetched successfully', total, pagination, data: carts }

@@ -1,8 +1,8 @@
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { GenerateUniqueFileName } from '../utils/fileHelper.js';
 import { ENV } from '../config/env.config.js';
+import { GenerateUniqueFileName_H } from '../utils/helper.js';
 
 const uploadPath = path.join('public', 'uploads');
 
@@ -34,7 +34,7 @@ export const Upload = (prefix = '') => {
         },
 
         filename: (req, file, callBack) => {
-            callBack(null, GenerateUniqueFileName(prefix, file.originalname));
+            callBack(null, GenerateUniqueFileName_H(prefix, file.originalname));
         }
     });
 

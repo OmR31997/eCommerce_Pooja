@@ -1304,12 +1304,12 @@
         ]
       }
     },
-    "/api/role/{id}/update": {
+    "/api/role/{roleId}/update": {
       "patch": {
         "description": "",
         "parameters": [
           {
-            "name": "id",
+            "name": "roleId",
             "in": "path",
             "required": true,
             "schema": {
@@ -1366,12 +1366,12 @@
         ]
       }
     },
-    "/api/role/{id}/delete": {
+    "/api/role/{roleId}/delete": {
       "delete": {
         "description": "",
         "parameters": [
           {
-            "name": "id",
+            "name": "roleId",
             "in": "path",
             "required": true,
             "schema": {
@@ -1883,13 +1883,6 @@
             }
           },
           {
-            "name": "offset",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
             "name": "sortBy",
             "in": "query",
             "schema": {
@@ -1996,13 +1989,7 @@
                   "businessDescription": {
                     "example": "any"
                   },
-                  "gstNumber": {
-                    "example": "any"
-                  },
-                  "type": {
-                    "example": "any"
-                  },
-                  "address": {
+                  "onTimeDelivery": {
                     "example": "any"
                   },
                   "accountNumber": {
@@ -2014,10 +2001,16 @@
                   "bankName": {
                     "example": "any"
                   },
-                  "onTimeDelivery": {
+                  "gstNumber": {
                     "example": "any"
                   },
-                  "removeDocuments": {
+                  "address": {
+                    "example": "any"
+                  },
+                  "type": {
+                    "example": "any"
+                  },
+                  "removeDocumentPaths": {
                     "example": "any"
                   }
                 }
@@ -2114,27 +2107,6 @@
             }
           },
           {
-            "name": "businessName",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "businessEmail",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "businessPhone",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
             "name": "joinRange",
             "in": "query",
             "schema": {
@@ -2164,13 +2136,6 @@
           },
           {
             "name": "limit",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "offset",
             "in": "query",
             "schema": {
               "type": "string"
@@ -2237,13 +2202,6 @@
             }
           },
           {
-            "name": "offset",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
             "name": "search",
             "in": "query",
             "schema": {
@@ -2266,13 +2224,6 @@
           },
           {
             "name": "stockStatus",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "discount",
             "in": "query",
             "schema": {
               "type": "string"
@@ -2653,6 +2604,13 @@
             }
           },
           {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "sortBy",
             "in": "query",
             "schema": {
@@ -2880,6 +2838,13 @@
             }
           },
           {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "sortBy",
             "in": "query",
             "schema": {
@@ -2933,13 +2898,6 @@
             }
           },
           {
-            "name": "offset",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
             "name": "search",
             "in": "query",
             "schema": {
@@ -2969,13 +2927,6 @@
           },
           {
             "name": "stockStatus",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "discount",
             "in": "query",
             "schema": {
               "type": "string"
@@ -3194,6 +3145,13 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "vendorId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -3210,9 +3168,6 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "vendorId": {
-                    "example": "any"
-                  },
                   "categoryId": {
                     "example": "any"
                   },
@@ -3269,9 +3224,6 @@
           }
         ],
         "responses": {
-          "400": {
-            "description": "Bad Request"
-          },
           "401": {
             "description": "Unauthorized"
           },
@@ -3288,16 +3240,22 @@
                   "name": {
                     "example": "any"
                   },
-                  "description": {
+                  "features": {
                     "example": "any"
                   },
-                  "features": {
+                  "description": {
                     "example": "any"
                   },
                   "price": {
                     "example": "any"
                   },
                   "discount": {
+                    "example": "any"
+                  },
+                  "categoryId": {
+                    "example": "any"
+                  },
+                  "removeToImages": {
                     "example": "any"
                   }
                 }
@@ -3703,7 +3661,7 @@
         ]
       }
     },
-    "/api/cart/{cartId}/{productId}/view-id": {
+    "/api/cart/{cartId}/{pId}/view-id": {
       "get": {
         "description": "",
         "parameters": [
@@ -3716,7 +3674,7 @@
             }
           },
           {
-            "name": "productId",
+            "name": "pId",
             "in": "path",
             "required": true,
             "schema": {
@@ -3744,7 +3702,7 @@
         ]
       }
     },
-    "/api/cart/{cartId}/{productId}/delete-item-cart": {
+    "/api/cart/{cartId}/{pId}/delete-item-cart": {
       "delete": {
         "description": "",
         "parameters": [
@@ -3757,7 +3715,7 @@
             }
           },
           {
-            "name": "productId",
+            "name": "pId",
             "in": "path",
             "required": true,
             "schema": {
@@ -3843,12 +3801,12 @@
         ]
       }
     },
-    "/api/notification/{id}/read": {
+    "/api/notification/{notifyId}/read": {
       "patch": {
         "description": "",
         "parameters": [
           {
-            "name": "id",
+            "name": "notifyId",
             "in": "path",
             "required": true,
             "schema": {
@@ -4235,12 +4193,12 @@
         ]
       }
     },
-    "/api/order/{productId}/{orderId}/exhange": {
+    "/api/order/{pId}/{orderId}/exhange": {
       "patch": {
         "description": "",
         "parameters": [
           {
-            "name": "productId",
+            "name": "pId",
             "in": "path",
             "required": true,
             "schema": {

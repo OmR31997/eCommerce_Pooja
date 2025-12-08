@@ -1,9 +1,8 @@
 import { ErrorHandle_H } from '../../utils/helper.js';
 import { ChangePassword, ConfirmOtp, ForgotPassword, GoogleCallback, Refresh_Token, ResetPassword, SendOtp, SignIn, SignOut, SignOutAll, SignUp, SignWithGoogle, VendorRegistration } from './auth.service.js';
 
-// READ-------------------------------------------|
-
-/*      *test_protected for testing with req/res handler*     */
+// READ CONTROLLERS--------------------------------|
+/*      *test_protected req/res handler*     */
 export const test_protected = async (req, res) => {
     try {
         return res.status(200).json({
@@ -41,29 +40,32 @@ export const refresh_token = async (req, res) => {
 
     } catch (error) {
 
-        const handle = ErrorHandle_H(error);
-
-        if (handle?.status)
-            return res.status(handle.status).json({ error: handle.error, errors: handle.errors, success: false });
-
-        return res.status(500).json({ error: error.message })
+        try {
+            ErrorHandle_H(error);
+        } catch (handled) {
+            return res.status(handled.status || 500).json({
+                success: false,
+                message: handled.message,
+                errors: handled.errors || null
+            });
+        }
     }
 }
 
 /*      *sign_in req/res handler*     */
-export const sign_in = async (req, res) => {
+export const sign_in = async (req, res, next) => {
     try {
-        const { email, phone,
+        const { 
+            email, phone,
             businessEmail, businessPhone,
             staffEmail, staffPhone,
             password } = req.body;
 
         const identifiers = [email, staffEmail, staffPhone, businessEmail, businessPhone, phone].filter(Boolean);
-
+ 
         if (identifiers.length !== 1) {
             throw {
                 status: 400,
-                success: false,
                 message: `Provide exactly ONE login field: email, phone, staffEmail, staffPhone, businessEmail, or businessPhone.`
             };
         }
@@ -86,20 +88,17 @@ export const sign_in = async (req, res) => {
         if (phone) logKey.phone = phone;
         if (businessEmail) logKey.businessEmail = businessEmail;
         if (businessPhone) logKey.businessPhone = businessPhone;
-        if (businessEmail) logKey.staffEmail = staffEmail;
-        if (businessPhone) logKey.staffPhone = staffPhone;
+        if (staffEmail) logKey.staffEmail = staffEmail;
+        if (staffPhone) logKey.staffPhone = staffPhone;
 
 
         const { status, success, message, tokens } = await SignIn(res, logKey, password, req.ip);
 
         return res.status(status).json({ message, tokens, success });
-    } catch (error) {
 
-        return res.status(error.status).json({
-            errors: error.errors,
-            error: error.message || `internal Server Error : ${error}`,
-            success: false
-        });
+    } catch (error) {
+        console.log(error)
+        next(error)
     }
 }
 
@@ -189,6 +188,7 @@ export const sign_out_all_devices = async (req, res) => {
 
 /*  **New Registration**  */
 
+// CREATE CONTROLLERS--------------------------------|
 /*      *send_otp req/res handler*     */
 export const send_otp = async (req, res) => {
     try {
@@ -299,7 +299,7 @@ export const vendor_registration = async (req, res) => {
         }
 
         const filePayload = {
-            logoUrl: req.files.logoUrl?.[0] || null,
+            logoFile: req.files.logoUrl?.[0] || null,
             documents: req.files.documents || []
         }
 
@@ -310,16 +310,15 @@ export const vendor_registration = async (req, res) => {
         });
 
     } catch (error) {
-
-        const handle = ErrorHandle_H(error);
-
-        if (handle?.status)
-            return res.status(handle.status).json({ error: handle.error, errors: handle.errors, success: false });
-
-        return res.status(error.status || 500).json({
-            success: false,
-            error: error.message || `Internal Server Error: ${error}`
-        });
+        try {
+            ErrorHandle_H(error);
+        } catch (handled) {
+            return res.status(handled.status || 500).json({
+                success: false,
+                message: handled.message,
+                errors: handled.errors || null
+            });
+        }
     }
 }
 
@@ -358,6 +357,7 @@ export const google_Callback = async (req, res) => {
 
 }
 
+// UPDATE CONTROLLERS--------------------------------|
 /*      * change_passoword req/res handler *      */
 export const change_passoword = async (req, res) => {
     try {

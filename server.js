@@ -25,6 +25,7 @@ import DashboardRoute from './routes/dashboard.route.js';
 import BackupRoute from './routes/backup.route.js';
 import NotificationRoute from './routes/notification.route.js';
 import { Authentication } from './middlewares/auth.middleware.js';
+import { ErrorHandle_H } from './utils/helper.js';
 
 const appServer = express();
 appServer.use(express.json());
@@ -84,6 +85,16 @@ appServer.use('/api/order', Authentication, OrderRoute);
 appServer.use('/api/user', Authentication, UserRoute);
 appServer.use('/api/dashboard', Authentication, DashboardRoute);
 appServer.use('/api/backup', Authentication, BackupRoute);
+
+appServer.use((err, req, res, next) => {
+    const handled = ErrorHandle_H(err);
+
+    return res.status(handled.status || 500).json({
+        success: false, 
+        message: handled.message,
+        errors: handled.errors || null
+    });
+});
 
 const port = process.env.PORT;
 

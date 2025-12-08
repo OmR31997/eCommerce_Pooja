@@ -1,8 +1,8 @@
 import { CancelOrder, CreateOrderBeforePayment, ExchangeOrder, GetOrderById, GetOrders, ReturnOrder } from "./order.service.js";
 import { GenerateReceiptPDF } from '../../utils/generateReceipt.js';
 import { ErrorHandle_H } from "../../utils/helper.js";
-// READ ORDER CONTROLLERS-----------------------------------------|
 
+// READ ORDER CONTROLLERS-------------------------|
 export const get_orders = async (req, res) => {
     try {
         const {
@@ -58,22 +58,17 @@ export const get_orders = async (req, res) => {
 
 export const get_order_by_orderId = async (req, res) => {
     try {
-        if (!['admin', 'super_admin', 'staff'].includes(req.user.role)) {
-            throw {
-                status: 405,
-                message: `Method Not Allowed`
-            }
+
+        const keyVal = {
+            _id: req.params.orderId,
+            ...(["admin", "super_admin", "staff"].includes(req.user.role)
+                ? { main: true }
+                : req.user.role === "vendor"
+                    ? { vendorId: req.user.id }
+                    : { userId: req.user.id })
         }
-
-        const keyVal = req.user.role === 'user'
-            ? { userId: req.user.id }
-            : req.user.role === 'vendor'
-                ? { vendorId: req.user.id }
-                : {}
-
-        const orderId = req.params.orderId;
-
-        const { status, message, data, success } = await GetOrderById(orderId, keyVal, productId);
+        
+        const { status, message, data, success } = await GetOrderById(keyVal);
 
         return res.status(status).json({ message, data, success });
 
@@ -86,7 +81,7 @@ export const get_order_by_orderId = async (req, res) => {
     }
 }
 
-// -------------------------------------CREATE ORDER CONTROLLER----------------------------------------|
+// CREATE ORDER CONTROLLER------------------------|
 export const checkout_before_payment = async (req, res) => {
 
     try {
@@ -127,7 +122,7 @@ export const checkout_before_payment = async (req, res) => {
     }
 }
 
-// -------------------------------------UPDATE ORDER CONTROLLER----------------------------------------|
+// UPDATE ORDER CONTROLLER------------------------|
 export const exchange_order = async (req, res) => {
     try {
         const userId = req.query.userId;
@@ -187,7 +182,7 @@ export const return_order = async (req, res) => {
 }
 
 
-// -------------------------------------DELETE ORDER CONTROLLER----------------------------------------|
+// DELETE ORDER CONTROLLER------------------------|
 export const cancel_order = async (req, res) => {
     try {
 
@@ -219,7 +214,7 @@ export const cancel_order = async (req, res) => {
 }
 
 //-------------------------------------RECIEPT GENRATE CONTROLLER--------------------------------------|
-export const download_reciept = async (req, res) => {
+export const download_reciept = async (req, res, next) => {
     try {
         const userId = req.query.userId;
 
@@ -230,17 +225,19 @@ export const download_reciept = async (req, res) => {
             }
         }
 
-        const options = {
+        const keyVal = {
             userId: req.user.role === 'user' ? req.user.id : userId,
-            orderId: req.params.orderId,
+            _id: req.params.orderId
+        }
 
+        const options = {
             populates: {
                 vendor: { path: 'vendorId', select: 'businessName' },
                 product: { path: 'items.productId', select: 'name quantity price subtotal totalAmount' },
             },
         }
 
-        const { data: order } = await GetOrderById(options);
+        const { data: order } = await GetOrderById(keyVal);
 
         if (!order.items.length === 0) {
             throw {
@@ -251,10 +248,6 @@ export const download_reciept = async (req, res) => {
 
         await GenerateReceiptPDF(order, res);
     } catch (error) {
-        if (error.status) {
-            return res.status(error.status).json({ success: false, error: error.message });
-        }
-
-        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+        next(error);
     }
 }
