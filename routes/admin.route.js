@@ -42,14 +42,14 @@ router.delete('/:id/delete', AuthAccess('Admin', 'delete'), delete_admin);
    @access -> Private (admin) 
    @id -> _id
 */
-router.patch('/:id/staff-approval', AuthAccess('Admin', 'update'), manage_staff);
+router.patch('/:staffId/staff-approval', AuthAccess('Admin', 'update'), manage_staff);
 
 /* @description -> To give approval to vendor for sale
    @end-Point -> /api/admin/:id/vendor-approval
    @methtod -> POST
    @access -> Private (admin) 
 */
-router.patch('/:id/vendor-approval', AuthAccess('Admin', 'update'), manage_vendor);
+router.patch('/:vendorId/vendor-approval', AuthAccess('Admin', 'update'), manage_vendor);
 
 /* @description -> To set the status of the product
    @end-Point -> /api/admin/:id/product-approval            

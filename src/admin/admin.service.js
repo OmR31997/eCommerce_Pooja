@@ -167,7 +167,7 @@ export const ManageProduct = async (productId, reqData) => {
 
     await Notify.vendor(updatedProduct.vendorId, {
         title: 'Product Status Updated',
-        message: `Your product ${updatedProduct.name} has been ${status}.`,
+        message: `Your product ${updatedProduct.name} has been ${reqData.status}.`,
         type: 'vendor'
     })
 

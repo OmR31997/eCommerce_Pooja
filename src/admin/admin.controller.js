@@ -102,6 +102,7 @@ export const manage_staff = async (req, res, next) => {
 export const manage_vendor = async (req, res, next) => {
 
     try {
+        
         const vendorId = req.params.vendorId;
         const reqData = { status: req.body.status };
 
