@@ -425,6 +425,7 @@ export const GetPublicProducts = async (options = {}) => {
     return {
         status: 200,
         message: 'Data fetched successfully',
+        count: total,
         pagination,
         success: true,
         data: products

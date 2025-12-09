@@ -124,9 +124,9 @@ export const public_products = async (req, res) => {
             }
         }
 
-        const { status: statusCode, success, message, pagination, data } = await GetPublicProducts(options);
+        const { status: statusCode, success, message, count, pagination, data } = await GetPublicProducts(options);
 
-        return res.status(statusCode).json({ message, success, message, pagination, data });
+        return res.status(statusCode).json({ message, success, message, count, pagination, data });
 
     } catch (error) {
 

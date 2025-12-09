@@ -1,52 +1,6 @@
 import mongoose from "mongoose"
-
-const OrderItemSchema = new mongoose.Schema({
-    productId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Product',
-        required: [true, `'productId' field must be required`],
-    },
-    quantity: {
-        type: Number,
-        required: [true, `'quantity' field must be required`],
-    },
-    price: {
-        type: Number,
-        required: [true, `'price' field must be required`],
-    },
-    subtotal: {
-        type: Number,
-        min: [0, `'subtotal' field must be required`],
-    }
-}, { _id: false });
-
-const ShippingSchema = new mongoose.Schema({
-    name: {
-        type: String,
-        trim: true,
-        required: [true, `name' field must be required`],
-    },
-    phone: {
-        type: String,
-        required: [true, `'phone' field must be required`],
-    },
-    addressLine: {
-        type: String,
-        required: [true, `'addressLine' field must be required`],
-    },
-    city: {
-        type: String,
-        required: [true, `'city' field must be required`],
-    },
-    state: {
-        type: String,
-        required: [true, `'state' field must be required`],
-    },
-    postalCode: {
-        type: String,
-        required: [true, `'postalCode' field must be required`],
-    }
-}, { _id: false });
+import { ItemSchema } from "../../common_models/item.model.js";
+import { ShippingSchema } from "../../common_models/shipping.model.js";
 
 const OrderSchema = new mongoose.Schema({
     userId: {
@@ -63,7 +17,7 @@ const OrderSchema = new mongoose.Schema({
 
     },
     items: {
-        type: [OrderItemSchema],
+        type: [ItemSchema],
         validate: [(val) => val.length > 0, 'At least one order item is required']
     },
     totalAmount: {
@@ -86,7 +40,10 @@ const OrderSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['pending', 'delivered', 'cancelled', 'returned', 'refunded', 'confirmed'],
+        enum: [
+            'return_requested', 'approved', 'pending', 
+            'delivered', 'cancelled', 'returned',
+        ],
         default: 'pending'
     },
     paymentSessionId: { 
@@ -97,16 +54,6 @@ const OrderSchema = new mongoose.Schema({
         type: ShippingSchema,
         required: [true, `'shippingAddress' field must be required`]
     },
-    refundStatus: {
-        type: String,
-        enum: ['none', 'requested', 'approved', 'processing', 'completed', 'rejected'],
-        default: 'none'
-    },
-    refundId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Refund',
-        default: null
-    },
     trackingId: {
         type: String,
         default: null,
@@ -115,6 +62,9 @@ const OrderSchema = new mongoose.Schema({
     paymentId: {
         type: String, // Razorpay or Stripe transaction ID
     },
+    refundId: {
+        type: mongoose.Schema.Types.ObjectId,
+    }
 }, { timestamps: true });
 
 // Virtual (not stored in DB)

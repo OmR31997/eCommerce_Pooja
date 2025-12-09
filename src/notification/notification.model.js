@@ -23,7 +23,11 @@ const NotificationSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ['order', 'stock', 'vendor', 'system', 'complaint', 'payout', 'order_payment', 'delete'],
+        enum: [
+            'order', 'stock', 'vendor', 
+            'system', 'complaint', 'payout', 
+            'order_payment', 'delete'
+        ],
         default: 'system'
     }
 }, { timestamps: true });

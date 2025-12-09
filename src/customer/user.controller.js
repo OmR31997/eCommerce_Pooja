@@ -1,7 +1,7 @@
 import { GetOrderById, GetOrders } from '../order/order.service.js';
 import { GetAllUsers, GetUser, RemoveAllUsers, RemoveUser, UpdateUser } from './user.service.js';
 
-/*      * get_me handler *      */
+// READ CONTROLLERS-----------------------|
 export const get_me = async (req, res) => {
     try {
         const { status, success, message, data } = await GetUser(req.user.id);
@@ -16,7 +16,6 @@ export const get_me = async (req, res) => {
     }
 }
 
-/*      * get_user_byId handler *      */
 export const get_user_byId = async (req, res) => {
     try {
         const userId = req.params.id;
@@ -34,7 +33,6 @@ export const get_user_byId = async (req, res) => {
     }
 }
 
-/*      * get_users handler *       */
 export const get_users = async (req, res) => {
     try {
         if (req.user.role === 'user')
@@ -68,7 +66,6 @@ export const get_users = async (req, res) => {
     }
 }
 
-/*      * users_filters handler *       */
 export const users_filters = async (req, res) => {
     try {
         const {
@@ -106,7 +103,7 @@ export const users_filters = async (req, res) => {
     }
 };
 
-/*      * update_user_profile handler *       */
+// UPDATE CONTROLLERS
 export const update_user_profile = async (req, res) => {
     try {
         const {
@@ -147,7 +144,7 @@ export const update_user_profile = async (req, res) => {
     }
 }
 
-/*      * remove_user_profile handler *       */
+// DELETE CONTROLLERS
 export const remove_user_profile = async (req, res) => {
     try {
         const userId = req.params.id;
@@ -165,7 +162,6 @@ export const remove_user_profile = async (req, res) => {
     }
 }
 
-/*      * clear_users handler *       */
 export const clear_users = async (req, res) => {
     try {
 
@@ -189,7 +185,7 @@ export const clear_users = async (req, res) => {
     }
 }
 
-// ---------------------------
+// ---------------------------------------------------------------------------------------------------|
 // PRODUCT
 
 export const get_orders_ByUser = async (req, res) => {

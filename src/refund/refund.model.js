@@ -19,7 +19,7 @@ const RefundSchema = new mongoose.Schema({
     evidence: [String], // images URLs
     status: {
         type: String,
-        enum: ['pending', 'approved', 'processing', 'completed', 'rejected'],
+        enum: ['initiated', 'requested', 'pending', 'approved', 'processing', 'completed', 'rejected'],
         default: 'pending'
     },
     initiatedBy: {

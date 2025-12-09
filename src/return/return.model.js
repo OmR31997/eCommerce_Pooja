@@ -1,22 +1,31 @@
 import mongoose from "mongoose";
+import { ItemSchema } from "../../common_models/item.model.js";
 
 const ReturnSchema = new mongoose.Schema({
     orderId: {
         type: mongoose.Schema.Types.ObjectId,
     },
-    productId: {
-        type: mongoose.Schema.Types.ObjectId,
+    items: {
+        type: [ItemSchema]
     },
-    quantity: {
+    userId: {
         type: mongoose.Schema.Types.ObjectId,
     },
     status: {
         type: String,
-        enum: ['requested', 'approved', 'rejected', 'received'],
-        default: 'requested'
+        enum: [
+            'requested', 'refund_received',
+            'staff-approved', 'staff-rejected',
+            'inspected', 'approved', 'rejected'],
+
+        required: [true, `'status' field must be required`]
     },
     reason: {
-        type: String
+        type: String,
+        required: [true, `'reason' field must be required!`]
+    },
+    refundId: {
+        type: mongoose.Schema.Types.ObjectId
     }
 });
 

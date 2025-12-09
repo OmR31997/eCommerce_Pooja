@@ -38,6 +38,8 @@ const doc = {
     { name: 'Product', description: 'Product management routes' },
     { name: 'Cart', description: 'Cart management routes' },
     { name: 'Order', description: 'Order management routes' },
+    { name: 'Order Return', description: 'Return management routes' },
+    { name: 'Refund', description: 'Refund management routes' },
     { name: 'Notification', description: 'Notification Routes' },
     { name: 'Payment', description: 'Payment management routes' },
     { name: 'Payout', description: 'Payout management routes' },
@@ -98,9 +100,11 @@ const getTagFromRoute = (route) => {
     '/product': 'Product',
     '/cart': 'Cart',
     '/order': 'Order',
+    '/return': 'Order Return',
+    '/refund': 'Refund',
     '/notification': 'Notification',
     '/payment': 'Payment',
-    '/payout': 'Payment',
+    '/payout-vendor': 'Payout',
     '/backup': 'Backup System',
     '/health': 'API Testing'
   };

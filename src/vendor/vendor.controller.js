@@ -71,9 +71,9 @@ export const get_vendors = async (req, res) => {
             },
         }
 
-        const { status, success, message, pagination, data } = await GetVendors(options);
+        const { status, success, message, count, pagination, data } = await GetVendors(options);
 
-        return res.status(status).json({ message, pagination, success, data })
+        return res.status(status).json({ message, count, pagination, success, data })
 
     } catch (error) {
 

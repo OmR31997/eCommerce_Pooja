@@ -8,6 +8,7 @@ import { DeleteLocalFile_H, ValidateFiles_H } from './fileHelper.js';
 import { ToDeleteFromCloudStorage_H, ToSaveCloudStorage_H } from './cloudUpload.js';
 import { Category } from '../src/category/category.model.js';
 import mongoose from 'mongoose';
+import { Order } from '../src/order/order.model.js';
 
 // COMMON ERROR HADLE HELPERS-------------------|
 export const ErrorHandle_H = (error) => {
@@ -122,6 +123,19 @@ export const FindProductFail_H = async (keyVal, select) => {
     }
 
     return product;
+}
+
+export const FindOrderFail_H = async (keyVal, select) => {
+    const order = await Order.findOne(keyVal).select(select);
+
+    if(!order) {
+        throw {
+            status: 404,
+            message: `Order not found for ID: ${keyVal._id}`
+        }
+    }
+
+    return order;
 }
 
 export const FindUserFail_H = async (keyVal, select) => {

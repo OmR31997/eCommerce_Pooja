@@ -1,36 +1,6 @@
 import mongoose from "mongoose";
-
-const ShippingSchema = new mongoose.Schema({
-    name: String,
-    phone: String,
-    addressLine1: String,
-    addressLine2: String,
-    landmark: String,
-    city: String,
-    state: String,
-    postalCode: String,
-    country: { type: String, default: 'India' }
-}, { _id: false });
-
-const ItemSchema = new mongoose.Schema({
-    productId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Product',
-        required: [true, `'productId' field must be required`]
-    },
-    quantity: {
-        type: Number,
-        default: 1
-    },
-    price: {
-        type: Number,
-        required: [true, `'price' field must be required`]
-    },
-    subtotal: {
-        type: Number,
-        default: 0
-    }
-}, { _id: false });
+import { ShippingSchema } from "../../common_models/shipping.model.js";
+import { ItemSchema } from "../../common_models/item.model.js";
 
 const CartSchema = new mongoose.Schema({
     userId: {

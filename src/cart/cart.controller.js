@@ -1,7 +1,7 @@
 import { ErrorHandle_H } from "../../utils/helper.js";
 import { AddToCart, DecrementItemQty, DeleteCart, GetCartById, GetCarts, SaveShipping } from "./cart.service.js";
 
-// \READ CART CONTROLLERS--------------------|
+// READ CART CONTROLLERS--------------------|
 
 export const get_carts = async (req, res) => {
     try {

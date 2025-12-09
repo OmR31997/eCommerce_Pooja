@@ -170,7 +170,7 @@ export const update_staff = async (req, res) => {
     return res.status(status).json({ message, data, success });
 }
 
-export const remove_staff = async (req, res) => {
+export const remove_staff = async (req, res, next) => {
     try {
         const staffId = req.params.id;
         const { id, role } = req.user;
@@ -196,7 +196,7 @@ export const remove_staff = async (req, res) => {
             success: true,
         })
     } catch (error) {
-
+        next(error);
     }
 }
 

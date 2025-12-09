@@ -1,10 +1,10 @@
-import { CreateAdmin, DeleteAdmin, UpdateAdmin, ManageProduct, ManageStaff, ManageUser, ManageVendor, GetAdmin } from "./admin.service.js";
-import { Refund } from "../../common_models/refund.model.js"
+import { CreateAdmin, DeleteAdmin, UpdateAdmin, ManageProduct, ManageStaff, ManageUser, ManageVendor, GetAdmin, MangeReturn } from "./admin.service.js";
+import { Refund } from "../refund/refund.model.js";
 import { Order } from "../order/order.model.js";
 import { ErrorHandle_H } from "../../utils/helper.js";
 
-/*      * create_admin handler *      */
-export const create_admin = async (req, res) => {
+// CREATE CONTROLLERS---------------------------|
+export const create_admin = async (req, res, next) => {
     try {
         const { name, email, password, } = req.body;
 
@@ -22,209 +22,202 @@ export const create_admin = async (req, res) => {
         return res.status(status).json({ message, data, success });
 
     } catch (error) {
-        const handle = ErrorHandle_H(error);
-
-        if (handle?.status)
-            return res.status(handle.status).json({ success: false, error: handle.error, errors: handle.errors });
-
-        return res.status(500).json({ success: false, error: error.message });
+        next(error);
     }
 }
 
-/*      * get_admin handler *      */
-export const get_admin = async (req, res) => {
+// CREATE CONTROLLERS---------------------------|
+export const get_admin = async (req, res, next) => {
     try {
         const { status, success, data, message } = await GetAdmin(req.user);
 
         return res.status(status).json({ message, data, success });
 
     } catch (error) {
-        if (error.status) {
-            return res.status(error.status).json({ success: false, error: error.message });
-        }
-
-        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+        next(error);
     }
 
 }
 
-/*      * get_admin handler *      */
-export const update_profile = async (req, res) => {
+// UPDATE CONTROLLERS---------------------------|
+export const update_profile = async (req, res, next) => {
 
     try {
         const { role, id } = req.user;
 
         const {
             name, email,
-            adminId = req.user.id
+            adminId = id
         } = req.body;
 
         if (role === 'admin' && id !== adminId) {
             throw {
                 status: 401,
-                message: `Unauthorized: You don't have permission to update another`,
+                message: `Unauthorized: You don't have permission to update another admin`,
             }
         }
 
-        const adminData = { name, email }
-
-        const { status, success, data, message } = await UpdateAdmin(adminData, adminId);
-
-        return res.status(status).json({ message, data, success });
-
-    } catch (error) {
-        const handle = ErrorHandle_H(error);
-
-        if (handle?.status)
-            return res.status(handle.status).json({ success: false, error: handle.error, errors: handle.errors });
-
-        return res.status(500).json({ success: false, error: error.message });
-    }
-}
-
-/*      * delete_admin handler *      */
-export const delete_admin = async (req, res) => {
-
-    try {
-        const { role, id } = req.user;
-        const adminId = req.params.id;
-
-        if (role === 'admin' && id !== adminId) {
+        if (!name || !email) {
             throw {
-                status: 401,
-                message: `Unauthorized: You don't have permission to update another`,
+                status: 400,
+                message: "At least one field must be required to update either 'name' or 'email'"
             }
         }
 
-        const { status, success, data, message } = await DeleteAdmin(adminId);
+        const reqData = { name, email }
+
+        const { status, success, data, message } = await UpdateAdmin(adminId, reqData);
 
         return res.status(status).json({ message, data, success });
-    } catch (error) {
-        if (error.status) {
-            return res.status(error.status).json({ success: false, error: error.message });
-        }
 
-        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+    } catch (error) {
+        next(error);
     }
 }
 
-/*      * manage_staff handler *      */
-export const manage_staff = async (req, res) => {
+// UPDATE CONTROLLERS---------------------------|
+export const manage_staff = async (req, res, next) => {
 
     try {
-        const staffId = req.params.id;
+        const staffId = req.params.staffId;
 
-        const status = req.body.status;
+        const reqData = { status: req.body.status };
 
-        if (!status) {
+        if (!reqData.status) {
             throw {
                 status: 400,
                 message: `'status' field must be required!`
             }
         }
 
-        const { status: statusCode, success, data, message } = await ManageStaff(status, staffId);
+        const { status: statusCode, success, data, message } = await ManageStaff(staffId, reqData);
 
         return res.status(statusCode).json({ message, data, success });
 
     } catch (error) {
-        const handle = ErrorHandle_H(error);
-
-        if (handle?.status)
-            return res.status(handle.status).json({ success: false, error: handle.error, errors: handle.errors });
-
-        return res.status(500).json({ success: false, error: error.message });
+        next(error);
     }
 }
 
-/*      * manage_vendor handler *      */
-export const manage_vendor = async (req, res) => {
+export const manage_vendor = async (req, res, next) => {
 
     try {
-        const vendorId = req.params.id;
+        const vendorId = req.params.vendorId;
+        const reqData = { status: req.body.status };
 
-        const status = req.body.status;
-
-        if (!status) {
+        if (!reqData.status) {
             throw {
                 status: 400,
                 message: `'status' field must be required!`
             }
         }
 
-        const { status: statusCode, success, data, message } = await ManageVendor(vendorId, status);
+        const { status: statusCode, success, data, message } = await ManageVendor(vendorId, reqData);
 
         return res.status(statusCode).json({ message, data, success });
 
     } catch (error) {
-        const handle = ErrorHandle_H(error);
-
-        if (handle?.status)
-            return res.status(handle.status).json({ success: false, error: handle.error, errors: handle.errors });
-
-        return res.status(500).json({ success: false, error: error.message });
+        next(error);
     }
 }
 
-/*      * manage_user handler *      */
-export const manage_user = async (req, res) => {
+export const manage_user = async (req, res, next) => {
 
     try {
         const userId = req.params.id;
 
-        const status = req.body.status;
+        const reqData = { status: req.body.status };
 
-        if (!status) {
+        if (!reqData.status) {
             throw {
                 status: 400,
                 message: `'status' field must be required!`
             }
         }
 
-        const { status: statusCode, success, data, message } = await ManageUser(status, userId);
+        const { status: statusCode, success, data, message } = await ManageUser(userId, reqData);
 
         return res.status(statusCode).json({ message, data, success });
 
     } catch (error) {
 
-        const handle = ErrorHandle_H(error);
-
-        if (handle?.status)
-            return res.status(handle.status).json({ success: false, error: handle.error, errors: handle.errors });
-
-        return res.status(500).json({ success: false, error: error.message });
+        next(error);
     }
 }
 
-/*      * manage_product handler *      */
-export const manage_product = async (req, res) => {
+export const manage_product = async (req, res, next) => {
 
     try {
         const productId = req.params.pId;
 
-        const status = req.body.status;
+        const reqData = { status: req.body.status };
 
-        if (!status) {
+        if (!reqData.status) {
             throw {
                 status: 400,
                 message: `'status' field must be required!`
             }
         }
 
-        const { status: statusCode, success, data, message } = await ManageProduct(productId, status);
+        const { status: statusCode, success, data, message } = await ManageProduct(productId, reqData);
 
         return res.status(statusCode).json({ message, data, success });
     } catch (error) {
-        const handle = ErrorHandle_H(error);
-
-        if (handle?.status)
-            return res.status(handle.status).json({ success: false, error: handle.error, errors: handle.errors });
-
-        return res.status(500).json({ success: false, error: error.message });
+        next(error)
     }
 }
 
-/*      * manage_user handler *      */
+export const manage_return = async (req, res, next) => {
+    try {
+        const valid = [
+            'approved',
+            'rejected',
+            'refund_received'
+        ];
+
+        if(!valid.includes(req.body.status)) {
+            throw {
+                status: 400,
+                message: `'status' field must be required either "approved", "rejected", "received"`
+            }
+        }
+
+        const keyVal = {
+            _id: req.params.returnId,
+            orderId: req.params.orderId
+        }
+
+        const reqData = { status: req.body.status };
+        
+        const { status: statusCode, success, message, data } = await MangeReturn(keyVal, reqData);
+
+        return res.status(statusCode).json({
+            message,
+            data,
+            success
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const manage_refund = async (req, res) => {
+    const { refundId } = req.params;
+
+    const refund = await Refund.findById(refundId);
+    if (!refund) return res.status(404).json({ msg: "Refund not found" });
+
+    refund.status = "approved";
+    await refund.save();
+
+    const order = await Order.findById(refund.orderId);
+    order.refundStatus = "approved";
+    await order.save();
+
+    res.json({ msg: "Refund approved" });
+};
+
+
 export const manage_permission = async (req, res) => {
     try {
         const permissionId = req.params.permissionId
@@ -265,19 +258,28 @@ export const manage_permission = async (req, res) => {
         return res.status(500).json({ success: false, error: error.message });
     }
 }
+// DELETE CONTROLLERS---------------------------|
+export const delete_admin = async (req, res) => {
 
-export const ApproveRefund = async (req, res) => {
-    const { refundId } = req.params;
+    try {
+        const { role, id } = req.user;
+        const adminId = req.params.id;
 
-    const refund = await Refund.findById(refundId);
-    if (!refund) return res.status(404).json({ msg: "Refund not found" });
+        if (role === 'admin' && id !== adminId) {
+            throw {
+                status: 401,
+                message: `Unauthorized: You don't have permission to update another`,
+            }
+        }
 
-    refund.status = "approved";
-    await refund.save();
+        const { status, success, data, message } = await DeleteAdmin(adminId);
 
-    const order = await Order.findById(refund.orderId);
-    order.refundStatus = "approved";
-    await order.save();
+        return res.status(status).json({ message, data, success });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({ success: false, error: error.message });
+        }
 
-    res.json({ msg: "Refund approved" });
-};
+        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+    }
+}
