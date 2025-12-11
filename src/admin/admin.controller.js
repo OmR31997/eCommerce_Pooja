@@ -1,5 +1,5 @@
 import { CreateAdmin, DeleteAdmin, UpdateAdmin, ManageProduct, ManageStaff, ManageUser, ManageVendor, GetAdmin, ManageRefund } from "./admin.service.js";
-import { ErrorHandle_H } from "../../utils/helper.js";
+import { error, ErrorHandle_H } from "../../utils/helper.js";
 
 // CREATE CONTROLLERS---------------------------|
 export const create_admin = async (req, res, next) => {
@@ -13,11 +13,11 @@ export const create_admin = async (req, res, next) => {
             }
         }
 
-        const adminData = { name, email, password };
+        const reqData = { name, email, password };
 
-        const { status, message, data, success } = await CreateAdmin(adminData);
+        const response = await CreateAdmin(reqData);
 
-        return res.status(status).json({ message, data, success });
+        return res.status(201).json(response);
 
     } catch (error) {
         next(error);
@@ -27,9 +27,9 @@ export const create_admin = async (req, res, next) => {
 // READ CONTROLLERS---------------------------|
 export const get_admin = async (req, res, next) => {
     try {
-        const { status, success, data, message } = await GetAdmin(req.user);
+        const response = await GetAdmin(req.user);
 
-        return res.status(status).json({ message, data, success });
+        return res.status(200).json(response);
 
     } catch (error) {
         next(error);
@@ -41,21 +41,18 @@ export const get_admin = async (req, res, next) => {
 export const update_profile = async (req, res, next) => {
 
     try {
-        const { role, id } = req.user;
-
-        const {
-            name, email,
-            adminId = id
-        } = req.body;
-
-        if (role === 'admin' && id !== adminId) {
-            throw {
-                status: 401,
-                message: `Unauthorized: You don't have permission to update another admin`,
-            }
+        const adminId = req.query.id;
+        const { name, email } = req.body;
+        
+        if(adminId && req.user.role === "admin" && adminId !== req.user.id) {
+            error({sCode: 401, message: "Unauthorized: You don't have permission to update another admin"});
+        }
+        
+        const keyVal = {
+            _id: req.user.role === "super_Admin" ? adminId : req.user.id
         }
 
-        if (!name || !email) {
+        if (!name && !email) {
             throw {
                 status: 400,
                 message: "At least one field must be required to update either 'name' or 'email'"
@@ -64,9 +61,9 @@ export const update_profile = async (req, res, next) => {
 
         const reqData = { name, email }
 
-        const { status, success, data, message } = await UpdateAdmin(adminId, reqData);
+        const response = await UpdateAdmin(keyVal, reqData);
 
-        return res.status(status).json({ message, data, success });
+        return res.status(200).json(response);
 
     } catch (error) {
         next(error);
@@ -169,7 +166,7 @@ export const manage_refund = async (req, res) => {
     const keyVal = { _id: req.params.returnId };
 
     const { status, message, data, success } = await ManageRefund(keyVal);
-    
+
     return res.status(status).json({ message, data, success });
 };
 

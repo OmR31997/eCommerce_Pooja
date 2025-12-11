@@ -1,4 +1,4 @@
-import { FindOrderFail_H, FindProductFail_H, FindReturnFail_H, GenerateEmail_H, success } from "../../utils/helper.js";
+import { error, FindOrderFail_H, FindProductFail_H, FindReturnFail_H, GenerateEmail_H, success } from "../../utils/helper.js";
 import bcrypt from 'bcryptjs';
 import { Role } from '../role/role.model.js';
 import { Admin } from './admin.model.js';
@@ -11,19 +11,19 @@ import { Notify } from '../notification/notification.service.js';
 import { Refund } from "../refund/refund.model.js";
 
 // CREATE SERVICES-------------------------------|
-export const CreateAdmin = async (adminData) => {
-    const { email, password } = adminData;
+export const CreateAdmin = async (reqData) => {
+    const { email, password } = reqData;
     const roleId = await Role.findOne({ name: 'admin' });
     const permissionId = await Permission({ name: 'admin' })
 
-    adminData.role = roleId;
-    adminData.permission = permissionId;
-    adminData.email = email ? GenerateEmail_H(email, 'admin') : null;
-    adminData.password = password ? await bcrypt.hash(password, 10) : null;
+    reqData.role = roleId;
+    reqData.permission = permissionId;
+    reqData.email = email ? GenerateEmail_H(email, 'admin') : null;
+    reqData.password = password ? await bcrypt.hash(password, 10) : null;
 
-    const result = await Admin.create(adminData)
+    const result = await Admin.create(reqData);
 
-    return { status: 201, success: true, message: 'Admin created successfully!', data: result };
+    return success({ message: 'Admin created successfully!', data: result })
 }
 
 // READ SERVICES-------------------------------|
@@ -42,32 +42,19 @@ export const GetAdmin = async (user) => {
         }
     }
 
-    return {
-        status: 200,
-        message: 'Date fetched successfully',
-        data: admin,
-        success: true
-    }
+    return success({ message: 'Date fetched successfully', data: admin });
 }
 
 // UPDATE SERVICES-------------------------------|
-export const UpdateAdmin = async (adminId, reqData) => {
+export const UpdateAdmin = async (keyVal, reqData) => {
 
-    const updatedAdmin = await Admin.findByIdAndUpdate(adminId, reqData, { new: true, runValidators: true });
+    const updated = await Admin.findOneAndUpdate(keyVal, reqData, { new: true, runValidators: true });
 
-    if (!updatedAdmin) {
-        throw {
-            status: 404,
-            message: `Admin not found for ID: ${adminId}`
-        }
+    if (!updated) {
+        error({ status: 404, message: `Admin not found for ID: ${keyVal._id}` });
     }
 
-    return {
-        status: 200,
-        message: 'Admin updated successfully',
-        data: updatedAdmin,
-        success: true,
-    };
+    return success({ message: 'Admin updated successfully', data: updated });
 }
 
 export const ManageStaff = async (staffId, reqData) => {

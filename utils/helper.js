@@ -182,23 +182,18 @@ export const FindReturnFail_H = async (keyVal, select) => {
     return responseReturn;
 }
 
-export const error = (statusCode, error) => {
-    throw {
-        success: false,
-        status: statusCode,
-        message: error
-    }
-}
+export const error = (sCode, error) => ({
+    success: false,
+    sCode,
+    message: error
+})
 
-export const success = (status, moduleName, data, rest = null) => {
-    return {
-        success: true,
-        status,
-        message: `${moduleName} created successfully!`,
-        data,
-        rest
-    }
-}
+export const success = ({ message, data, ...rest }) => ({
+    success: true,
+    message,
+    data,
+    ...rest
+})
 
 // IDENTIFY HELPERS---------------------------------|
 export const IdentifyModelByGoogleEmail_H = (email) => {

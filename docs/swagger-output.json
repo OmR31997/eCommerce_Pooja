@@ -622,6 +622,9 @@
           }
         ],
         "responses": {
+          "201": {
+            "description": "Created"
+          },
           "401": {
             "description": "Unauthorized"
           },
@@ -667,6 +670,9 @@
           }
         ],
         "responses": {
+          "200": {
+            "description": "OK"
+          },
           "401": {
             "description": "Unauthorized"
           },
@@ -692,6 +698,9 @@
           }
         ],
         "responses": {
+          "200": {
+            "description": "OK"
+          },
           "401": {
             "description": "Unauthorized"
           },
@@ -714,9 +723,19 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
+          "200": {
+            "description": "OK"
+          },
           "401": {
             "description": "Unauthorized"
           },
@@ -734,9 +753,6 @@
                     "example": "any"
                   },
                   "email": {
-                    "example": "any"
-                  },
-                  "adminId": {
                     "example": "any"
                   }
                 }
