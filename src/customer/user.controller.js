@@ -69,30 +69,39 @@ export const get_users = async (req, res) => {
 export const users_filters = async (req, res) => {
     try {
         const {
-            search = '', status = '',
-            name = '', email = '', phone = '', segment = '', joinRange = '', updatedRange = '', address = '',
-            page = 1, limit = 10, offset,
+            search, status,
+            phone, segment, joinRange, updatedRange, address,
+            page = 1, limit = 10,
             sortBy = 'createdAt', orderSequence = 'desc'
         } = req.query;
 
-        if (req.user.role === 'user')
+        if (req.user.role === 'user') {
             throw {
                 status: 401,
                 message: `Unauthorized: You haven't accessibility`,
                 success: false
             }
+        }
 
-        const { status: StatusCode, success, message, pagination, data } = await GetAllUsers(
-            `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`,
-            { page: parseInt(page), limit: parseInt(limit), offset, sortBy, orderSequence },
-            {
-                search, status, name, email, phone, segment, address,
-                joinRange: joinRange ? joinRange.split(',').map(i => i.trim()) : undefined,
-                updatedRange: updatedRange ? updatedRange.split(',').map(i => i.trim()) : undefined,
-            }
-        )
+        const options = {
+            baseUrl: `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`,
 
-        return res.status(StatusCode).json({ message, pagination, data, success });
+            pagingReq: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                sortBy, orderSequence
+            },
+
+            filter: {
+                search, status,
+                phone, segment, joinRange, updatedRange, address,
+                status: ['admin', 'super_admin'].includes(req.user.role) ? undefined : 'active'
+            },
+        }
+
+        const { status: statusCode, success, message, pagination, data } = await GetAllUsers(options);
+
+        return res.status(statusCode).json({ message, pagination, data, success });
 
     } catch (error) {
         if (error.status) {
@@ -260,7 +269,6 @@ export const get_order_byId = async (req, res) => {
 
 // ------------------------------------------------------------------------
 // VENDOR
-/*      * vendor_signup handler *      */
 export const vendor_registration_ByUser = async (req, res) => {
     try {
         const {

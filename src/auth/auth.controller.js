@@ -2,7 +2,6 @@ import { ErrorHandle_H } from '../../utils/helper.js';
 import { ChangePassword, ConfirmOtp, ForgotPassword, GoogleCallback, Refresh_Token, ResetPassword, SendOtp, SignIn, SignOut, SignOutAll, SignUp, SignWithGoogle, VendorRegistration } from './auth.service.js';
 
 // READ CONTROLLERS--------------------------------|
-/*      *test_protected req/res handler*     */
 export const test_protected = async (req, res) => {
     try {
         return res.status(200).json({
@@ -18,7 +17,6 @@ export const test_protected = async (req, res) => {
     }
 }
 
-/*      *refresh_token req/res handler*     */
 export const refresh_token = async (req, res) => {
     try {
         const REFRESH_TOKEN_COOKIE_NAME = process.env.REFRESH_TOKEN_COOKIE_NAME || "refreshToken";
@@ -52,7 +50,6 @@ export const refresh_token = async (req, res) => {
     }
 }
 
-/*      *sign_in req/res handler*     */
 export const sign_in = async (req, res, next) => {
     try {
         const { 
@@ -102,7 +99,6 @@ export const sign_in = async (req, res, next) => {
     }
 }
 
-/*      *confirm_signIn_otp req/res handler*     */
 export const confirm_signIn_otp = async (req, res) => {
     try {
         const { email, phone, otp } = req.body;
@@ -137,9 +133,6 @@ export const confirm_signIn_otp = async (req, res) => {
     }
 }
 
-/*  *Log-out*  */
-
-/*      *sign_out req/res handler*     */
 export const sign_out = async (req, res) => {
     try {
         const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
@@ -167,7 +160,6 @@ export const sign_out = async (req, res) => {
     }
 }
 
-/*      *sign_out_all_devices req/res handler*     */
 export const sign_out_all_devices = async (req, res) => {
 
     try {
@@ -186,10 +178,7 @@ export const sign_out_all_devices = async (req, res) => {
     }
 }
 
-/*  **New Registration**  */
-
 // CREATE CONTROLLERS--------------------------------|
-/*      *send_otp req/res handler*     */
 export const send_otp = async (req, res) => {
     try {
         const { email, phone } = req.body;
@@ -216,7 +205,6 @@ export const send_otp = async (req, res) => {
     }
 }
 
-/*      *sign_up req/res handler*     */
 export const sign_up = async (req, res) => {
     try {
         const {
@@ -266,7 +254,6 @@ export const sign_up = async (req, res) => {
     }
 }
 
-/*      * vendor_registration req/res handler *      */
 export const vendor_registration = async (req, res) => {
     try {
         const {
@@ -322,7 +309,7 @@ export const vendor_registration = async (req, res) => {
     }
 }
 
-/*      * sign_in_withGoogle req/res handler *      */
+// Step-1
 export const sign_in_withGoogle = async (req, res) => {
     try {
         const { status, success, authUrl } = await SignWithGoogle();
@@ -337,7 +324,7 @@ export const sign_in_withGoogle = async (req, res) => {
     }
 }
 
-/*      * google_Callback req/res handler *      */
+// Step-2
 export const google_Callback = async (req, res) => {
 
     try {
@@ -358,7 +345,7 @@ export const google_Callback = async (req, res) => {
 }
 
 // UPDATE CONTROLLERS--------------------------------|
-/*      * change_passoword req/res handler *      */
+
 export const change_passoword = async (req, res) => {
     try {
         const { oldPassword, newPassword, confirmPassword } = req.body;
@@ -390,7 +377,6 @@ export const change_passoword = async (req, res) => {
     }
 }
 
-/*      * forgot_password req/res handler *      */
 export const forgot_password = async (req, res) => {
     try {
         const { email, phone,
@@ -432,7 +418,6 @@ export const forgot_password = async (req, res) => {
     }
 }
 
-/*      * reset_password req/res handler *      */
 export const reset_password = async (req, res) => {
     try {
 

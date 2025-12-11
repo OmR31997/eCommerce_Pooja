@@ -1,6 +1,4 @@
-import { CreateAdmin, DeleteAdmin, UpdateAdmin, ManageProduct, ManageStaff, ManageUser, ManageVendor, GetAdmin, MangeReturn } from "./admin.service.js";
-import { Refund } from "../refund/refund.model.js";
-import { Order } from "../order/order.model.js";
+import { CreateAdmin, DeleteAdmin, UpdateAdmin, ManageProduct, ManageStaff, ManageUser, ManageVendor, GetAdmin, ManageRefund } from "./admin.service.js";
 import { ErrorHandle_H } from "../../utils/helper.js";
 
 // CREATE CONTROLLERS---------------------------|
@@ -26,7 +24,7 @@ export const create_admin = async (req, res, next) => {
     }
 }
 
-// CREATE CONTROLLERS---------------------------|
+// READ CONTROLLERS---------------------------|
 export const get_admin = async (req, res, next) => {
     try {
         const { status, success, data, message } = await GetAdmin(req.user);
@@ -75,7 +73,6 @@ export const update_profile = async (req, res, next) => {
     }
 }
 
-// UPDATE CONTROLLERS---------------------------|
 export const manage_staff = async (req, res, next) => {
 
     try {
@@ -102,7 +99,7 @@ export const manage_staff = async (req, res, next) => {
 export const manage_vendor = async (req, res, next) => {
 
     try {
-        
+
         const vendorId = req.params.vendorId;
         const reqData = { status: req.body.status };
 
@@ -168,54 +165,12 @@ export const manage_product = async (req, res, next) => {
     }
 }
 
-export const manage_return = async (req, res, next) => {
-    try {
-        const valid = [
-            'approved',
-            'rejected',
-            'refund_received'
-        ];
-
-        if(!valid.includes(req.body.status)) {
-            throw {
-                status: 400,
-                message: `'status' field must be required either "approved", "rejected", "received"`
-            }
-        }
-
-        const keyVal = {
-            _id: req.params.returnId,
-            orderId: req.params.orderId
-        }
-
-        const reqData = { status: req.body.status };
-        
-        const { status: statusCode, success, message, data } = await MangeReturn(keyVal, reqData);
-
-        return res.status(statusCode).json({
-            message,
-            data,
-            success
-        });
-    } catch (error) {
-        next(error);
-    }
-}
-
 export const manage_refund = async (req, res) => {
-    const { refundId } = req.params;
+    const keyVal = { _id: req.params.returnId };
 
-    const refund = await Refund.findById(refundId);
-    if (!refund) return res.status(404).json({ msg: "Refund not found" });
-
-    refund.status = "approved";
-    await refund.save();
-
-    const order = await Order.findById(refund.orderId);
-    order.refundStatus = "approved";
-    await order.save();
-
-    res.json({ msg: "Refund approved" });
+    const { status, message, data, success } = await ManageRefund(keyVal);
+    
+    return res.status(status).json({ message, data, success });
 };
 
 
@@ -259,6 +214,7 @@ export const manage_permission = async (req, res) => {
         return res.status(500).json({ success: false, error: error.message });
     }
 }
+
 // DELETE CONTROLLERS---------------------------|
 export const delete_admin = async (req, res) => {
 

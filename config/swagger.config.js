@@ -43,6 +43,7 @@ const doc = {
     { name: 'Notification', description: 'Notification Routes' },
     { name: 'Payment', description: 'Payment management routes' },
     { name: 'Payout', description: 'Payout management routes' },
+    { name: 'Chat Support', description: 'Chat routes' },
     { name: 'API Testing', description: 'Health check & testing endpoints' },
     { name: 'Backup System', description: 'Backup Routes' }
   ],
@@ -106,6 +107,7 @@ const getTagFromRoute = (route) => {
     '/payment': 'Payment',
     '/payout-vendor': 'Payout',
     '/backup': 'Backup System',
+    '/chat': 'Chat Support',
     '/health': 'API Testing'
   };
 

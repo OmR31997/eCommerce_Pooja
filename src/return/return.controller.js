@@ -40,7 +40,7 @@ export const get_order_returns = async (req, res) => {
 export const get_return_by_id = async (req, res) => {
     try {
 
-        if(['staff', 'admin', 'super_admin'].includes(req.role.user)) {
+        if (['staff', 'admin', 'super_admin'].includes(req.role.user)) {
             throw {
                 status: 401,
                 message: "Only staff can update return status"
@@ -48,7 +48,7 @@ export const get_return_by_id = async (req, res) => {
         }
 
         const keyVal = {
-            _id: req.param.returnId            
+            _id: req.param.returnId
         }
 
         const { status, success, message, data } = await GetReturnItemsById(keyVal);
@@ -101,25 +101,24 @@ export const request_return = async (req, res, next) => {
 export const update_return = async (req, res, next) => {
     try {
 
-        if(['staff', 'admin', 'super_admin'].includes(req.role.user)) {
+        if (req.user.role !== "staff") {
             throw {
                 status: 401,
                 message: "Only staff can update return status"
             }
         }
-
         const {
             status
         } = req.body;
 
         const valid = [
-            'staff-approved', 'staff-rejected', 'inspected'
-        ];
+            'approved', 'rejected', 'inspected'
+        ];      
 
-        if(!valid.includes(req.body.status)) {
+        if (!valid.includes(req.body.status)) {
             throw {
                 status: 400,
-                message:  `'status' must be one of: ${valid.join(', ')}`
+                message: `'status' must be one of: ${valid.join(', ')}`
             }
         }
 

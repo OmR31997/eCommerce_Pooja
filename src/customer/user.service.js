@@ -15,51 +15,37 @@ export const GetUser = async (userId) => {
     return { status: 200, message: 'Account fetched successfully', data: user }
 }
 
-export const GetAllUsers = async (baseUrl, pagingReq, filterReq) => {
+export const GetAllUsers = async (options) => {
+
+    const { filter = {}, pagingReq = {}, baseUrl, select } = options;
+
+    const matchedQuery = BuildQuery_H(filter, 'user');
 
     // Count total records
-    const total = await User.countDocuments();
-    console.log(total)
-    if (total === 0) {
-        throw {
-            status: 404,
-            message: 'User account not found',
-            success: false,
-        }
-    }
+    const total = await User.countDocuments(matchedQuery);
 
-    const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination_H(
-        pagingReq.page,
-        pagingReq.limit,
-        pagingReq.offset,
-        total,
-        baseUrl, filterReq);
+    const pagination = Pagination_H(pagingReq.page, pagingReq.limit, undefined, total, baseUrl, matchedQuery);
 
-    // Sorting
     const sortField = ['name', 'totalSpents', 'createdAt'].includes(pagingReq.sortBy) ? pagingReq.sortBy : 'createdAt';
     const sortDirection = pagingReq.orderSequence === 'asc' ? 1 : -1;
     const sortOption = { [sortField]: sortDirection };
 
-    // Build Mongo query
-    const query = BuildQuery_H(filterReq);
-
-    const users = await User.find(query)
-        .skip(skip)
+    const users = await User.find(matchedQuery)
+        .skip(pagination.skip)
         .limit(pagingReq.limit)
-        .sort(sortOption);
+        .sort(sortOption)
+        .select(select)
+        .lean();
+
+    delete pagination.skip;
 
     return {
         status: 200,
-        message: `Users fetched successfully.`,
-        pagination: {
-            count: total,
-            prevUrl,
-            nextUrl,
-            currentPage,
-            totalPages,
-        },
         success: true,
-        data: users
+        message: 'Data fetched successfully',
+        count: total,
+        pagination,
+        data: users || []
     }
 }
 
@@ -90,10 +76,10 @@ export const RemoveUser = async (userId) => {
     }
 
     await Notify.super({
-                title: 'Customer Document Delete',
-                message: `Vendor who has ID: ${user._id} deleted by admin`,
-                type: 'delete'
-            });
+        title: 'Customer Document Delete',
+        message: `Vendor who has ID: ${user._id} deleted by admin`,
+        type: 'delete'
+    });
 
     return { status: 200, message: 'User account deleted successfully', data: user, success: false };
 }

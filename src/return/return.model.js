@@ -14,8 +14,7 @@ const ReturnSchema = new mongoose.Schema({
     status: {
         type: String,
         enum: [
-            'requested', 'refund_received',
-            'staff-approved', 'staff-rejected',
+            'requested', 'refund_received', 'refund_initiated',
             'inspected', 'approved', 'rejected'],
 
         required: [true, `'status' field must be required`]

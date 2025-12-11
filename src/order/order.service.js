@@ -3,6 +3,8 @@ import { Order } from './order.model.js';
 import { Notify } from '../notification/notification.service.js';
 import { GenerateReceiptPDF } from '../../utils/generateReceipt.js';
 import { BuildPopulateStages_H, BuildQuery_H } from '../../utils/helper.js';
+import mongoose from 'mongoose';
+import { Product } from '../product/product.model.js';
 
 // ------------------------------------READ ORDER SERVICES---------------------------------------------|
 export const GetOrders = async (options = {}) => {
@@ -152,7 +154,7 @@ export const GetOrderById = async (keyVal, productId = null) => {
 }
 
 // ------------------------------------CREATE ORDER SERVICE---------------------------------------------|
-export const CreateOrder = async (orderData) => {
+export const CreateOrderBeforePayment = async (orderData) => {
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -204,7 +206,6 @@ export const CreateOrder = async (orderData) => {
                 vendorId,
                 items: data.items,
                 totalAmount: data.totalAmount,
-                paymentStatus: paymentMethod === 'COD'
             }], { session })
 
             // Update product stock
@@ -260,17 +261,6 @@ export const CreateOrder = async (orderData) => {
         data: createdOrders,
         count: createdOrders.length,
         success: true
-    }
-}
-
-export const CreateOrderBeforePayment = async (userId, paymentSessionId) => {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
-    try {
-
-    } catch (error) {
-
     }
 }
 

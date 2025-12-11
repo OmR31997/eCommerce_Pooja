@@ -26,6 +26,7 @@ import DashboardRoute from './routes/dashboard.route.js';
 import BackupRoute from './routes/backup.route.js';
 import ReturnRoute from './routes/return.route.js';
 import NotificationRoute from './routes/notification.route.js';
+import ChatRoute from './routes/chat.route.js';
 import { Authentication } from './middlewares/auth.middleware.js';
 import { ErrorHandle_H } from './utils/helper.js';
 
@@ -89,6 +90,7 @@ appServer.use('/api/return', Authentication, ReturnRoute);
 appServer.use('/api/user', Authentication, UserRoute);
 appServer.use('/api/dashboard', Authentication, DashboardRoute);
 appServer.use('/api/backup', Authentication, BackupRoute);
+appServer.use('/api/chat', ChatRoute);
 
 appServer.use((err, req, res, next) => {
     const handled = ErrorHandle_H(err);

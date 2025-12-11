@@ -4,11 +4,13 @@ import path from 'path';
 import { ENV } from '../config/env.config.js';
 import { User } from '../src/customer/user.model.js';
 import { Product } from '../src/product/product.model.js';
+import { Vendor } from '../src/vendor/vendor.model.js';
 import { DeleteLocalFile_H, ValidateFiles_H } from './fileHelper.js';
 import { ToDeleteFromCloudStorage_H, ToSaveCloudStorage_H } from './cloudUpload.js';
 import { Category } from '../src/category/category.model.js';
 import mongoose from 'mongoose';
 import { Order } from '../src/order/order.model.js';
+import { Return } from '../src/return/return.model.js';
 
 // COMMON ERROR HADLE HELPERS-------------------|
 export const ErrorHandle_H = (error) => {
@@ -107,6 +109,20 @@ export const FindCategoryFail_H = async (keyVal, select) => {
     return category;
 }
 
+export const FindVendorFail_H = async (keyVal, select) => {
+
+    const vendor = await Vendor.findOne(keyVal).populate({ path: 'userId', select: 'name' }).select(select);
+
+    if (!vendor) {
+        throw {
+            status: 404,
+            message: `User account not found for ID: '${keyVal._id}'`
+        };
+    }
+
+    return vendor;
+}
+
 export const FindProductFail_H = async (keyVal, select) => {
 
     const product = await Product.findOne(keyVal).select(select);
@@ -128,7 +144,7 @@ export const FindProductFail_H = async (keyVal, select) => {
 export const FindOrderFail_H = async (keyVal, select) => {
     const order = await Order.findOne(keyVal).select(select);
 
-    if(!order) {
+    if (!order) {
         throw {
             status: 404,
             message: `Order not found for ID: ${keyVal._id}`
@@ -145,11 +161,43 @@ export const FindUserFail_H = async (keyVal, select) => {
     if (!user) {
         throw {
             status: 404,
-            message: `User account not found for ID: '${keyVal.userId}'`
+            message: `User account not found for ID: '${keyVal?._id || keyVal?.userId}'`
         };
     }
 
     return user;
+}
+
+export const FindReturnFail_H = async (keyVal, select) => {
+
+    const responseReturn = await Return.findOne(keyVal).select(select);
+
+    if (!responseReturn) {
+        throw {
+            status: 404,
+            message: `Invalid Return Id`
+        };
+    }
+
+    return responseReturn;
+}
+
+export const error = (statusCode, error) => {
+    throw {
+        success: false,
+        status: statusCode,
+        message: error
+    }
+}
+
+export const success = (status, moduleName, data, rest = null) => {
+    return {
+        success: true,
+        status,
+        message: `${moduleName} created successfully!`,
+        data,
+        rest
+    }
 }
 
 // IDENTIFY HELPERS---------------------------------|
@@ -480,6 +528,12 @@ export const ToDeleteFilesParallel_H = async (actualPaths) => {
 
 // MONGO QUERY HELPERS-----------------------------|
 const searchConfig = {
+    user: (searchVal) => {
+        return [
+            { name: { $regex: searchVal, $options: 'i' } },
+            { email: { $regex: searchVal, $options: 'i' } },
+        ]
+    },
 
     vendor: (searchVal) => {
         return [

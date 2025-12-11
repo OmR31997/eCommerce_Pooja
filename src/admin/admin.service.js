@@ -1,4 +1,4 @@
-import { FindOrderFail_H, FindProductFail_H, GenerateEmail_H } from "../../utils/helper.js";
+import { FindOrderFail_H, FindProductFail_H, FindReturnFail_H, GenerateEmail_H, success } from "../../utils/helper.js";
 import bcrypt from 'bcryptjs';
 import { Role } from '../role/role.model.js';
 import { Admin } from './admin.model.js';
@@ -8,10 +8,7 @@ import { User } from '../customer/user.model.js';
 import { Product } from '../product/product.model.js';
 import { Permission } from '../permission/permission.model.js';
 import { Notify } from '../notification/notification.service.js';
-import { Return } from '../return/return.model.js';
-import { Order } from "../order/order.model.js";
-import mongoose from "mongoose";
-import { UpdateReturn } from "../return/return.service.js";
+import { Refund } from "../refund/refund.model.js";
 
 // CREATE SERVICES-------------------------------|
 export const CreateAdmin = async (adminData) => {
@@ -183,20 +180,49 @@ export const ManageProduct = async (productId, reqData) => {
     };
 }
 
-export const MangeReturn = async (keyVal, reqData) => {
-    try {
-        
-        const updated = await UpdateReturn(keyVal, reqData);
+export const ManageRefund = async (keyVal) => {
 
-        await Notify.vendor(updated.userId, {
-            title: 'Return Status',
-            message: `Return request updated. Return ID: ${keyVal._id}`,
-            type: 'order'
-        })
+    const returnOrder = await FindReturnFail_H(keyVal, "status");
 
-        return { status: 200, message: 'Return status updated successfully', data: updated, success: true };
-    } catch (error) {
-        throw error;
+    if (returnOrder.status === "inspected") {
+        const refundAmount = returnOrder.items.reduce((accume, item) => accume + item.subtotal, 0);
+
+        const created = await Refund.create({
+            returnId: returnOrder._id,
+            orderId: returnOrder.orderId,
+            userId: returnOrder.userId,
+            amount: refundAmount,
+            reason: returnOrder.reason,
+            status: "initiated",
+            initiatedBy: "admin"
+        });
+
+        returnOrder.status = "refund_initiated";
+        returnOrder.refundId = created._id;
+
+        await returnOrder.save();
+
+        return {
+            status: 201,
+            success: true,
+            message: "Refund initiated successfully",
+            data: created
+        }
+    } else if (returnOrder.status !== "rejected") {
+        return {
+            status: 200,
+            success: true,
+            message: "Under processing",
+            data: null
+        }
+    }
+    else {
+        return {
+            status: 400,
+            success: false,
+            message: "Refund cannot be processed for rejected return",
+            data: null
+        }
     }
 }
 

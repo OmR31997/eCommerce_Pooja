@@ -81,6 +81,10 @@
       "description": "Payout management routes"
     },
     {
+      "name": "Chat Support",
+      "description": "Chat routes"
+    },
+    {
       "name": "API Testing",
       "description": "Health check & testing endpoints"
     },
@@ -778,12 +782,12 @@
         ]
       }
     },
-    "/api/admin/{id}/staff-approval": {
+    "/api/admin/{staffId}/staff-approval": {
       "patch": {
         "description": "",
         "parameters": [
           {
-            "name": "id",
+            "name": "staffId",
             "in": "path",
             "required": true,
             "schema": {
@@ -825,12 +829,12 @@
         ]
       }
     },
-    "/api/admin/{id}/vendor-approval": {
+    "/api/admin/{vendorId}/vendor-approval": {
       "patch": {
         "description": "",
         "parameters": [
           {
-            "name": "id",
+            "name": "vendorId",
             "in": "path",
             "required": true,
             "schema": {
@@ -966,18 +970,10 @@
         ]
       }
     },
-    "/api/admin/{orderId}/{returnId}/return": {
+    "/api/admin/{returnId}/refund": {
       "patch": {
         "description": "",
         "parameters": [
-          {
-            "name": "orderId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "returnId",
             "in": "path",
@@ -997,59 +993,6 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "status": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Admin"
-        ]
-      }
-    },
-    "/api/admin/{refundId}/refund": {
-      "patch": {
-        "description": "",
-        "parameters": [
-          {
-            "name": "refundId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "404": {
-            "description": "Not Found"
           },
           "500": {
             "description": "Internal Server Error"
@@ -4134,9 +4077,6 @@
                   "state": {
                     "example": "any"
                   },
-                  "paymentMethod": {
-                    "example": "any"
-                  },
                   "userId": {
                     "example": "any"
                   }
@@ -4884,13 +4824,6 @@
             }
           },
           {
-            "name": "offset",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
             "name": "sortBy",
             "in": "query",
             "schema": {
@@ -5568,6 +5501,48 @@
         },
         "tags": [
           "Backup System"
+        ]
+      }
+    },
+    "/api/chat/": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Chat Support"
         ]
       }
     }

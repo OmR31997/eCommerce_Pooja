@@ -82,14 +82,14 @@ export const get_order_by_orderId = async (req, res) => {
 }
 
 // CREATE ORDER CONTROLLER------------------------|
-export const checkout_before_payment = async (req, res) => {
+export const checkout_before_payment = async (req, res, next) => {
 
     try {
 
         const {
             shippingTo, phone, postalCode,
             addressLine, city, state,
-            paymentMethod, userId } = req.body;
+            userId } = req.body;
 
         if (userId && req.user.role === 'user' && userId !== req.user.id) {
             throw {
@@ -104,7 +104,7 @@ export const checkout_before_payment = async (req, res) => {
                 name: shippingTo,
                 phone, addressLine, city, state,
                 postalCode
-            }, paymentMethod
+            }, paymentMethod:"COD", paymentStatus: "pending"
         }
 
         const { status, success, message, data, count } = await CreateOrderBeforePayment(orderData);
@@ -113,12 +113,7 @@ export const checkout_before_payment = async (req, res) => {
 
     } catch (error) {
 
-        const handle = ErrorHandle_H(error);
-
-        if (handle?.status)
-            return res.status(handle.status).json({ error: handle.error, errors: handle.errors, success: false });
-
-        return res.status(500).json({ success: false, error: error.message });
+        next(error)
     }
 }
 

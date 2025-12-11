@@ -68,15 +68,6 @@ export const AuthAccess = (moduleName, actionKey, options = {}) => {
         }
       }
 
-      // if (options.staffOnlyAllow) {
-      //   if (['user', 'vendor'].includes(logRole))
-      //     throw {
-      //       status: 401,
-      //       message: 'Access denied: only can access staff',
-      //       success: false,
-      //     }
-      // }
-
       // If This User Type Doesn't Even Have Permissions → Auto deny
       if (!existing.permission) {
         return res.status(403).json({

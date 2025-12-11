@@ -1,5 +1,5 @@
 import express from 'express';
-import { create_admin, delete_admin, get_admin, manage_permission, manage_product, manage_refund, manage_return, manage_staff, manage_user, manage_vendor, update_profile } from '../src/admin/admin.controller.js';
+import { create_admin, delete_admin, get_admin, manage_permission, manage_product, manage_refund, manage_staff, manage_user, manage_vendor, update_profile } from '../src/admin/admin.controller.js';
 import { AuthAccess } from '../middlewares/auth.middleware.js';
 
 
@@ -68,20 +68,12 @@ router.patch('/:pId/product-approval', AuthAccess('Admin', 'update'), manage_pro
 router.patch('/:id/user-manage', AuthAccess('Admin', 'update'), manage_user);
 
 /* @description -> To set the status of the staff
-   @end-Point -> /api/admin/:orderId/:returnId         
-   @methtod -> PATCH
-   @access -> Private (admin) 
-   @id -> _id
-*/
-router.patch('/:orderId/:returnId/return', AuthAccess('Admin', 'update'), manage_return);
-
-/* @description -> To set the status of the staff
    @end-Point -> /api/admin/:refundId/refund     
    @methtod -> PATCH
    @access -> Private (admin) 
    @id -> _id
 */
-router.patch('/:refundId/refund', AuthAccess('Admin', 'update'), manage_refund);
+router.patch('/:returnId/refund', AuthAccess('Admin', 'update'), manage_refund);
 
 /* @description -> To set the status of the permission
    @end-Point -> /api/admin/:id/permission-manage            

@@ -1,5 +1,5 @@
 import { Refund } from '../refund/refund.model.js';
-import { FindOrderFail_H, Pagination_H } from '../../utils/helper.js';
+import { FindOrderFail_H, FindReturnFail_H, Pagination_H, success } from '../../utils/helper.js';
 import { Notify } from '../notification/notification.service.js';
 import { Order } from '../order/order.model.js';
 import { Return } from './return.model.js';
@@ -40,13 +40,13 @@ export const CreateReturn = async (keyVal, reqData) => {
         subtotal: item.price * reqData.quantity
     }
     // Create the return request
-    const created = await Return.create({ 
+    const created = await Return.create({
         orderId: keyVal.orderId,
         userId: keyVal.userId,
         status: 'requested',
         reason: reqData.reason,
         items: [returnItems]
-     });
+    });
 
     // Notify admin or staff about the return request
     Notify.admin({
@@ -108,87 +108,40 @@ export const GetReturnItemsById = async (keyVal = {}) => {
     return { status: 200, message: 'Data fetched successfully', data: returnData, success: true }
 }
 
-
 export const UpdateReturn = async (keyVal, reqData) => {
-    const responseReturn = await Return.findById(keyVal._id);
+    const returnOrder = await FindReturnFail_H(keyVal, 'status');
 
-    if (!responseReturn) {
-        throw {
-            status: 404,
-            message: `Request not foound for ID: '${keyVal.orderId}'`
+    const status = reqData.status;
+
+    if (status) {
+        returnOrder.status = status;
+        await returnOrder.save();
+
+        if (status === "inspected") {
+            await Notify.admin({
+                title: "Return Order Status",
+                message: "Return process inspected successfully",
+                type: "order"
+            });
         }
+
+        const messageMap = {
+            approved: "Return request accepted",
+            rejected: "Return rejected",
+            inspected: "Return inspected"
+        }
+
+        return {
+            status: 200,
+            message: messageMap[status] || "Status updated",
+            data: { _id: returnOrder._id, status },
+            success: true
+        };
     }
 
-    const newStatus = reqData.status;
-
-    // staff-approved
-    if (newStatus === "staff-approved") {
-        responseReturn.status = "staff-approved";
-        await responseReturn.save();
-
-        return success(
-            "Return approved by staff",
-            responseReturn,
-        );
+    throw {
+        status: 400,
+        message: "Bad request",
+        data: null
     }
-
-    // inspected
-    if (newStatus === "inspected") {
-        responseReturn.status = "inspected";
-        await responseReturn.save();
-        return success(
-            "Product inspected", 
-            responseReturn
-        );
-    }
-
-    // approved by admin -> refund initiate
-    if (newStatus === "approved") {
-        const refundAmount = responseReturn.items.reduce((accume, item) => accume + item.subtotal, 0);
-
-        const refund = await Refund.create({
-            returnId: responseReturn._id,
-            orderId: responseReturn.orderId,
-            userId: responseReturn.userId,
-            amount: refundAmount,
-            reason: responseReturn.reason,
-            status: "initiated",
-            initiatedBy: "admin"
-        });
-
-        responseReturn.status = newStatus;
-        responseReturn.refundId = refund._id;
-
-        await responseReturn.save();
-        return success(
-            "Return approved and refund initiated", 
-            responseReturn
-        );
-    }
-
-    // rejected by admin
-    if (newStatus === "rejected") {
-        responseReturn.status = "rejected";
-        await responseReturn.save();
-
-        return success(
-            "Return rejected", 
-            responseReturn
-        );
-    }
-
-    // refund received → finalize
-    if (newStatus === "refund_received") {
-        await Order.findByIdAndUpdate(responseReturn.orderId, { status: "returned" });
-
-        responseReturn.status = "refund_received";
-        await responseReturn.save();
-
-        return success(
-            "Refund received, order closed", 
-            { _id: responseReturn._id, status: responseReturn.status }
-        );
-    }
-
-    throw { status: 400, message: "Invalid status" };
 }
