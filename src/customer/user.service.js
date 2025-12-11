@@ -3,6 +3,7 @@ import { User } from './user.model.js';
 import { Order } from '../order/order.model.js';
 import { Vendor } from '../vendor/vendor.model.js';
 import { BuildQuery_H, Pagination_H } from '../../utils/helper.js';
+import { Notify } from '../notification/notification.service.js';
 
 export const GetUser = async (userId) => {
     const user = await User.findById(userId).
@@ -64,18 +65,18 @@ export const UpdateUser = async (userData, userId) => {
     return { status: 200, message: 'User account updated successfully', data: userData, success: true };
 }
 
-export const RemoveUser = async (userId) => {
-    const user = await User.findByIdAndDelete(userId);
+export const RemoveUser = async (keyVal) => {
+    const user = await User.findOneAndDelete(keyVal);
 
     if (!user) {
         throw {
             status: 404,
-            message: `User account not found for '${userId}'`,
+            message: `User account not found for ID:'${keyVal._id}'`,
             success: false
         }
     }
 
-    await Notify.super({
+    await Notify.admin({
         title: 'Customer Document Delete',
         message: `Vendor who has ID: ${user._id} deleted by admin`,
         type: 'delete'

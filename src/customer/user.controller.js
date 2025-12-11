@@ -156,9 +156,9 @@ export const update_user_profile = async (req, res) => {
 // DELETE CONTROLLERS
 export const remove_user_profile = async (req, res) => {
     try {
-        const userId = req.params.id;
+        const keyVal = {_id: req.params.id};
 
-        const { status, success, message, data } = await RemoveUser(userId);
+        const { status, success, message, data } = await RemoveUser(keyVal);
 
         return res.status(status).json({ message, data, success });
 
@@ -196,7 +196,6 @@ export const clear_users = async (req, res) => {
 
 // ---------------------------------------------------------------------------------------------------|
 // PRODUCT
-
 export const get_orders_ByUser = async (req, res) => {
     try {
         const {
