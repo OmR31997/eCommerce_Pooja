@@ -182,12 +182,6 @@ export const FindReturnFail_H = async (keyVal, select) => {
     return responseReturn;
 }
 
-export const error = (sCode, error) => ({
-    success: false,
-    sCode,
-    message: error
-})
-
 export const success = ({ message, data, ...rest }) => ({
     success: true,
     message,
@@ -706,6 +700,7 @@ export const Pagination_H = (page, limit, offset, total, baseUrl, filter) => {
 
     return {
         skip,
+        count: total,
         currentPage: page,
         totalPages,
         nextUrl: buildUrl(nextOffset, page + 1),

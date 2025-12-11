@@ -1,5 +1,5 @@
 import { CreateAdmin, DeleteAdmin, UpdateAdmin, ManageProduct, ManageStaff, ManageUser, ManageVendor, GetAdmin, ManageRefund } from "./admin.service.js";
-import { error, ErrorHandle_H } from "../../utils/helper.js";
+import { ErrorHandle_H } from "../../utils/helper.js";
 
 // CREATE CONTROLLERS---------------------------|
 export const create_admin = async (req, res, next) => {
@@ -43,20 +43,23 @@ export const update_profile = async (req, res, next) => {
     try {
         const adminId = req.query.id;
         const { name, email } = req.body;
-        
-        if(adminId && req.user.role === "admin" && adminId !== req.user.id) {
-            error({sCode: 401, message: "Unauthorized: You don't have permission to update another admin"});
+
+        if (adminId && req.user.role === "admin" && adminId !== req.user.id) {
+            throw {
+                status: 401,
+                message: "Unauthorized: You don't have permission to update another admin"
+            };
         }
-        
+
         const keyVal = {
-            _id: req.user.role === "super_Admin" ? adminId : req.user.id
+            _id: req.user.role === "super_admin" ? adminId : req.user.id
         }
 
         if (!name && !email) {
             throw {
                 status: 400,
                 message: "At least one field must be required to update either 'name' or 'email'"
-            }
+            };
         }
 
         const reqData = { name, email }
@@ -78,10 +81,10 @@ export const manage_staff = async (req, res, next) => {
         const reqData = { status: req.body.status };
 
         if (!reqData.status) {
-            throw {
+            throw error({
                 status: 400,
                 message: `'status' field must be required!`
-            }
+            })
         }
 
         const { status: statusCode, success, data, message } = await ManageStaff(staffId, reqData);
@@ -107,9 +110,9 @@ export const manage_vendor = async (req, res, next) => {
             }
         }
 
-        const { status: statusCode, success, data, message } = await ManageVendor(vendorId, reqData);
+        const response = await ManageVendor(vendorId, reqData);
 
-        return res.status(statusCode).json({ message, data, success });
+        return res.status(200).json(response);
 
     } catch (error) {
         next(error);
@@ -130,9 +133,9 @@ export const manage_user = async (req, res, next) => {
             }
         }
 
-        const { status: statusCode, success, data, message } = await ManageUser(userId, reqData);
+        const response = await ManageUser(userId, reqData);
 
-        return res.status(statusCode).json({ message, data, success });
+        return res.status(200).json(response);
 
     } catch (error) {
 
@@ -154,9 +157,9 @@ export const manage_product = async (req, res, next) => {
             }
         }
 
-        const { status: statusCode, success, data, message } = await ManageProduct(productId, reqData);
+        const response = await ManageProduct(productId, reqData);
 
-        return res.status(statusCode).json({ message, data, success });
+        return res.status(200).json(response);
     } catch (error) {
         next(error)
     }

@@ -1,4 +1,4 @@
-import { error, FindOrderFail_H, FindProductFail_H, FindReturnFail_H, GenerateEmail_H, success } from "../../utils/helper.js";
+import { FindOrderFail_H, FindProductFail_H, FindReturnFail_H, GenerateEmail_H, success } from "../../utils/helper.js";
 import bcrypt from 'bcryptjs';
 import { Role } from '../role/role.model.js';
 import { Admin } from './admin.model.js';
@@ -48,6 +48,7 @@ export const GetAdmin = async (user) => {
 // UPDATE SERVICES-------------------------------|
 export const UpdateAdmin = async (keyVal, reqData) => {
 
+    console.log(keyVal)
     const updated = await Admin.findOneAndUpdate(keyVal, reqData, { new: true, runValidators: true });
 
     if (!updated) {
@@ -67,16 +68,14 @@ export const ManageStaff = async (staffId, reqData) => {
         }
     }
 
-    return {
-        status: 200,
-        message: `Staff managed successfully`,
+    return success({
+        message: "Staff managed successfully",
         data: {
             _id: updatedStaff._id,
             name: updatedStaff.name,
             status: updatedStaff.status
-        },
-        success: true
-    };
+        }
+    });
 }
 
 export const ManageVendor = async (vendorId, reqData) => {
@@ -96,16 +95,14 @@ export const ManageVendor = async (vendorId, reqData) => {
         type: 'vendor'
     });
 
-    return {
-        status: 200,
+    return success({
         message: `Vendor managed successfully`,
         data: {
             _id: updatedVendor._id,
             name: updatedVendor.name,
             status: updatedVendor.status
-        },
-        success: true
-    };
+        }
+    });
 }
 
 export const ManageUser = async (userId, reqData) => {
@@ -125,16 +122,14 @@ export const ManageUser = async (userId, reqData) => {
         type: 'vendor'
     })
 
-    return {
-        status: 200,
+    return success({
         message: `User managed successfully`,
         data: {
             _id: updatedUser._id,
             name: updatedUser.name,
             status: updatedUser.status
-        },
-        success: true
-    };
+        }
+    });
 }
 
 export const ManageProduct = async (productId, reqData) => {
@@ -152,19 +147,17 @@ export const ManageProduct = async (productId, reqData) => {
     await Notify.vendor(updatedProduct.vendorId, {
         title: 'Product Status Updated',
         message: `Your product ${updatedProduct.name} has been ${reqData.status}.`,
-        type: 'vendor'
+        type: 'product'
     })
 
-    return {
-        status: 200,
+    return success({
         message: 'Product managed successfully',
         data: {
             _id: updatedProduct._id,
             name: updatedProduct.name,
             status: updatedProduct.status
-        },
-        success: true
-    };
+        }
+    });
 }
 
 export const ManageRefund = async (keyVal) => {

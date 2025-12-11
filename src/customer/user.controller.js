@@ -50,13 +50,13 @@ export const get_users = async (req, res) => {
             sortBy = 'createdAt',
             orderSequence = 'desc' } = req.query;
 
-        const { status, success, count, message, pagination, data } = await GetAllUsers(
+        const { status, success, message, pagination, data } = await GetAllUsers(
             `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`,
             { page: parseInt(page), limit: parseInt(limit), offset, sortBy, orderSequence },
             {}
         );
 
-        return res.status(status).json({ message, count, pagination, success, data });
+        return res.status(status).json({ message, pagination, success, data });
 
     } catch (error) {
         if (error.status) {
@@ -100,9 +100,9 @@ export const users_filters = async (req, res) => {
             },
         }
 
-        const { status: statusCode, success, count, message, pagination, data } = await GetAllUsers(options);
+        const { status: statusCode, success, message, pagination, data } = await GetAllUsers(options);
 
-        return res.status(statusCode).json({ message, count, pagination, data, success });
+        return res.status(statusCode).json({ message, pagination, data, success });
 
     } catch (error) {
         if (error.status) {
