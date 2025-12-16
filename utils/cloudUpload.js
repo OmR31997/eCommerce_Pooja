@@ -1,9 +1,8 @@
 import cloudinary from '../config/cloudStotrage.config.js';
 import fs from 'fs';
-import crypto from 'crypto';
-import { ENV } from '../config/env.config.js';
 
 export const ToSaveCloudStorage_H = async (file, folder, uniqueName) => {
+
     if (!file) throw new Error('File is missing');
 
     const options = {
@@ -57,29 +56,3 @@ export const ToDeleteFromCloudStorage_H = async (public_id) => {
         throw error;    //propagate the error to handle rollback properly
     }
 }
-
-// PARALLEL
-// export const ToUploadParallel_H = async (files, folder, prefix) => {
-
-//     if (ENV.IS_PROD) {
-//         return Promise.all(files.map(file => ToSaveCloudStorage_H(
-//             file,
-//             folder,
-//             `${prefix}-${crypto.randomBytes(12).toString('hex')}`
-//         )))
-//     }
-
-//     if (!ENV.IS_PROD) {
-//         return files.map(file => ({ secure_url: file.path, public_id: null }));
-//     }
-
-// }
-
-// export const ToDeleteFilesParallel_H = async (files) => {
-//     if (!files || !Array.isArray(files)) return;
-
-//     if (ENV.IS_DEV)
-//         return await ToDeleteLocalFilesParallel(files);
-
-//     return Promise.all(files.map(file => file?.public_id ? ToDeleteFromCloudStorage(file.public_id) : null));
-// }

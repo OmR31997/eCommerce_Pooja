@@ -1,7 +1,7 @@
 import { CreatePaymentByCustomer, VerifyCustomerPayment } from "./payment.service.js";
 
-// ----------------------------------------CREATE PAYMENT SESSION-----------------------------------|
-export const start_payment = async (req, res) => {
+// CREATE PAYMENT SESSION------------------------|
+export const start_payment = async (req, res, next) => {
     try {
 
         if (req.user.role !== 'user') {
@@ -13,21 +13,18 @@ export const start_payment = async (req, res) => {
 
         const userId = req.user.id;
         const { amount } = req.body;
-        const { status, message, data, success } = await CreatePaymentByCustomer({ userId, amount });
+        const response = await CreatePaymentByCustomer({ userId, amount });
 
-        return res.status(status).json({ message, data, success });
+        return res.status(201).json(response);
 
     } catch (error) {
 
-        return res.status(error.status || 500).json({
-            success: false,
-            error: error.message || error
-        });
+        next(error)
     }
 }
 
-// ------------------------------------------VERIFY PAYMENT-----------------------------------------|
-export const confirm_payment = async (req, res) => {
+// VERIFY PAYMENT--------------------------------|
+export const confirm_payment = async (req, res, next) => {
     try {
         const {
             razorpay_order_id, razorpay_payment_id,
@@ -47,14 +44,11 @@ export const confirm_payment = async (req, res) => {
             userId: req.user.id
         }
 
-        const { status, success, message, data, transaction } = await VerifyCustomerPayment(payload);
+        const response = await VerifyCustomerPayment(payload);
 
-        return res.status(status).json({ message, transaction, data, success });
+        return res.status(200).json(response);
         
     } catch (error) {
-        return res.status(error.status || 500).json({
-            success: false,
-            error: error.message || error
-        });
+        next(error);
     }
 }

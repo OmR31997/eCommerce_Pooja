@@ -276,13 +276,13 @@ export const vendor_registration = async (req, res) => {
             userId: req.user.role === 'user' ? req.user.id : userId,
             businessName, businessEmail, businessPhone,
             businessDescription, password, gstNumber,
-            status: ['admin', 'super_admin', 'staff'].includes(req.user.role) ? 'approved' : 'pending',
+            type, address,
             bankDetails: {
                 accountNumber,
                 ifsc,
                 bankName
             },
-            type, address
+            status: ['admin', 'super_admin', 'staff'].includes(req.user.role) ? 'approved' : 'pending',
         }
 
         const filePayload = {

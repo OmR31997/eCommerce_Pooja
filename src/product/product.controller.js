@@ -1,10 +1,9 @@
-import { ClearProducts, CreateProduct, DeleteProduct, GetPublicProductById, GetPublicProducts, GetSecuredProductByIdOrSku, GetSecuredProducts, ProductFilter, UpdateProduct, UpdateRating, UpdateStock, } from './product.service.js';
-import { ErrorHandle_H } from '../../utils/helper.js';
+import mongoose from 'mongoose';
+import { clearProducts, createProduct, deleteProduct, getPublicProducts, getSecuredProductByIdOrSku, getSecuredProducts, updateProduct, updateRating, updateStock } from './product.service.js';
 
 // READ CONTROLLERS---------------------------------|
 // SECURED
-/*      *secured_products req/res handler*     */
-export const secured_products = async (req, res) => {
+export const secured_products = async (req, res, next) => {
     try {
         const {
             page = 1, limit = 10,
@@ -15,18 +14,23 @@ export const secured_products = async (req, res) => {
             sortBy = 'createdAt', orderSequence = 'desc'
         } = req.query;
 
-        const keyVal = {
-            ...(["admin", "super_admin", "staff"].includes(req.user.role)
-                ? { main: true }
-                : req.user.role === "vendor"
-                    ? { vendorId: req.user.id }
-                    : { userId: req.user.id })
+        if (req.user.role === "user") {
+            throw {
+                status: 401,
+                message: "Unauthorized: You don't have permission to access"
+            }
         }
+
+        // Determine vendor filter
+        const keyVal = (req.user.role === "vendor")
+            ? { vendorId: req.user.id }
+            : {} //ADMIN | PRODUCT MANAGER (STAFF)
 
         const options = {
             filter: {
+                ...(keyVal?.vendorId ? {} : { vendorIds }),
                 search,     //name, features, category.name, vendor.name,
-                categoryIds, vendorIds,
+                categoryIds,
                 priceRange, stockStatus,
                 status
             },
@@ -37,77 +41,62 @@ export const secured_products = async (req, res) => {
                 page: parseInt(page),
                 limit: parseInt(limit),
                 sortBy, orderSequence
-            },
-
-            populates: {
-                vendor: { path: 'vendorId', select: '_id businessName businessEmail businessPhone status' },
-                category: { path: 'categoryId', select: '_id name slug status' },
             }
         }
-        const { status: statusCode, success, message, count, pagination, data } = await GetSecuredProducts(keyVal, options);
+        const response = await getSecuredProducts(keyVal, options);
 
-        return res.status(statusCode).json({ success, message, count, pagination, data });
+        return res.status(200).json(response);
 
     } catch (error) {
 
-        return res.status(error.status || 500).json({
-            success: false,
-            error: error.message || `Internal Server Error ${error}`
-        });
+        next(error);
     }
 }
 
-export const secured_product_by_productId = async (req, res) => {
+export const secured_product = async (req, res, next) => {
     try {
 
-        const keyVal = {
-            productId: req.params.pId,
-            ...(["admin", "super_admin", "staff"].includes(req.user.role)
-                ? { main: true }
-                : req.user.role === "vendor"
-                    ? { vendorId: req.user.id }
-                    : { userId: req.user.id })
+        // Only vendors/admin/staff allowed
+        if (req.user.role === "user") {
+            throw {
+                status: 401,
+                message: "Unauthorized: You don't have permission to access"
+            }
         }
 
-        const { status, success, message, data } = await GetSecuredProductByIdOrSku(keyVal);
+        const { pId, sku } = req.params;
 
-        return res.status(status).json({ message, data, success });
+        // Determine if it's an ObjectId
+        const isObjectId = pId && mongoose.Types.ObjectId.isValid(pId);
+
+        if (!isObjectId && !sku) {
+            throw {
+                status: 400,
+                message: `Invalid 'pid' or 'sku'`
+            }
+        }
+
+        const keyVal = {
+            ...(isObjectId
+                ? { _id: pId }
+                : { sku }),
+            ...(req.user.role === "vendor"
+                ? { vendorId: req.user.id }
+                : {} //ADMIN | PRODUCT MANAGER (STAFF)
+            )
+        }
+
+        const response = await getSecuredProductByIdOrSku(keyVal);
+
+        return res.status(200).json(response);
 
     } catch (error) {
-        if (error.status) {
-            return res.status(error.status).json({ success: false, error: error.message });
-        }
-
-        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
-    }
-}
-
-export const secured_product_by_sku = async (req, res) => {
-    try {
-        const keyVal = {
-            sku: req.params.sku,
-            ...(["admin", "super_admin", "staff"].includes(req.user.role)
-                ? { main: true }
-                : req.user.role === "vendor"
-                    ? { vendorId: req.user.id }
-                    : { userId: req.user.id })
-        }
-        
-        const { status, success, message, data } = await GetSecuredProductByIdOrSku(keyVal);
-
-        return res.status(status).json({ message, data, success });
-
-    } catch (error) {
-        if (error.status) {
-            return res.status(error.status).json({ success: false, error: error.message });
-        }
-
-        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+        next(error);
     }
 }
 
 // PUBLIC
-export const public_products = async (req, res) => {
+export const public_products = async (req, res, next) => {
     try {
         const {
             page = 1, limit = 10,
@@ -124,57 +113,51 @@ export const public_products = async (req, res) => {
             }
         }
 
-        const { status: statusCode, success, message, count, pagination, data } = await GetPublicProducts(options);
+        const response = await getPublicProducts(options);
 
-        return res.status(statusCode).json({ message, success, message, count, pagination, data });
+        return res.status(200).json(response);
 
     } catch (error) {
-
-        if (error.status) {
-            return res.status(error.status).json({ success: false, error: error.message });
-        }
-
-        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+        next(error);
     }
 }
 
-export const public_product_byId = async (req, res) => {
+export const public_product = async (req, res, next) => {
     try {
 
-        const productId = req.params.pId;
+        const { pId, sku } = req.params;
 
-        const options = {
-            filter:
-            {
-                status: 'approved',
-                vendorStatus: 'approved',
-                categoryStatus: 'active',
-                stock: { $gte: 1 }
+        // Determine if it's an ObjectId
+        const isObjectId = pId && mongoose.Types.ObjectId.isValid(pId);
+
+        if (!isObjectId && !sku) {
+            throw {
+                status: 400,
+                message: `Invalid 'pid' or 'sku'`
             }
         }
 
-        const { status: statusCode, success, message, data } = await GetPublicProductById(
-            productId,
-            populate,
-            options
-        );
-
-        return res.status(statusCode).json({ message, data, success });
-
-    } catch (error) {
-        if (error.status) {
-            return res.status(error.status).json({ success: false, error: error.message });
+        const options = {
+            filter: {
+                ...(isObjectId ? { pId } : { sku }),
+                status: 'approved'
+            }
         }
 
-        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+        const response = await getPublicProducts(options);
+
+        return res.status(200).json(response);
+
+    } catch (error) {
+        next(error);
     }
 }
 
-export const product_filters = async (req, res) => {
+export const product_filters = async (req, res, next) => {
     try {
         const {
-            search, category,
-            stockStatus, priceRange,
+            search, categoryIds,
+            priceRange,
             rating, discount,
             page = 1, limit = 10, offset,
             sortBy = 'createdAt', orderSequence = 'desc'
@@ -191,29 +174,19 @@ export const product_filters = async (req, res) => {
             },
 
             filter: {
-                search, category,
-                stockStatus, priceRange,
-                rating, discount,
-                status: 'approved',
+                search, categoryIds,
+                priceRange,
+                rating, discount
             },
         }
 
-        const { status, success, message, data, pagination, count } = await ProductFilter(options)
+        const response = await getPublicProducts(options)
 
-        return res.status(status).json({
-            success,
-            message,
-            count,
-            pagination,
-            data
-        });
+        return res.status(200).json(response);
 
     } catch (error) {
 
-        return res.status(error.status || 500).json({
-            error: error.message || `Internal Server Error ${error}`,
-            success: false,
-        });
+        next(error);
     }
 }
 
@@ -257,11 +230,9 @@ export const create_product = async (req, res, next) => {
             notifiedLowStock: Number(stock) <= (Number(process.env.MIN_STOCK_THRESHOLD) || 5)
         }
 
-        const { status, success, message, data } = await CreateProduct(reqData, filePayload);
+        const response = await createProduct(reqData, filePayload);
 
-        return res.status(status).json({
-            message, data, success
-        });
+        return res.status(201).json(response);
 
     } catch (error) {
         next(error);
@@ -283,7 +254,7 @@ export const update_product = async (req, res, next) => {
         if (vendorId && req.user.role === "vendor" && req.user.id !== vendorId) {
             throw {
                 status: 405,
-                message: "Method Not Allowed"
+                message: "Unauthorized: You don't have pemission to update another vendor's product"
             }
         }
 
@@ -294,6 +265,7 @@ export const update_product = async (req, res, next) => {
                 : vendorId
         };
 
+        // Convert string[] properly if sent as JSON/string
         let removeImagePaths = [];
         if (typeof removeToImages === "string") {
             removeImagePaths = JSON.parse((removeToImages));
@@ -315,36 +287,33 @@ export const update_product = async (req, res, next) => {
             imageFiles: req.files || []
         }
 
-        const hasField = Object.entries(reqData).some(([key, val]) => {
+        const isValidToUpdate = Object.values(reqData).some(val => {
             if (val === undefined || val === null) return false;
             if (typeof val === "string") return val.trim() !== "";
             if (Array.isArray(val)) return val.length > 0;
 
             return true;
-        }) || (filePayload.imageFiles.length > 0)
+        }) || filePayload.imageFiles.length > 0;
 
-        if (!hasField) {
+        if (!isValidToUpdate) {
 
             throw {
                 status: 400,
-                message: "Please provide at least one field"
+                message: `Either images for upload, ${Object.keys(reqData).slice(0, -1).join(', ')}, or ` +
+                    `${Object.keys(reqData).slice(-1)} field must be provided to update permissions!`
             }
         }
 
-        const { status, success, message, data } = await UpdateProduct(keyVal, reqData, filePayload);
+        const response = await updateProduct(keyVal, reqData, filePayload);
 
-        if (!success) {
-            return res.status(status).json({ errors, error, message, })
-        }
-
-        return res.status(status).json({ message, data, success });
+        return res.status(200).json(response);
 
     } catch (error) {
         next(error);
     }
 }
 
-export const rating_product = async (req, res) => {
+export const rating_product = async (req, res, next) => {
     try {
         const rating = parseInt(req.body.rating);
 
@@ -357,8 +326,7 @@ export const rating_product = async (req, res) => {
 
         if (!rating || rating < 1 || rating > 5) {
             return res.status(400).json({
-                error: `'rating' field is required and must be between 1 to 5 `,
-                success: false,
+                message: `'rating' field is required and must be between 1 to 5 `,
             });
         }
 
@@ -367,21 +335,18 @@ export const rating_product = async (req, res) => {
             productId: req.params.pId,
         }
 
-        const { status, success, message, data } = await UpdateRating(keyVal, rating);
+        const response = await updateRating(keyVal, rating);
 
-        return res.status(status).json({ message, data, success });
+        return res.status(200).json(response);
 
     } catch (error) {
-        return res.status(error.status || 500).json({
-            error: error.message || `Internal Server Error ${error}`,
-            success: false,
-        });
+        next(error);
     }
 }
 
-export const stock_product = async (req, res) => {
+export const stock_product = async (req, res, next) => {
     try {
-        const stockChange = parseInt(req.body.stock);
+        const stockChange = Number(req.body.stock);
 
         const vendorId = req.query.vendorId;
 
@@ -404,7 +369,7 @@ export const stock_product = async (req, res) => {
             productId: req.params.id,
         }
 
-        const { status, success, message, data } = await UpdateStock(keyVal, stockChange);
+        const { status, success, message, data } = await updateStock(keyVal, stockChange);
 
         return res.status(status).json({ message, data, success });
 
@@ -418,54 +383,53 @@ export const stock_product = async (req, res) => {
 
 
 // DELETE   || WHEN ADMIN WILL DO SOMETHING REQUIRED NOTIFCATION TO SEND THE VENDOR
-export const delete_product = async (req, res) => {
-
-    const vendorId = req.query.vendorId;
-
-    if (vendorId && req.user.role === 'vendor' && req.user.id !== vendorId) {
-        throw {
-            status: 401,
-            message: `Unauthorized: You don't have permission to delete product which belongs to another vendor`
-        }
-    }
-
-    const keyVal = {
-        productId: req.params.pId,
-        vendorId: req.user.role === 'vendor' ? req.user.id : vendorId
-    };
-
-    const { status, error, errors, success, message, data } = await DeleteProduct(keyVal);
-
-    if (!success) {
-        return res.status(status).json({ errors, error, message, })
-    }
-
-    return res.status(status).json({ message, data, success });
-}
-
-export const clear_products = async (req, res) => {
+export const delete_product = async (req, res, next) => {
 
     try {
+        const vendorId = req.query.vendorId;
 
-        if (vendorId && req.user.role === 'vendor' && req.user.id !== req.query.vendorId) {
+        if (vendorId && req.user.role === 'vendor' && req.user.id !== vendorId) {
             throw {
                 status: 401,
                 message: `Unauthorized: You don't have permission to delete product which belongs to another vendor`
             }
         }
 
-        const vendorId = req.user.role === 'vendor' ? req.user.id : req.query.vendorId
+        const keyVal = {
+            productId: req.params.pId,
+            vendorId: req.user.role === 'vendor' ? req.user.id : vendorId
+        };
 
-        const { status, success, message, data } = await ClearProducts(vendorId);
+        const response = await deleteProduct(keyVal);
 
-        return res.status(status).json({ message, data, success });
+        return res.status(200).json(response);
 
     } catch (error) {
-
-        return res.status(error.status || 500).json({
-            success: false,
-            error: error.message || `Internal Server Error ${error}`
-        });
+        next(error);
     }
 }
 
+export const clear_products = async (req, res, next) => {
+
+    try {
+
+        if (vendorId && req.user.role === 'vendor' && req.user.id !== req.query.vendorId) {
+            throw {
+                status: 401,
+                message: `Unauthorized: You can clear own products only`
+            }
+        }
+
+        const keyVal = {
+            vendorId: req.user.role === 'vendor' ? req.user.id : req.query.vendorId
+        }
+
+        const response = await clearProducts(keyVal);
+
+        return res.status(200).json(response);
+
+    } catch (error) {
+
+        next(error);
+    }
+}

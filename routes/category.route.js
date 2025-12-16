@@ -1,10 +1,11 @@
 import express from 'express';
-import { clear_Category, create_category, create_sub_category, delete_category, get_categories, get_category_by_id, get_category_by_slug, update_category } from '../src/category/category.controller.js';
+import { clear_categories, create_category, create_sub_category, delete_category, get_categories, get_category_by_id, get_category_by_slug, update_category } from '../src/category/category.controller.js';
 import { Upload } from '../middlewares/upload.middleware.js';
 import { AuthAccess } from '../middlewares/auth.middleware.js';
 
 const router = express.Router()
 
+// CREATE------------------------|
 /* @description -> To a new category
    @end-Point -> /api/category/create
    @methtod -> POST
@@ -23,9 +24,11 @@ router.post('/create/:parent/sub', AuthAccess('Category', 'create'),
    Upload('CTG-').single('imageUrl'),
    create_sub_category);
 
+// READ--------------------------|
 /* @description -> To view categories
    @end-Point -> /api/category/view
-   @methtod -> GET 
+   @methtod -> GET
+   @access -> (admin/super_admin) 
 */
 router.get('/view', AuthAccess('Category', 'read'), get_categories);
 
@@ -41,6 +44,13 @@ router.get('/:categoryId/view-id', AuthAccess('Category', 'read'), get_category_
 */
 router.get('/:slug/view-slug', AuthAccess('Category', 'read'), get_category_by_slug);
 
+/* @description -> To search
+   @end-Point -> /api/category/?find=
+   @methtod -> GET 
+*/
+router.get('/filter', AuthAccess('Category', 'read'), get_categories);
+
+// UPDATE------------------------|
 /* @description -> To update category by categoryId
    @end-Point -> /api/category/:id/update
    @methtod -> PATCH 
@@ -49,6 +59,7 @@ router.patch('/:categoryId/update', AuthAccess('Category', 'update'),
    Upload('CTG-').single('imageUrl'),
    update_category)
 
+// DELETE------------------------|
 /* @description -> To delete category by categoryId
    @end-Point -> /api/category/:id/delete
    @methtod -> DELETE 
@@ -61,12 +72,6 @@ router.delete('/:categoryId/delete', AuthAccess('Category', 'delete'),
    @end-Point -> /api/category/clear
    @methtod -> DELETE 
 */
-router.delete('/clear', AuthAccess('Category', 'delete'), clear_Category);
-
-/* @description -> To search
-   @end-Point -> /api/category/?find=
-   @methtod -> GET 
-*/
-router.get('/filter', AuthAccess('Category', 'read'), get_categories);
+router.delete('/clear', AuthAccess('Category', 'delete'), clear_categories);
 
 export default router;

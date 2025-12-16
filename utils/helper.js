@@ -11,6 +11,8 @@ import { Category } from '../src/category/category.model.js';
 import mongoose from 'mongoose';
 import { Order } from '../src/order/order.model.js';
 import { Return } from '../src/return/return.model.js';
+import { Role } from '../src/role/role.model.js';
+import { Permission } from '../src/permission/permission.model.js';
 
 // COMMON ERROR HADLE HELPERS-------------------|
 export const ErrorHandle_H = (error) => {
@@ -97,26 +99,42 @@ export const ErrorHandle_H = (error) => {
     };
 }
 
-export const FindCategoryFail_H = async (keyVal, select) => {
+export const FindRoleFail_H = async (keyVal, select = null) => {
+    const role = await Role.findOne(keyVal).select(select).lean();
+
+    if (!role) {
+        throw {
+            status: 404,
+            message: `Role not found for ID: '${keyVal?._id || keyVal?.name}'`
+        }
+    }
+
+    return role;
+}
+
+export const FindCategoryFail_H = async (keyVal, select = null) => {
     const category = await Category.findOne(keyVal, select).select(select);
 
     if (!category) {
         throw {
             status: 404,
-            message: `Category not found for ID: ${keyVal.categoryId || categoryId.slug}`
+            message: `Category not found for ID: '${keyVal.categoryId || keyVal?.slug}'`
         }
     }
     return category;
 }
 
-export const FindVendorFail_H = async (keyVal, select) => {
+export const FindVendorFail_H = async (keyVal, select = null, session = null) => {
 
-    const vendor = await Vendor.findOne(keyVal).populate({ path: 'userId', select: 'name' }).select(select);
+    const vendor = await Vendor.findOne(keyVal)
+        .select(select)
+        .populate({ path: 'userId', select: 'name' })
+        .session(session);
 
     if (!vendor) {
         throw {
             status: 404,
-            message: `User account not found for ID: '${keyVal._id}'`
+            message: `Vendor account not found for ID: ${keyVal?.id || keyVal?.businessEmail}`
         };
     }
 
@@ -141,20 +159,20 @@ export const FindProductFail_H = async (keyVal, select) => {
     return product;
 }
 
-export const FindOrderFail_H = async (keyVal, select) => {
+export const FindOrderFail_H = async (keyVal, select = null) => {
     const order = await Order.findOne(keyVal).select(select);
 
     if (!order) {
         throw {
             status: 404,
-            message: `Order not found for ID: ${keyVal._id}`
+            message: `Order not found for ID: '${keyVal._id}'`
         }
     }
 
     return order;
 }
 
-export const FindUserFail_H = async (keyVal, select) => {
+export const FindUserFail_H = async (keyVal, select = null) => {
 
     const user = await User.findOne(keyVal).select(select);
 
@@ -168,7 +186,7 @@ export const FindUserFail_H = async (keyVal, select) => {
     return user;
 }
 
-export const FindReturnFail_H = async (keyVal, select) => {
+export const FindReturnFail_H = async (keyVal, select = null) => {
 
     const responseReturn = await Return.findOne(keyVal).select(select);
 
@@ -226,16 +244,16 @@ export const IdentifyModel_H = (logKey) => {
 export const IdentifyModelByRole_H = (role) => {
 
     switch (role) {
-        case "admin" || 'super_admin':
+        case "admin":
             return { model: "Admin" };
-
+        case "super_admin":
+            return { model: "Admin" };
         case "staff":
             return { model: "Staff" };
 
         case "vendor":
             return { model: "Vendor" };
 
-        case "user":
         default:
             return { model: "User" };
     }
@@ -517,6 +535,10 @@ export const ToDeleteFilesParallel_H = async (actualPaths) => {
 
 // MONGO QUERY HELPERS-----------------------------|
 const searchConfig = {
+    admin: (searchVal) => {
+        return [{ name: { $regex: searchVal, $options: 'i' } }]
+    },
+
     user: (searchVal) => {
         return [
             { name: { $regex: searchVal, $options: 'i' } },
@@ -532,9 +554,11 @@ const searchConfig = {
         ]
     },
 
-    order: (searchVal) => {
+    staff: (searchVal) => {
         return [
-            { shippingAddress: { $regex: searchVal, $options: 'i' } }
+            { name: { $regex: searchVal, $options: 'i' } },
+            { staffEmail: { $regex: searchVal, $options: 'i' } },
+            { staffPhone: { $regex: searchVal, $options: 'i' } },
         ]
     },
 
@@ -543,29 +567,23 @@ const searchConfig = {
         { slug: { $regex: searchVal, $options: 'i' } },
     ],
 
-    product: (searchVal) => [
-        { name: { $regex: searchVal, $options: 'i' } },
-        { sku: { $regex: searchVal, $options: 'i' } },
-        { 'category.name': { $regex: searchVal, $options: 'i' } },
-        { 'vendor.name': { $regex: searchVal, $options: 'i' } },
-        { description: { $regex: searchVal, $options: 'i' } }
-    ],
-
     cart: (searchVal) => [
-        { 'items.productId.name': { $regex: searchVal, $options: 'i' } },
-        { 'items.productId.businessName': { $regex: searchVal, $options: 'i' } },
-        { 'name': { $regex: searchVal, $options: 'i' } },
+        { 'product.name': { $regex: searchVal, $options: 'i' } },
+        { 'vendor.businessName': { $regex: searchVal, $options: 'i' } }
     ]
 }
 
-export const BuildQuery_H = (filter, moduleName) => {
+export const BuildQuery_H = (filter, moduleName=null) => {
     try {
         const query = {};
 
-        if (filter.search && searchConfig) {
+        if (filter.search && moduleName) {
             query.$or = searchConfig[moduleName](filter.search);
         }
 
+        if (filter.role) {
+            query.role = filter.role;
+        }
 
         if (filter.categoryIds) {
             let categoryList = [];
@@ -582,12 +600,14 @@ export const BuildQuery_H = (filter, moduleName) => {
 
         // Vendor/User case
         if (filter.userIds) {
-            query.userId = {
-                $in: filter.userIds
-                    .replace(/^\[|\]|\{|\}$/g, '')
-                    .split(',')
-                    .map(w => w.trim()) ?? []
-            };
+            const userIdList = filter.userIds
+                .replace(/^\[|\]|\{|\}/g, '')
+                .split(',')
+                .map(w => w.trim())
+                .filter(v => v.length > 0)
+                .map(v => new mongoose.Types.ObjectId(v));
+
+            query.userId = { $in: userIdList };
         }
 
         if (filter.vendorIds) {
@@ -603,12 +623,7 @@ export const BuildQuery_H = (filter, moduleName) => {
         }
 
         if (filter.joinRange) {
-
-            const start = new Date(filter.joinRange[0])
-            const end = new Date(filter.joinRange[1])
-
-            start.setHours(0, 0, 0, 0);
-            end.setHours(23, 59, 59, 999);
+            const { start, end } = DateRange_H(filter.joinRange);
 
             query.createdAt = {
                 $gte: start,
@@ -617,11 +632,7 @@ export const BuildQuery_H = (filter, moduleName) => {
         }
 
         if (filter.updatedRange) {
-            const start = new Date(filter.joinRange[0])
-            const end = new Date(filter.joinRange[1])
-
-            start.setHours(0, 0, 0, 0);
-            end.setHours(23, 59, 59, 999);
+            const { start, end } = DateRange_H(filter.updatedRange)
 
             query.updatedAt = {
                 $gte: start,
@@ -642,8 +653,6 @@ export const BuildQuery_H = (filter, moduleName) => {
         if (filter.discount !== undefined) {
             query.discount = { $gte: filter.discount };
         }
-
-        if (filter.status) query.status = filter.status;
 
         if (filter.stockStatus) {
             switch (filter.stockStatus) {
@@ -666,11 +675,31 @@ export const BuildQuery_H = (filter, moduleName) => {
         if (filter.status) {
             query.status = filter.status;
         }
+
         if (filter.paymentStatus) {
             query.paymentStatus = filter.paymentStatus;
         }
         if (filter.paymentMethod) {
             query.paymentMethod = filter.paymentMethod;
+        }
+
+        if (filter.productIds) {
+            const productIdList = filter.productIds
+                .replace(/^\[|\]|\{|\}/g, '')
+                .split(',')
+                .map(w => w.trim())
+                .filter(v => v.length > 0)
+                .map(v => new mongoose.Types.ObjectId(v));
+
+            query["items.productId"] = { $in: productIdList };
+        }
+
+        if (filter._id) {
+            query._id = new mongoose.Types.ObjectId(filter._id);
+        }
+
+        if (filter.sku) {
+            query.sku = filter.sku;
         }
 
         return query;
@@ -753,3 +782,199 @@ export const BuildPopulateStages_H = (populates = {}) => {
 
     return stages;
 }
+
+export const buildProductPipeline_H = (keyVal = {}, options = {}, isSingle = false, mode = "public") => {
+
+    const { filter = {}, pagingReq = {} } = options;
+    const matchedQuery = BuildQuery_H(filter);
+
+    const basePipeline = mode === "private"
+        ? [
+            { $match: { ...matchedQuery } },
+            ...BuildPopulateStages_H({
+                vendor: { path: 'vendorId', select: '_id businessName businessEmail businessPhone status' },
+                category: { path: 'categoryId', select: '_id name slug status' },
+            })
+        ]
+        : [
+            { $match: { ...matchedQuery, status: "approved" } },
+            ...BuildPopulateStages_H({
+                vendor: { path: "vendorId", select: "status isVerified" },
+                category: { path: "categoryId", select: "status" },
+            }),
+            { $match: { "vendor.status": "approved", "category.status": "active" } }
+        ];
+
+    if (keyVal.vendorId) {  //VENDOR VIEW
+        basePipeline.push(
+            {
+                $match: { vendorId: new mongoose.Types.ObjectId(keyVal.vendorId) },
+            },
+        );
+    }
+
+    if (filter?.search) {
+        basePipeline.push(
+            {
+                $match: {
+                    $or: [
+                        { name: { $regex: filter.search, $options: 'i' } },
+                        { sku: { $regex: filter.search, $options: 'i' } },
+                        { description: { $regex: filter.search, $options: 'i' } },
+                        { 'category.name': { $regex: filter.search, $options: 'i' } },
+                        { 'vendor.businessName': { $regex: filter.search, $options: 'i' } }
+                    ]
+                }
+            }
+        )
+    }
+
+    const projectStage = {
+        $project: {
+            _id: 1,
+            name: 1,
+            sku: 1,
+            description: 1,
+            features: 1,
+            price: 1,
+            images: 1,
+            stock: 1,
+            discount: 1,
+            vendor: {
+                businessName: "$vendor.businessName",
+                status: "$vendor.status"
+            },
+            category: {
+                name: "$category.name",
+                status: "$category.status"
+            }
+        }
+    }
+
+    if (isSingle) {
+        basePipeline.push(projectStage);
+        return basePipeline;
+    }
+
+    return [
+        ...basePipeline,
+        {
+            $facet: {
+                metadata: [{ $count: "total" }],
+                data: [
+                    {
+                        $sort: {
+                            [pagingReq.sortBy || "createdAt"]: pagingReq.orderSequence === "asc" ? 1 : -1
+                        }
+                    },
+                    {
+                        $skip: (pagingReq.page - 1) * pagingReq.limit
+                    },
+                    {
+                        $limit: pagingReq.limit
+                    },
+                    projectStage,
+                ],
+            }
+        }
+    ]
+}
+
+export const CleanIntoArray_H = (textVal) => {
+    // If input is already an array, return it after trimming each element
+    if (Array.isArray(textVal)) {
+        return textVal.map(w => w.trim()).filter(v => v.length > 0)
+    }
+
+    if (typeof textVal === "string") {
+        // Remove any leading/trailing whitespace
+        textVal.trim();
+
+        // If the string is empty, return an empty array
+        if (!textVal) return [];
+
+        // Check if the string has brackets that indicate array-like structure
+        if (textVal.startsWith('[') && textVal.startsWith(']')) {
+
+            // Remove brackets and split by commas
+            return textVal.slice(1, -1)
+                .split(',')
+                .map(w => w.trim())
+                .filter(v => v.length > 0)
+        }
+
+        // If it's a comma-separated string, treat it normally
+        return textVal
+            .split(',')
+            .map(w => w.trim())
+            .filter(v => v.length > 0)
+    }
+
+    // Return an empty array for unsupported types
+    return [];
+}
+
+export const Permission_H = async (permissionName) => {
+
+    const permission = await Permission.findOne({ name: permissionName });
+
+    if (!permission) {
+
+        const allPermission = await Permission.find().select("name").lean();
+
+        if (allPermission.length === 0) {
+            throw {
+                status: 404,
+                message: `Permissions empty!`
+            }
+        }
+
+        throw {
+            status: 400,
+            message: `Allowed permissions : ${allPermission.map(p => p.name).join(', ')} only as 'permissionName'`
+        }
+    }
+
+    return permission._id;
+}
+
+// export const GetRoleFilters_H = (role, userId, vendorIds, userIds) => ({
+//     user: { userId, vendorIds },
+//     vendor: { vendorId: userId, userIds },
+//     admin: { vendorIds, userIds },
+//     super_admin: { vendorIds, userIds }
+// }[role] || {});
+
+const DateRange_H = (val) => {
+    if (!val) {
+        throw {
+            status: 400,
+            message: "Date range is required!"
+        }
+    }
+
+    const [rawStart, rawEnd] = val.split(",");
+
+    const startDate = rawStart.trim();
+    const endDate = rawEnd.trim();
+
+    if (!startDate || !endDate) {
+        throw {
+            status: 400,
+            message: "Invalid date range format. Use: YYYY-MM-DD,YYYY-MM-DD"
+        }
+    }
+
+    const start = new Date(`${startDate}T00:00:00.000Z`);
+    const end = new Date(`${endDate}T23:59:59.999Z`);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        throw {
+            status: 400,
+            message: "Invalid date values"
+        }
+
+    }
+    return { start, end }
+}
+

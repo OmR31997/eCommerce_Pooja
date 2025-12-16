@@ -10,9 +10,9 @@ import { Product } from '../product/product.model.js';
 import { Role } from '../role/role.model.js';
 import { Permission } from '../permission/permission.model.js';
 import { Cart } from '../cart/cart.model.js';
-import { GetStartAndEndDate_H } from '../../utils/helper.js';
+import { GetStartAndEndDate_H, success } from '../../utils/helper.js';
 
-export const GetPrimaryModule = (permission) => {
+const GetPrimaryModules = (permission) => {
     let modules = [];
 
     permission.forEach(p => {
@@ -26,7 +26,7 @@ export const GetPrimaryModule = (permission) => {
     return Object.entries(count).sort((a, b) => b[1] - a[1])[0][0];
 }
 
-export const recentOrders = async () => {
+const recentOrders = async () => {
     return await Order.aggregate([
         { $sort: { createdAt: -1 } },
         { $limit: 10 },
@@ -51,7 +51,7 @@ export const recentOrders = async () => {
     ]);
 };
 
-export const topCustomers = async () => {
+const topCustomers = async () => {
     return await Order.aggregate([
         { $match: { paymentStatus: "paid" } },
         {
@@ -83,7 +83,7 @@ export const topCustomers = async () => {
     ]);
 };
 
-export const dailyStats = async () => {
+const dailyStats = async () => {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
 
@@ -99,7 +99,7 @@ export const dailyStats = async () => {
     ]);
 };
 
-export const weeklyStats = async () => {
+const weeklyStats = async () => {
     const start = new Date();
     start.setDate(start.getDate() - 7);
 
@@ -116,7 +116,7 @@ export const weeklyStats = async () => {
     ]);
 };
 
-export const vendorEarnings = async (vendorId) => {
+const vendorEarnings = async (vendorId) => {
     return await Order.aggregate([
         { $match: { vendor: new mongoose.Types.ObjectId(vendorId), paymentStatus: "paid" } },
         {
@@ -129,7 +129,7 @@ export const vendorEarnings = async (vendorId) => {
     ]);
 };
 
-export const bestSellingProducts = async () => {
+const bestSellingProducts = async () => {
     return await Order.aggregate([
         { $unwind: "$items" }, // break into individual items
         {
@@ -311,7 +311,7 @@ export const GetSuperAdminDashboard = async (filter) => {
             { $group: { _id: null, avgRating: { $avg: '$rating' }, totalReviews: { $sum: 1 } } },
         ]);
 
-        return {
+        return success({
             data: {
                 totalSubAdmin,
                 totalVendors,
@@ -352,16 +352,13 @@ export const GetSuperAdminDashboard = async (filter) => {
                 avgRating: reviewStats[0]?.avgRating || 0,
                 monthlySales: orderStats[0].monthlySales,
                 revenue: revenues,
-            },
-            success: true,
-            status: 200,
-        }
-    } catch (error) {
-        return res.status(error.status).json({
-            error: error.message || `Internal Server Error '${error}'`
+            }
         });
+    } catch (error) {
+        throw error
     }
 }
+
 export const GetAdminDashboard = async (filter) => {
     try {
         const { selectedYear, range, page } = filter;
@@ -513,7 +510,8 @@ export const GetAdminDashboard = async (filter) => {
             { $group: { _id: null, avgRating: { $avg: '$rating' }, totalReviews: { $sum: 1 } } },
         ]);
 
-        return {
+        return success({
+            message: "Data fetched successfully.",
             data: {
                 totalVendors,
                 approvedVendor,
@@ -553,14 +551,10 @@ export const GetAdminDashboard = async (filter) => {
                 avgRating: reviewStats[0]?.avgRating || 0,
                 monthlySales: orderStats[0].monthlySales,
                 revenue: revenues,
-            },
-            success: true,
-            status: 200,
-        }
-    } catch (error) {
-        return res.status(error.status).json({
-            error: error.message || `Internal Server Error '${error}'`
+            }
         });
+    } catch (error) {
+        throw error
     }
 }
 
@@ -697,7 +691,8 @@ export const GetVendorDashboard_ById = async (vendorId) => {
             { $group: { _id: null, avgRating: { $avg: '$rating' }, totalReviews: { $count: {} } } },
         ])
 
-        return {
+        return success({
+            message: "Data fetched successfully.",
             data: {
                 totalProducts: productStats[0].totalProducts[0]?.count || 0,
 
@@ -710,18 +705,15 @@ export const GetVendorDashboard_ById = async (vendorId) => {
                 totalReviews: reviewStats[0]?.totalReviews || 0,
                 monthlySales: orderStats[0]?.monthlySales[0]?.sales || 0,
                 revenue: monthlyRevenue,
-            },
-            success: true,
-            status: 200,
-        }
-    } catch (error) {
-        return res.status(error.status).json({
-            error: error.message || `Internal Server Error '${error}'`
+            }
         });
+
+    } catch (error) {
+        throw error;
     }
 }
 
-export const GetStaffManagerDashboard = async (user) => {
+export const GetStaffManagerDashboard = async () => {
     try {
 
         const totalStaffs = await Staff.countDocuments();
@@ -735,21 +727,18 @@ export const GetStaffManagerDashboard = async (user) => {
 
         const totalRoles = await Role.countDocuments();
 
-        return {
-            status: 200,
-            success: true,
+        return success({
+            message: "Data fetched successfully.",
             data: {
                 totalStaffs,
                 activeStaff,
                 inactiveStaff,
                 totalRoles,
                 recentStaffs,
-            },
-        };
+            }
+        })
     } catch (error) {
-        return res.status(error.status).json({
-            error: error.message || `Internal Server Error '${error}'`
-        });
+        throw error;
     }
 }
 
@@ -765,22 +754,19 @@ export const GetVendorManagerDashboard = async () => {
             .limit(10)
             .select("name email isApproved createdAt");
 
-        return {
-            status: 200,
-            success: true,
+        return success({
+            message: "Data fetched successfully",
             data: {
                 totalVendors,
                 approvedVendors,
                 pendingVendors,
                 rejectedVendors,
                 recentVendors
-            },
-        }
+            }
+        });
 
     } catch (error) {
-        return res.status(error.status).json({
-            error: error.message || `Internal Server Error '${error}'`
-        });
+        throw error;
     }
 }
 
@@ -800,9 +786,8 @@ export const GetUserManagerDashboard = async () => {
             .limit(10)
             .select('name email, status createdAt');
 
-        return {
-            status: 200,
-            success: true,
+        return success({
+            message: "Data fetched successfully.",
             data: {
                 totalUsers,
                 activeUsers,
@@ -813,7 +798,7 @@ export const GetUserManagerDashboard = async () => {
                 newUsers,
                 recentUsers,
             },
-        };
+        })
     } catch (error) {
         return res.status(error.status).json({
             error: error.message || `Internal Server Error '${error}'`
@@ -836,9 +821,8 @@ export const GetProductManagerDashboard = async () => {
             .sort({ createdAt: -1 })
             .limit(10);
 
-        return {
-            status: 200,
-            success: true,
+        return success({
+            message: "Data fetched successfully.",
             data: {
                 totalProducts,
                 approvedProducts,
@@ -846,13 +830,11 @@ export const GetProductManagerDashboard = async () => {
                 rejectedProducts,
                 topProducts,
                 latestProducts,
-            },
-        }
+            }
+        });
 
     } catch (error) {
-        return res.status(error.status).json({
-            error: error.message || `Internal Server Error '${error}'`
-        });
+        throw error;
     }
 }
 
@@ -888,9 +870,8 @@ export const GetOrderManagerDashboard = async () => {
             .populate('userId', 'name email');
 
 
-        return {
-            status: 200,
-            success: true,
+        return success({
+            message: "Data fetched successfully.",
             data: {
                 totalOrders,
                 pendingOrders,
@@ -899,27 +880,21 @@ export const GetOrderManagerDashboard = async () => {
                 refunded,
                 todayRevenue: todayRevenue[0]?.revenue || 0,
                 recentOrders,
-            },
-        }
-    } catch (error) {
-        return res.status(error.status).json({
-            error: error.message || `Internal Server Error '${error}'`
+            }
         });
+    } catch (error) {
+        throw error;
     }
 }
 
 export const GetAccountManagerDashboard = async () => {
     try {
 
-        return {
-            status: 200,
-            success: true,
-            data: {
-            },
-        }
+        return success({
+            message: "Data fetched successfully.",
+            data: {}
+        })
     } catch (error) {
-        return res.status(error.status).json({
-            error: error.message || `Internal Server Error '${error}'`
-        });
+        throw error;
     }
 }

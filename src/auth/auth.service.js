@@ -11,7 +11,7 @@ import { ClearRefreshCookie, SetRefreshCookie } from '../../utils/cookies.js';
 import { Admin } from '../admin/admin.model.js';
 import { DeleteLocalFile_H } from '../../utils/fileHelper.js';
 import { SendEmail } from '../../utils/sendEmail.js';
-import { GenerateOtp, otpStore, VerifyOtp } from '../../utils/otp.js';
+import { GenerateOtp_H, otpStore, VerifyOtp_H,  } from '../../utils/otp.js';
 import { Permission } from '../permission/permission.model.js';
 import { Role } from '../role/role.model.js';
 import { Staff } from '../staff/staff.model.js';
@@ -20,7 +20,7 @@ import { Notify } from '../notification/notification.service.js';
 import { FindUserFail_H, IdentifyModel_H, IdentifyModelByGoogleEmail_H, IdentifyModelByRole_H, UploadFilesWithRollBack_H, UploadImageWithRollBack_H } from '../../utils/helper.js';
 import { ToDeleteFromCloudStorage_H } from '../../utils/cloudUpload.js';
 
-// CREATE---------------------------------| SERVICES
+// CREATE---------------------------------|
 export const GenerateAndSendToken = async ({ res, logId, logRole, ip }) => {
     try {
         const accessToken = CreateAccessToken({ id: logId, role: logRole })
@@ -102,7 +102,7 @@ export const SignIn = async (res, logKey, password, ip) => {
 
     const otpKey = logKey.phone ? logKey.phone : logKey.email;
 
-    const responseOtp = GenerateOtp(otpKey);
+    const responseOtp = GenerateOtp_H(otpKey);
 
     const { status, messageId, success } = logKey.phone
         ? ''
@@ -120,7 +120,7 @@ export const SignIn = async (res, logKey, password, ip) => {
 export const SendOtp = async (otpKey) => {
     const { phone, email } = otpKey;
 
-    const { otp, message, otpExpiresAt } = GenerateOtp(email ?? phone);
+    const { otp, message, otpExpiresAt } = GenerateOtp_H(email ?? phone);
 
     const { status, success, messageId } = phone
         ? ''
@@ -152,7 +152,7 @@ export const ConfirmOtp = async (res, reqData, ip) => {
 
         const otpKey = email ? email : phone;
 
-        const verification = VerifyOtp(otpKey, otp);
+        const verification = VerifyOtp_H(otpKey, otp);
 
         if (!verification.valid) return { status: 400, error: verification.reason, success: false };
 
@@ -194,7 +194,7 @@ export const SignUp = async (userData) => {
         }
     }
 
-    const verification = VerifyOtp(otpKey, userData.otp);
+    const verification = VerifyOtp_H(otpKey, userData.otp);
 
     if (!verification.valid) {
         throw {
@@ -474,7 +474,7 @@ export const ForgotPassword = async (logKey) => {
     const otpKey = logKey.phone ? logKey.phone : logKey.email;
 
     /* *Via OTP * */
-    const responseOtp = GenerateOtp(otpKey);
+    const responseOtp = GenerateOtp_H(otpKey);
 
     const { status, messageId, success } = logKey.phone
         ? ''
@@ -496,7 +496,7 @@ export const ResetPassword = async (logKey, otp, newPassword) => {
 
     const Models = { Admin, Vendor, Staff, User };
 
-    const verification = VerifyOtp(logValue, otp);
+    const verification = VerifyOtp_H(logValue, otp);
 
     if (!verification.valid) {
         throw {

@@ -1,10 +1,11 @@
 import { ENV } from "../../config/env.config.js";
 import { ToDeleteFromCloudStorage_H } from "../../utils/cloudUpload.js";
 import { DeleteLocalFile_H } from "../../utils/fileHelper.js";
-import { BuildQuery_H, GenerateSlug_H, Pagination_H, UploadImageWithRollBack_H } from "../../utils/helper.js";
+import { BuildQuery_H, GenerateSlug_H, Pagination_H, success, ToDeleteFilesParallel_H, UploadImageWithRollBack_H } from "../../utils/helper.js";
 import { Category } from "./category.model.js";
 import { Notify } from "../notification/notification.service.js";
 
+// READ---------------------------|
 export const GetCategories = async (options = {}) => {
     const { filter = {}, pagingReq = {}, baseUrl, select } = options;
 
@@ -26,14 +27,13 @@ export const GetCategories = async (options = {}) => {
         .lean();
 
     delete pagination.skip;
-    return {
-        status: 200,
-        success: true,
-        message: 'Data fetched successfully',
-        count: total,
-        pagination,
-        data: categories || []
-    }
+    return success(
+        {
+            message: 'Data fetched successfully',
+            pagination,
+            data: categories || []
+        }
+    );
 }
 
 export const GetCategoryById = async (keyVal = {}) => {
@@ -47,9 +47,10 @@ export const GetCategoryById = async (keyVal = {}) => {
         }
     }
 
-    return { status: 200, message: 'Data fetched successfully', data: category, success: true }
+    return success({ message: 'Data fetched successfully', data: category });
 }
 
+// CREATE-------------------------|
 export const CreateCategory = async (reqData, filePayload) => {
 
     let uploadedImage = null;
@@ -65,12 +66,10 @@ export const CreateCategory = async (reqData, filePayload) => {
 
         const newCategory = await Category.create(reqData);
 
-        return {
-            status: 201,
+        return success({
             message: "Category created successfully",
-            data: newCategory,
-            success: true
-        };
+            data: newCategory
+        });
 
     } catch (error) {
 
@@ -89,6 +88,8 @@ export const CreateCategory = async (reqData, filePayload) => {
     }
 }
 
+
+// UPDATE-------------------------|
 export const UpdateCategory = async (keyVal, reqData, filePayload) => {
 
     const category = await Category.findOne(keyVal);
@@ -124,7 +125,7 @@ export const UpdateCategory = async (keyVal, reqData, filePayload) => {
 
         const updated = await Category.findOneAndUpdate(keyVal, reqData, { new: true, runValidators: true });
 
-        return { status: 200, message: 'Category update successfully', data: updated }
+        return success({ message: 'Category update successfully', data: updated });
 
     } catch (error) {
         // Rollback of uploaded image (if DB failed)
@@ -142,9 +143,11 @@ export const UpdateCategory = async (keyVal, reqData, filePayload) => {
     }
 }
 
+// DELETE-------------------------|
 export const DeleteCategory = async (keyVal) => {
-    const category = await Category.findOne(keyVal);
 
+    const category = await Category.findOne(keyVal);
+    
     if (!category) {
         throw {
             status: 404,
@@ -169,36 +172,29 @@ export const DeleteCategory = async (keyVal) => {
         type: 'delete'
     });
 
-    return { status: 200, message: 'Category deleted successfully', data: deleted, success: true }
+    return success({ message: 'Category deleted successfully', data: deleted });
 
 }
 
 export const ClearCategories = async () => {
-    
+
     const categories = await Category.find();
 
     if (categories.length === 0) {
-        return res.status(404).json({
-            error: 'No categories found to delete',
-            success: false,
-        });
+        throw {
+            status: 404, 
+            message: 'No categories found to delete',
+        }
     }
 
     for (const category of categories) {
-        if (ENV.IS_PROD && category.imageUrl?.public_id) {
-            await ToDeleteFromCloudStorage_H(category.imageUrl.public_id);
-        }
-
-        if (!ENV.IS_PROD && category.imageUrl?.secure_url) {
-            await DeleteLocalFile_H(category.imageUrl.secure_url);
-        }
+        await ToDeleteFilesParallel_H([category.imageUrl]);
     }
 
     const result = await Category.deleteMany({});
 
-    return {
-        status: 200,
-        message: `All categories cleared successfully (${result.deletedCount} deleted)`,
-        success: true
-    }
+    return success({ 
+        message: `All categories cleared successfully`, 
+        data: `${result.deletedCount} deleted` 
+    });
 }

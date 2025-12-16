@@ -1,11 +1,10 @@
 import mongoose from "mongoose";
 import { Product } from "./product.model.js";
-import { Category } from "../category/category.model.js";
-import { BuildPopulateStages_H, BuildQuery_H, FindCategoryFail_H, FindProductFail_H, GenerateSku_H, Pagination_H, ToDeleteFilesParallel_H, ToDeleteSelectedFiles_H, UploadImagesWithRollBack_H } from "../../utils/helper.js";
+import { buildProductPipeline_H, BuildQuery_H, FindCategoryFail_H, FindProductFail_H, GenerateSku_H, Pagination_H, success, ToDeleteFilesParallel_H, ToDeleteSelectedFiles_H, UploadImagesWithRollBack_H } from "../../utils/helper.js";
 import { Notify } from "../notification/notification.service.js";
 
-// CREATE PRODUCT SERVICES-----------------------------------|
-export const CreateProduct = async (reqData, filePayload = {}) => {
+// CREATE-----------------------------------|
+export const createProduct = async (reqData, filePayload = {}) => {
 
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -29,29 +28,29 @@ export const CreateProduct = async (reqData, filePayload = {}) => {
         const [created] = await Product.create([reqData], { session });
 
         await session.commitTransaction();
-        session.endSession();
 
-        return {
-            status: 200,
+        return success({
             message: "Product created successfully",
-            data: created,
-            success: true
-        }
+            data: created
+        });
     } catch (error) {
 
-        await session.abortTransaction();
-        session.endSession();
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
 
         if (uploadedImages?.length > 0) {
             await ToDeleteFilesParallel_H(uploadedImages);
         }
 
         throw error
+    } finally {
+        session.endSession();
     }
 }
 
-// UPDATE PRODUCT SERVICES-----------------------------------|
-export const UpdateProduct = async (keyVal = {}, reqData = {}, filePayload = {}) => {
+// UPDATE-----------------------------------|
+export const updateProduct = async (keyVal = {}, reqData = {}, filePayload = {}) => {
 
     const { removeImagePaths, ...rest } = reqData;
     const { imageFiles } = filePayload;
@@ -98,27 +97,29 @@ export const UpdateProduct = async (keyVal = {}, reqData = {}, filePayload = {})
         const updated = await Product.findOneAndUpdate(keyVal, updateOps, { new: true, runValidators: true, session });
 
         await session.commitTransaction();
-        session.endSession()
 
-        return {
-            status: 200,
+        return success({
             message: "Product updated successfully",
-            data: updated,
-            success: true
-        }
-    } catch (error) {
-        await session.abortTransaction();
-        session.endSession();
+            data: updated
+        });
 
-        if(uploadedImages.length > 0) {
+    } catch (error) {
+
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
+
+        if (uploadedImages.length > 0) {
             await ToDeleteFilesParallel_H(uploadedImages);
         }
 
         throw error;
+    } finally {
+        session.endSession();
     }
 }
 
-export const UpdateRating = async (keyVal, newRating) => {
+export const updateRating = async (keyVal, newRating) => {
 
     const product = await FindProductFail_H(keyVal, 'rating ratingCount');
 
@@ -126,17 +127,18 @@ export const UpdateRating = async (keyVal, newRating) => {
 
     product.ratingCount += 1;
 
-    const update = await product.save();
+    const updated = await product.save();
 
-    return {
-        status: 200,
+    return success({
         message: `Rating submitted successfully`,
-        data: { rating: update.rating, ratingCount: update.ratingCount },
-        success: true
-    }
+        data: {
+            rating: updated.rating,
+            ratingCount: updated.ratingCount
+        }
+    });
 }
 
-export const UpdateStock = async (keyVal = {}, stockChange) => {
+export const updateStock = async (keyVal = {}, stockChange) => {
     const product = await FindProductFail_H(keyVal, 'stock');
 
     const newStock = product.stock + stockChange;
@@ -145,196 +147,19 @@ export const UpdateStock = async (keyVal = {}, stockChange) => {
 
     const updated = await product.save();
 
-    return { status: 200, message: "Stock updated successfully", data: updated.stock, success: true }
+    return success({
+        message: "Stock updated successfully",
+        data: updated.stock
+    });
 }
 
-// READ PRODUCT SERVICES-----------------------------------|
+// READ-----------------------------------|
 // PRIVATE
-export const GetSecuredProducts = async (keyVal = {}, options = {}) => {
-    const { filter = {}, pagingReq = {}, populates = {}, baseUrl } = options;
-    
-    const matchedQuery = BuildQuery_H(filter, "product");
-    
-    const populateStages = BuildPopulateStages_H(populates);
+export const getSecuredProducts = async (keyVal = {}, options = {}) => {
 
-    const pipeline = [
-        { $match: matchedQuery },
-        ...populateStages
-    ];
+    const { filter, baseUrl, pagingReq } = options;
 
-    // ---- APPLY SEARCH BEFORE ANY GROUPING ----
-    if (filter.search && matchedQuery.$or) {
-        pipeline.push({
-            $match: {
-                $or: matchedQuery.$or,
-            }
-        });
-
-        // delete matchedQuery.$or;
-    }
-
-    if (keyVal.userId) {    //CUSTOMER VIEW WHO HAS USER_ID
-        delete matchedQuery.status;
-        pipeline.push(
-            {
-                $match: {
-                    status: "approved",
-                    "category.status": "active",
-                    "vendor.status": "approved"
-                }
-            },
-            {
-                $group: {
-                    _id: "$_id",
-                    product: {
-                        $first: {
-                            _id: "$_id",
-                            name: "$name",
-                            features: "$features",
-                            description: "$description",
-                            price: "$price",
-                            sku: "$sku",
-                            images: "$images",
-                            discount: "$discount",
-                            stock: "$stock"
-                        }
-                    },
-                    category: {
-                        $first: "$category.name"
-                    },
-                    vendor: {
-                        $first: {
-                            name: "$vendor.businessName",
-                            email: "$vendor.businessEmail"
-                        }
-                    }
-                },
-            })
-    }
-
-    if (keyVal.vendorId) {  //VENDOR VIEW
-        pipeline.push({
-            $match: {
-                vendorId: new mongoose.Types.ObjectId(keyVal.vendorId),
-                "category.status": "active"
-            },
-        }, {
-            $group: {
-                _id: "$_id",
-                product: {
-                    $first: {
-                        _id: "$_id",
-                        name: "$name",
-                        features: "$features",
-                        description: "$description",
-                        price: "$price",
-                        sku: "$sku",
-                        images: "$images",
-                        discount: "$discount",
-                        stock: "$stock"
-                    }
-                },
-                category: { $first: "$category.name" },
-                vendor: {
-                    $first: {
-                        name: "$vendor.businessName",
-                        email: "$vendor.businessEmail"
-                    }
-                }
-            },
-        });
-    }
-
-    if (keyVal.main) {   //ADMIN | STAFF(PRODUCT MANAGER) VIEW
-        pipeline.push({
-            $group: {
-                _id: "$_id",
-                product: {
-                    $first: {
-                        _id: "$_id",
-                        name: "$name",
-                        sku: "$sku",
-                        features: "$features",
-                        description: "$description",
-                        price: "$price",
-                        stock: "$stock",
-                        status: "$status",
-                        images: "$images",
-                        discount: "$discount",
-
-                    }
-                },
-                category: {
-                    $first: {
-                        _id: "$category._id",
-                        name: "$category.name",
-                        status: "$category.status"
-                    }
-                },
-                vendor: {
-                    $first: {
-                        _id: "$vendor._id",
-                        name: "$vendor.businessName",
-                        email: "$vendor.businessEmail",
-                        email: "$vendor.businessPhone",
-                        status: "$vendor.status",
-                        isVerified: "$vendor.isVerified",
-                    }
-                }
-            },
-        });
-
-        // pipeline.push({
-        //     $project: {
-        //         _id: 1,
-        //         name: 1,
-        //         features: 1,
-        //         description: 1,
-        //         sku: 1,
-        //         images: 1,
-        //         price: 1,
-        //         discount: 1,
-        //         stock: 1,
-        //         status: 1,
-        //         vendorId: 1,
-        //         categoryId: 1,
-        //         createdAt: 1,
-        //         updatedAt: 1,
-
-        //         category: {
-        //             name: "$category.name",
-        //             status: "$category.status"
-        //         },
-        //         vendor: {
-        //             name: "$vendor.businessName",
-        //             email: "$vendor.businessEmail",
-        //             status: "$vendor.status"
-        //         }
-        //     }
-        // })
-    }
-
-    pipeline.push(
-
-        {   // ---- Pagination Meta ----
-            $facet: {
-                metadata: [{ $count: "total" }],
-                data: [
-                    {
-                        $sort: {
-                            [pagingReq.sortBy || "createdAt"]: pagingReq.orderSequence === "asc" ? 1 : -1
-                        }
-                    },
-                    {
-                        $skip: (pagingReq.page - 1) * pagingReq.limit
-                    },
-                    {
-                        $limit: pagingReq.limit
-                    },
-                ],
-            }
-        }
-    );
+    const pipeline = buildProductPipeline_H(keyVal, options, false, "private");
 
     const result = await Product.aggregate(pipeline);
 
@@ -342,115 +167,85 @@ export const GetSecuredProducts = async (keyVal = {}, options = {}) => {
 
     const products = result[0]?.data || [];
 
-    const pagination = Pagination_H(pagingReq.page, pagingReq.limit, undefined, total, baseUrl, matchedQuery);
+    const pagination = Pagination_H(pagingReq.page, pagingReq.limit, undefined, total, baseUrl, filter);
+
     delete pagination.skip;
 
-    return {
-        status: 200,
-        success: true,
+    return success({
         message: "Data fetched successfully",
-        count: total,
         pagination,
         data: products
-    }
+    });
 }
 
-export const GetSecuredProductByIdOrSku = async (keyVal = {}) => {
+export const getSecuredProductByIdOrSku = async (keyVal = {}) => {
 
-    let query = Product.findOne(keyVal);
+    const { vendorId, ...filter } = keyVal;
 
-    if(keyVal.userId) {
-        query = query
-        .populate({path: "vendorId", select: "businessName businessEmail"})
-        .populate({path: "categoryId", select: "name"})
-    }
+    const pipeline = buildProductPipeline_H(keyVal, { filter }, true, "private");
 
-    if(keyVal.vendorId) {
-        query = query
-        .populate({path: "vendorId", select: "businessName businessEmail"})
-        .populate({path: "categoryId", select: "name"})
-    }
-
-    if(keyVal.main) {
-        delete keyVal.main
-        query = Product.find(keyVal)
-        .populate({path: "vendorId", select: "businessName businessEmail status"})
-        .populate({path: "categoryId", select: "name status"})
-    }
-
-    const product = await query;
+    const result = await Product.aggregate(pipeline);
+    const product = result[0];
 
     if (!product) {
-
-        const formatSet = Object.entries(keyVal).map(([key, val]) => `${key}: ${val}`).join(' :: ');
-
         throw {
             status: 404,
-            message: `Product not found for filters: '${formatSet}'`,
-            success: false
+            message: `Product not found for ID: '${keyVal._id}'`
         }
     }
 
-    // CASE
-    if (keyVal.userId && product.stock <= 0) {
-        throw {
-            status: 404,
-            message: `Product out of stock for ID: '${keyVal.productId}'`
-        }
-    }
-
-    return { status: 200, message: 'Data fetched successfully', data: product, success: true };
+    return success({
+        message: 'Data fetched successfully',
+        data: product
+    });
 }
 
 // PUBLIC
-export const GetPublicProducts = async (options = {}) => {
+export const getPublicProducts = async (options = {}) => {
 
-    const { pagingReq = {}, baseUrl } = options;
-    const total = await Product.countDocuments();
+    const { filter = {}, baseUrl, pagingReq } = options;
 
-    const pagination = Pagination_H(pagingReq.page, pagingReq.limit, undefined, total, baseUrl, {});
+    const pipeline = buildProductPipeline_H(undefined, options, false, "public");
 
-    const sortField = ['name', 'createdAt'].includes(pagingReq.sortBy) ? pagingReq.sortBy : 'createdAt';
-    const sortDirection = pagingReq.orderSequence === 'asc' ? 1 : -1;
-    const sortOption = { [sortField]: sortDirection };
+    const result = await Product.aggregate(pipeline);
 
-    const products = await Product.find()
-        .skip(pagination.skip)
-        .limit(pagingReq.limit)
-        .sort(sortOption)
-        .populate({ path: 'vendorId', select: '-_id businessName' })
-        .populate({ path: 'categoryId', select: '-_id name' })
-        .lean();
+    const total = result[0]?.metadata[0]?.total || 0;
 
-    return {
-        status: 200,
+    const products = result[0]?.data || [];
+
+    const pagination = Pagination_H(pagingReq.page, pagingReq.limit, undefined, total, baseUrl, filter);
+    delete pagination.skip;
+
+    return success({
         message: 'Data fetched successfully',
-        count: total,
         pagination,
-        success: true,
         data: products
-    }
+    });
 }
 
-export const GetPublicProductById = async (productId) => {
+export const getPublicProductByIdOrSku = async (keyVal) => {
 
-    const product = await Product.findOne({ _id: productId, status: 'approved' })
-        .populate({ path: 'vendorId', select: '-_id businessName' })
-        .populate({ path: 'categoryId', select: 'name' })
-        .lean();
+    const matchedQuery = BuildQuery_H(keyVal);
+
+    const pipeline = buildProductPipeline_H(undefined, matchedQuery, true, "public");
+
+    const result = await Product.aggregate(pipeline);
+    const product = result[0];
 
     if (!product) {
         throw {
             status: 404,
-            message: `Product not found for ID: '${productId}'`,
-            success: false
+            message: `Product not found for ID: '${keyVal._id || keyVal.sku}'`
         }
     }
 
-    return { status: 200, message: 'Data fetched successfully', data: product, success: true };
+    return success({
+        message: 'Data fetched successfully',
+        data: product
+    });
 }
 
-export const ProductFilter = async (options = {}) => {
+export const productFilter = async (options = {}) => {
 
     const { filter = {}, pagingReq = {}, baseUrl } = options;
 
@@ -474,11 +269,15 @@ export const ProductFilter = async (options = {}) => {
         .populate({ path: 'categoryId', select: 'name slug' });
 
     delete pagingReq.skip;
-    return { status: 200, message: 'Data fetched successfully', count: total, pagination, data: products };
+    return success({
+        message: 'Data fetched successfully',
+        pagination,
+        data: products
+    });
 }
 
-// DELETE PRODUCT SERVICES-----------------------------------|
-export const DeleteProduct = async (keyVal = {}) => {
+// DELETE--------------------------------|
+export const deleteProduct = async (keyVal = {}) => {
 
     const deleted = await Product.findOneAndDelete(keyVal);
 
@@ -489,28 +288,28 @@ export const DeleteProduct = async (keyVal = {}) => {
         }
     }
 
-    return { status: 200, success: true, message: `Product deleted successfully`, data: deleted }
+    return success({
+        message: `Product deleted successfully`,
+        data: deleted
+    });
 }
 
-export const ClearProducts = async (vendorId) => {
+export const clearProducts = async (keyVal) => {
     try {
-        let result = await Product.deleteMany({ vendorId });
+        let result = await Product.deleteMany(keyVal);
 
         if (result.deletedCount === 0) {
-            return {
+            throw {
                 status: 404,
-                error: 'No product found to delete',
-                success: false,
+                error: 'No product found to delete'
             }
         }
 
-        return {
-            status: 200,
-            message: `All user cleared successfully (${result.deletedCount} deleted)`,
-            success: true,
-        };
+        return success({
+            message: `All user cleared successfully.`,
+            data: { deletedCount: result.deletedCount }
+        });
     } catch (error) {
-        const handle = await ErrorHandle(error, 'DeleteProduct');
-        return handle;
+        throw error;
     }
 }

@@ -1,7 +1,7 @@
 import { CheckPayoutStatus, CreateVendorPayout } from './payout.service.js';
 
 // ADMIN → INITIATE VENDOR PAYOUT
-export const initiate_vendor_payout = async (req, res) => {
+export const initiate_vendor_payout = async (req, res, next) => {
     try {
         const { vendorId, amount } = req.body;
 
@@ -12,20 +12,16 @@ export const initiate_vendor_payout = async (req, res) => {
             }
         }
 
-        const { status, message, payout, success } = await CreateVendorPayout(vendorId, amount);
+        const response = await CreateVendorPayout(vendorId, amount);
 
-        return res.status(status).json({ message, payout, success });
+        return res.status(201).json(response);
 
     } catch (error) {
-        if (error.status) {
-            return res.status(error.status).json({ success: false, error: error.message });
-        }
-
-        return res.status(500).json({ success: false, error: error.message });
+        next(error);
     }
 }
 
-export const get_payout_status = async (req, res) => {
+export const get_payout_status = async (req, res, next) => {
     try {
         const { payoutId, vendorId, amount } = req.body;
 
@@ -36,15 +32,11 @@ export const get_payout_status = async (req, res) => {
             }
         }
 
-        const { status, message, success } = await CheckPayoutStatus(payoutId, vendorId, amount);
+        const response = await CheckPayoutStatus(payoutId, vendorId, amount);
 
-        return res.status(200).json({ message, status, success });
+        return res.status(200).json(response);
 
     } catch (error) {
-        if (error.status) {
-            return res.status(error.status).json({ success: false, error: error.message });
-        }
-
-        return res.status(500).json({ success: false, error: error.message });
+        next(error);
     }
 }

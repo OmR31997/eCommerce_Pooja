@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
-const RecieverSchema = new mongoose.Schema({
+
+const NotificationSchema = new mongoose.Schema({
     receiverId: {
         type: mongoose.Schema.Types.ObjectId,
         required: true
@@ -8,11 +9,7 @@ const RecieverSchema = new mongoose.Schema({
         type: String,
         enum: ['user/customer', 'vendor', 'admin', 'super_admin'],
         required: true
-    }
-}, { _id: false });
-
-const NotificationSchema = new mongoose.Schema({
-    receiver: RecieverSchema,
+    },
     title: {
         type: String,
         required: true,
@@ -20,6 +17,10 @@ const NotificationSchema = new mongoose.Schema({
     message: {
         type: String,
         required: true,
+    },
+    read: {
+        type: Boolean,
+        default: false
     },
     type: {
         type: String,

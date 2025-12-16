@@ -1,213 +1,154 @@
-import { Permission } from "./permission.model.js";
+import { ClearPermissions, CreatePermission, DeletePermission, GetPermissionById, GetPermissions, UpdatePermission } from "./permission.service.js";
+import { CleanIntoArray_H } from "../../utils/helper.js";
 
-export const create_permissions = async (req, res) => {
+// READ-----------------------|
+export const get_permissions = async (req, res, next) => {
     try {
-        const { name, modulesName, description, actions } = req.body;
+        const {
+            page = 1, limit = 10,
+            search,
+            sortBy = '-createdAt', orderSequence = '-1'
+        } = req.query;
 
-        // Normalize modules
-        let modules = [];
-        if (Array.isArray(modulesName)) {
-            modules = modulesName.map(m => m.charAt(0).toUpperCase() + m.slice(1).toLowerCase());
-        } else if (typeof modulesName === "string") {
-            modules = modulesName
-                .split(',')
-                .map(m => m.trim())
-                .map(m => m.charAt(0).toUpperCase() + m.slice(1).toLowerCase());
+        const options = {
+            baseUrl: `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`,
+
+            pagingReq: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                sortBy, orderSequence
+            },
+
+            filter: {
+                search
+            },
         }
 
-        // Validate actions format (must be object according to schema)
-        const actionObject = {
-            isCreate: actions?.isCreate ?? false,
-            isRead: actions?.isRead ?? true,
-            isUpdate: actions?.isUpdate ?? false,
-            isDelete: actions?.isDelete ?? false,
-            isApproved: actions?.isApproved ?? false,
-        };
+        const response = await GetPermissions(options);
 
-        const permissionData = {
-            name,
-            module: modules,
-            description: description || '',
-            actions: actionObject,
-        };
-
-        const savedPermission = await Permission.create(permissionData);
-
-        return res.status(201).json({
-            message: "Permission created successfully",
-            data: savedPermission,
-            success: true,
-        });
+        return res.status(200).json(response);
 
     } catch (error) {
-        return res.status(500).json({
-            error: error.message,
-            message: "Internal Server Error",
-            success: false,
-        });
-    }
-};
-
-export const get_permissions = async (req, res) => {
-    try {
-        const permissions = await Permission.find();
-
-        if (!permissions || permissions.length === 0) {
-            return res.status(404).json({
-                error: 'Data not found',
-                success: false,
-            });
-        }
-
-        return res.status(200).json({
-            message: 'Data fetched successfully',
-            data: permissions,
-            success: true,
-        });
-
-    } catch (error) {
-        return res.status(500).json({
-            message: "Internal Server Error",
-            error: error.message,
-            success: false
-        });
+        next(error);
     }
 }
 
-export const update_permission = async (req, res) => {
+export const get_permission_by_id = async (req, res, next) => {
     try {
-        const { id } = req.params;
-        const { name, modulesName, description, actions } = req.body;
 
-        const permission = await Permission.findById(id);
-        if (!permission) {
-            return res.status(404).json({
-                message: "Permission not found",
-                success: false
-            });
-        }
+        const keyVal = { _id: req.params.permissionId }
 
-        // -----------------------------
-        // 1️⃣ Update name
-        // -----------------------------
-        if (name) permission.name = name;
+        const response = await GetPermissionById(keyVal);
 
-
-        // -----------------------------
-        // 2️⃣ Update modules
-        // -----------------------------
-        if (modulesName) {
-
-            let modules = [];
-
-            if (Array.isArray(modulesName)) {
-                modules = modulesName.map(m =>
-                    m.charAt(0).toUpperCase() + m.slice(1).toLowerCase()
-                );
-            } else if (typeof modulesName === "string") {
-                modules = modulesName
-                    .split(",")
-                    .map(m => m.trim())
-                    .map(m =>
-                        m.charAt(0).toUpperCase() + m.slice(1).toLowerCase()
-                    );
-            }
-
-            permission.module = modules;
-        }
-
-
-        // -----------------------------
-        // 3️⃣ Update description
-        // -----------------------------
-        if (description !== undefined) {
-            permission.description = description;
-        }
-
-
-        // -----------------------------
-        // 4️⃣ Update actions (partial allowed)
-        // -----------------------------
-        if (actions && typeof actions === "object") {
-            const allowedKeys = [
-                "isCreate",
-                "isRead",
-                "isUpdate",
-                "isDelete",
-                "isApproved"
-            ];
-
-            for (const key of allowedKeys) {
-                if (actions[key] !== undefined) {
-                    permission.actions[key] = actions[key];
-                }
-            }
-        }
-
-
-        // Save updated data
-        await permission.save();
-
-        return res.status(200).json({
-            message: "Permission updated successfully",
-            data: permission,
-            success: true
-        });
+        return res.status(200).json(response);
 
     } catch (error) {
-        return res.status(500).json({
-            message: "Internal Server Error",
-            error: error.message,
-            success: false
-        });
+        next(error);
+    }
+}
+
+// CREATE---------------------|
+export const create_permissions = async (req, res, next) => {
+    try {
+        const { name, modules, description, actions } = req.body;
+
+        const cleanedActions = CleanIntoArray_H(actions);
+
+        const reqData = {
+            name, 
+            modules: [...new Set(CleanIntoArray_H(modules))], 
+            description, actions: {}
+        }
+
+        // Optional: Validate actions to check if they match predefined action keys
+        const validActions = ['create', 'read', 'update', 'delete', 'approve', 'backup'];
+
+        if (cleanedActions.length > 0) {
+            const actionObj = {};
+
+            validActions.forEach(action => {
+                actionObj[action] = cleanedActions.includes(action);
+            });
+
+            reqData.actions = actionObj;
+        }
+
+        const response = await CreatePermission(reqData);
+
+        return res.status(201).json(response);
+    } catch (error) {
+        next(error);
+    }
+}
+
+// UPDATE---------------------|
+export const update_permission = async (req, res, next) => {
+    try {
+        const keyVal = {
+            _id: req.params.permissionId
+        };
+
+        const { addModules, removeModules, actions } = req.body;
+
+        const cleanedActions = CleanIntoArray_H(actions);
+
+        const reqData = {
+            addModules: CleanIntoArray_H(addModules),
+            removeModules: CleanIntoArray_H(removeModules),
+            actions: {}
+        };
+
+        // Optional: Validate actions to check if they match predefined action keys
+        const validActions = ['create', 'read', 'update', 'delete', 'approve', 'backup'];
+
+        if (cleanedActions.length > 0) {
+            const actionObj = {};
+
+            validActions.forEach(action => {
+                actionObj[action] = cleanedActions.includes(action);
+            });
+
+            reqData.actions = actionObj;
+        }
+
+        // Check that at least one of addModules, removeModules, or actions is provided
+        if (!reqData.addModules.length &&
+            !reqData.removeModules.length &&
+            cleanedActions.length === 0) {
+            throw {
+                status: 400,
+                message: `'addModules', 'removeModules', or 'actions' field must be provided to update permissions!`
+            };
+        }
+
+        const response = await UpdatePermission(keyVal, reqData);
+
+        return res.status(200).json(response)
+    } catch (error) {
+        next(error);
+    }
+}
+
+// DELETE---------------------|
+export const delete_permission = async (req, res, next) => {
+    try {
+        const keyVal = { _id: req.params.permissionId };
+
+        const response = await DeletePermission(keyVal);
+
+        return res.status(200).json(response);
+
+    } catch (error) {
+        next(error);
     }
 };
 
-export const delete_permission = async (req, res) => {
+export const clear_all_permissions = async (req, res, next) => {
     try {
-        const { id } = req.params;
+        const response = await ClearPermissions();
 
-        const permission = await Permission.findById(id);
-
-        if (!permission) {
-            return res.status(404).json({
-                message: "Permission not found",
-                success: false
-            });
-        }
-
-        await Permission.findByIdAndDelete(id);
-
-        return res.status(200).json({
-            message: "Permission deleted successfully",
-            deletedPermission: permission,
-            success: true
-        });
-
+        return res.status(200).json(response);
     } catch (error) {
-        return res.status(500).json({
-            message: "Internal Server Error",
-            error: error.message,
-            success: false
-        });
-    }
-};
-
-export const clear_all_permissions = async (req, res) => {
-    try {
-        const result = await Permission.deleteMany({});
-
-        return res.status(200).json({
-            message: "All permissions have been deleted successfully",
-            deletedCount: result.deletedCount,
-            success: true,
-        });
-
-    } catch (error) {
-        return res.status(500).json({
-            message: "Internal Server Error",
-            error: error.message,
-            success: false,
-        });
+        next(error);
     }
 };

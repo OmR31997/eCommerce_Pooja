@@ -1,41 +1,45 @@
 import { Cart } from '../cart/cart.model.js';
 import { Order } from './order.model.js';
 import { Notify } from '../notification/notification.service.js';
-import { GenerateReceiptPDF } from '../../utils/generateReceipt.js';
-import { BuildPopulateStages_H, BuildQuery_H } from '../../utils/helper.js';
+import { BuildPopulateStages_H, BuildQuery_H, Pagination_H, success } from '../../utils/helper.js';
 import mongoose from 'mongoose';
 import { Product } from '../product/product.model.js';
 
-// ------------------------------------READ ORDER SERVICES---------------------------------------------|
-export const GetOrders = async (options = {}) => {
+// READ------------------------|
+export const GetOrders = async (keyVal = {}, options = {}) => {
 
-    const { filter = {}, pagingReq = {}, populates = {}, baseUrl, vendorId, userId } = options;
+    const { filter = {}, pagingReq = {}, populates = {}, baseUrl } = options;
 
-    const matchedQuery = BuildQuery_H(filter, 'order');
+    const { userId, vendorId } = keyVal;
+
+    const matchedQuery = {
+        ...BuildQuery_H({ ...filter, search: undefined }, 'order'),
+        ...(vendorId && { vendorId: new mongoose.Types.ObjectId(vendorId) }),
+        ...(userId && { userId: new mongoose.Types.ObjectId(userId) })
+    };
+
     const populateStages = BuildPopulateStages_H(populates);
 
     const pipeline = [
         { $match: matchedQuery },
         { $unwind: '$items' },
-        ...populateStages,
+        ...populateStages
     ];
 
-    if (vendorId) {
-        pipeline.push({
-            $match: { vendorId: new mongoose.Types.ObjectId(vendorId) }
-        });
-    }
-
-    if (userId) {
-        pipeline.push({
-            $match: { userId: new mongoose.Types.ObjectId(userId) }
-        });
-    }
-
     if (filter.search) {
-        pipeline.push({
-            $match: { 'productData.name': { $regex: filter.search, $options: 'i' } },
-        })
+        pipeline.push(
+            {
+                $match: {
+                    $or: [
+                        { 'product.name': { $regex: filter.search, $options: 'i' } },
+                        { 'shippingAddress.postalCode': { $regex: filter.search, $options: 'i' } },
+                        { 'shippingAddress.city': { $regex: filter.search, $options: 'i' } },
+                        { 'shippingAddress.state': { $regex: filter.search, $options: 'i' } },
+                        { 'shippingAddress.country': { $regex: filter.search, $options: 'i' } },
+                    ]
+                }
+            }
+        )
     }
 
     pipeline.push({
@@ -58,14 +62,14 @@ export const GetOrders = async (options = {}) => {
             status: { $first: '$status' },
             shippingAddress: { $first: '$shippingAddress' },
             trackingId: { $first: '$trackingId' },
-            paymentId: { $first: '$paymentId' }
+            paymentId: { $first: '$paymentId' },
+            createdAt: { $first: '$createdAt' }
         }
     })
 
     pipeline.push({
         $facet: {
-            metadata: [{ $count: 'totalOrdered' }]
-            ,
+            metadata: [{ $count: 'totalOrdered' }],
             data: [
                 {
                     $sort: {
@@ -82,86 +86,47 @@ export const GetOrders = async (options = {}) => {
         }
     });
 
-    const orders = await Order.aggregate(pipeline);
+    const result = await Order.aggregate(pipeline);
 
-    const totalOrders = orders[0]?.metadata[0]?.totalOrdered || 0;
-    const result = orders[0]?.data || [];
-    const currentPage = pagingReq.page;
-    const totalPages = Math.ceil(totalOrders / pagingReq.limit);
+    const total = result[0]?.metadata[0]?.totalOrdered || 0;
+    const orders = result[0]?.data || [];
 
-    const pagination = {
-        count: totalOrders,
-        prevUrl: currentPage > 1 ? `${baseUrl}?page=${currentPage - 1}&limit=${pagingReq.limit}` : null,
-        nextUrl: currentPage < totalPages ? `${baseUrl}?page=${currentPage + 1}&limit=${pagingReq.limit}` : null,
-        currentPage,
-        totalPages
-    }
+    let pagination = Pagination_H(pagingReq.page, pagingReq.limit, undefined, total, baseUrl, matchedQuery);
 
-    return {
-        status: 200,
+    return success({
         message: 'Data fetched successfully',
         pagination,
-        success: true,
-        data: result
-    }
+        data: orders
+    });
 }
 
-export const GetOrderById = async (keyVal, productId = null) => {
+export const GetOrderById = async (keyVal) => {
 
-    let query = Order.findOne(keyVal);
-    if (keyVal.userId) {
-        query = query
-            .populate({ path: 'items.productId', select: 'name' })
-            .populate({ path: 'vendorId', select: 'businessName businessEmail' });
-    }
+    const order = await Order.findOne(keyVal)
+        .populate({ path: 'items.productId', select: 'name quantity price subtotal totalAmount' })
+        .populate({ path: 'vendorId', select: 'businessName businessEmail' })
+        .populate({ path: 'userId', select: 'name address email' })
 
-    if (keyVal.vendorId) {
-        query = query
-            .populate({ path: 'items.productId', select: 'name' })
-            .populate({ path: 'userId', select: 'name address email' })
-            .select('vendorId userId items price quantity subtotal')
-    }
-
-    if (keyVal.main) {
-        delete keyVal.main
-        query = Order.findOne(keyVal)
-            .populate({ path: 'items.productId', select: 'name status' })
-            .populate({ path: 'vendorId', select: 'businessName businessEmail status' })
-            .populate({ path: 'userId' })
-    }
-
-    const order = await query;
 
     if (!order) {
         throw {
             status: 404,
-            message: `Data not found for ID: '${keyVal?.orderId}'`
+            message: `Order not found for ID: '${keyVal?._id}'`
         }
     }
 
-    if (productId) {
-        order.items = order.items.filter(item => item.productId?._id.toString() === productId.toString())
-
-        if (order.items.length === 0) {
-            throw {
-                status: 404,
-                message: `Cart item not for ID: '${orderId}'`,
-            }
-        }
-    }
-
-    return { status: 200, message: 'Data fetched successfully', data: order, success: true };
+    return success({ message: 'Data fetched successfully', data: order });
 }
 
-// ------------------------------------CREATE ORDER SERVICE---------------------------------------------|
-export const CreateOrderBeforePayment = async (orderData) => {
+// CREATE----------------------|
+export const CreateOrderBeforePayment = async (reqData) => {
     const session = await mongoose.startSession();
     session.startTransaction();
 
     const createdOrders = []
     try {
 
-        const { userId, paymentMethod } = orderData;
+        const { userId } = reqData;
 
         const existingCart = await Cart.findOne({ userId })
             .populate({ path: 'items.productId', select: 'vendorId stock name' })
@@ -202,7 +167,7 @@ export const CreateOrderBeforePayment = async (orderData) => {
 
             // Create order
             const [order] = await Order.create([{
-                ...orderData,
+                ...reqData,
                 vendorId,
                 items: data.items,
                 totalAmount: data.totalAmount,
@@ -231,36 +196,31 @@ export const CreateOrderBeforePayment = async (orderData) => {
         await Cart.findOneAndUpdate({ userId }, { items: [], totalAmount: 0 }, { session });
 
         await session.commitTransaction();
-        session.endSession();
-    } catch (error) {
 
-        await session.abortTransaction();
-        session.endSession();
-
-        throw {
-            status: error.status ?? 500,
-            message: error.message || "Error creating order."
-        }
-    }
-
-    try {
-        for (const order of createdOrders) {
-            await Notify.vendor({
+        for (const ord of createdOrders) {
+            await Notify.vendor(ord.vendorId, {
                 title: 'New Order Received',
-                message: `You have received a new order #${order._id}.`,
+                message: `You have received a new order #${ord._id}.`,
                 type: 'order'
             });
         }
-    } catch (NotifyError) {
-        console.log("Notification failed:", NotifyError.message);
-    }
 
-    return {
-        status: 201,
-        message: 'Orders created successfully',
-        data: createdOrders,
-        count: createdOrders.length,
-        success: true
+        return success({
+            message: 'Orders created successfully',
+            data: createdOrders,
+            count: createdOrders.length
+        });
+
+    } catch (error) {
+
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
+
+        throw error;
+    } finally {
+
+        session.endSession();
     }
 }
 
@@ -345,29 +305,32 @@ export const CreateOrderAfterPayment = async (userId, paymentSessionId) => {
         await session.commitTransaction();
         session.endSession();
 
+        return createdOrders;
+
     } catch (error) {
         await session.abortTransaction();
         session.endSession();
 
+        throw error
+    }
+}
+
+// UPDATE----------------------|
+export const UpdateOrder = async (keyVal, reqData) => {
+
+    const updated = await Order.findOneAndUpdate(keyVal, reqData);
+
+    if (!updated) {
         throw {
-            status: error.status || 500,
-            message: error.message
+            status: 404,
+            message: `Order not found for ID: '${keyVal._id}'`
         }
     }
 
-    for (const order of createdOrders) {
-        await Notify.vendor(order.vendorId, {
-            title: 'New Order Received',
-            message: `You have received a new order #${order._id}.`,
-            type: 'order'
-        });
-    }
-
-    return { status: 201, message: 'Order created successfully', data: createdOrders, success: true }
+    return success({ message: 'Order updated successfully', data: updated });
 }
 
-// ------------------------------------UPDATE ORDER SERVICE---------------------------------------------|
-export const CancelOrder = async (options = {}) => {
+export const CancelOrder = async (keyVal) => {
 
     let freshOrder = null;
     const session = await mongoose.startSession();
@@ -375,24 +338,22 @@ export const CancelOrder = async (options = {}) => {
 
     try {
 
-        const { orderId, userId } = options;
-
         // Get Order
-        const order = await Order.findOne({ _id: orderId, userId })
+        const order = await Order.findOne(keyVal)
             .populate({ path: 'items.productId' })
             .session(session);
 
         if (!order) {
             throw {
                 status: 404,
-                message: `Data not found for ID: '${orderId}'`
+                message: `Data not found for ID: '${keyVal._id}'`
             }
         }
 
         if (order.status === 'cancelled') {
             throw {
                 status: 409,
-                message: `Order already cancelled for ID: '${orderId}'`
+                message: `Order already cancelled for ID: '${keyVal._id}'`
             }
         }
 
@@ -409,42 +370,132 @@ export const CancelOrder = async (options = {}) => {
 
             await Product.findByIdAndUpdate(productId, {
                 $inc: { stock: item.quantity, sales: -item.quantity }
-            }, { session });
+            }, { new: true, runValidators: true, session });
         }
 
         // Update order status
-        await Order.updateOne({ _id: orderId }, { status: "cancelled" }, { session });
+        await Order.updateOne(keyVal, { status: "cancelled" }, { runValidators: true, session });
 
         await session.commitTransaction();
         session.endSession();
 
-        freshOrder = await Order.findById(orderId).select('vendorId').lean();
+        freshOrder = await Order.findOne(keyVal).select('vendorId').lean();
 
-    } catch (error) {
-
-        await session.abortTransaction();
-        session.endSession();
-
-        throw {
-            status: error.status ?? 500,
-            message: error.message || 'Order cancellation failed'
-        }
-    }
-
-    try {
-        await Notify.vendor({
+        await Notify.vendor(freshOrder.vendorId, {
             title: 'Order Cancelled',
             message: `Order #${freshOrder._id} has been cancelled.`,
             type: 'order'
-        })
+        });
 
-    } catch (NotifyError) {
-        console.log("Notification failed:", NotifyError.message);
+        return success({
+            message: 'Order cancelled successfully',
+            data: {
+                _id: freshOrder._id,
+                userId: keyVal.userId
+            }
+        });
+
+    } catch (error) {
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
+
+        throw error;
+    } finally {
+        session.endSession();
     }
-
-    return { status: 200, message: 'Order cancelled successfully', success: true };
 }
 
+// DELETE----------------------|
+export const DeleteOrder = async (keyVal) => {
+    const deleted = await Order.findOneAndDelete(keyVal);
+
+    if (!deleted) {
+        throw {
+            status: 400,
+            message: `Order not found ID: ${keyVal._id}`
+        }
+    }
+
+    return success({ message: "Order deleted successfully.", data: deleted });
+}
+
+export const ClearOrders = async () => {
+
+    const result = await Order.deleteMany({});
+
+    if(result.deletedCount === 0) {
+        throw {
+            status: 404,
+            message: "Order not found for delete"
+        }
+    }
+    
+    return success({
+        message: `All orders cleared successfully`,
+        data: `${result.deletedCount} deleted`
+    });
+}
+
+// WORKING UNDER PROCESS
+export const ExchangeOrder = async (keyVal, reqData) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+
+        const order = await Order.findOne(keyVal)
+            .populate({ path: 'items.productId', select: 'stock' })
+            .session(session);
+
+        if (!order) {
+            throw {
+                status: 404,
+                message: `Order not found for ID: '${keyVal._id}'`
+            }
+        }
+
+        if (order.status !== 'delivered') {
+            throw {
+                status: 404,
+                message: 'Only delivered orders can be exchanged'
+            }
+        }
+
+        for (const item of order.items) {
+            await Product.findOneAndUpdate({ _id: item.productId._id },
+                { $inc: { stock: +item.quantity } }, { new: true, runValidators: true, session });
+        }
+
+        const updated = await Product.findOneAndUpdate({ _id: reqData.newProductId },
+            { $inc: { stock: -order.items[0].quantity } },
+            { new: true, runValidators: true, session });
+
+        if (!updated) {
+            throw {
+                status: 400,
+                message: 'New product out of stock'
+            }
+        }
+
+        const newProduct = await Order.findOneAndUpdate(keyVal,
+            { status: 'exchanged', items: updated }, { session });
+
+        await session.commitTransaction();
+        session.endSession();
+
+        return success({
+            message: `Order exchanged successfully`,
+            data: newProduct
+        });
+
+    } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
+
+        throw error
+    }
+}
 export const ReturnOrder = async (options = {}) => {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -489,108 +540,4 @@ export const ReturnOrder = async (options = {}) => {
 
         throw { status: 500, message: error.message }
     }
-}
-
-export const ExchangeOrder = async (options = {}) => {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
-    try {
-
-        const { orderId, userId, newProductId } = options;
-
-        const order = await Order.findOne({ _id: orderId, userId })
-            .populate({ path: 'items.productId', select: 'stock' })
-            .session(session);
-
-        if (!order) {
-            throw {
-                status: 404,
-                message: `Order not found for orderID: '${orderId}'`
-            }
-        }
-
-        if (order.status !== 'delivered') {
-            throw {
-                status: 404,
-                message: 'Only delivered orders can be exchanged'
-            }
-        }
-
-        for (const item of order.items) {
-            await Product.findByIdAndUpdate(item.productId._id, {
-                $inc: { stock: +item.quantity }
-            }, { session });
-        }
-
-        const newProduct = await Product.findByIdAndUpdate({
-            _id: newProductId,
-            stock: { $gte: order.items[0].quantity }
-        },
-            {
-                $inc: { stock: -order.items[0].quantity }
-            },
-            {
-                new: true, session
-            });
-
-        if (!newProduct) {
-            throw {
-                status: 400,
-                message: 'New product out of stock'
-            }
-        }
-
-        await Order.findByIdAndUpdate(orderId, {
-            status: 'exchanged',
-            exchangedProduct: newProduct
-        }, { session });
-
-        await session.commitTransaction();
-        session.endSession();
-
-        return { status: 200, message: `Order exchanged successfully`, success: true };
-
-    } catch (error) {
-        await session.abortTransaction();
-        session.endSession();
-
-        throw {
-            status: 500,
-            message: error.message || 'Order cancellation failed'
-        }
-    }
-}
-
-export const UpdateOrder = async (options = {}) => {
-
-    const { orderData = {}, orderId } = options;
-
-    const updatedOrdered = await Order.findByIdAndUpdate(orderId, orderData);
-
-    if (!updatedOrdered) {
-        throw {
-            status: 404,
-            message: `Order not found for orderID: '${orderId}'`
-        }
-    }
-
-    return { status: 200, message: 'Order updated successfully', data: updatedOrdered, success: true };
-}
-
-export const DownloadReciept = async (options = {}, res) => {
-    const { orderId, userId } = options;
-
-    const order = await Order.findOne({ _id: orderId, userId })
-        .populate('items.productId', 'name')
-        .lean();
-
-    if (!order) {
-        throw {
-            status: 404,
-            message: `Order not found for orderID: '${orderId}'`
-        }
-    }
-
-    GenerateReceiptPDF(order, res);
 }

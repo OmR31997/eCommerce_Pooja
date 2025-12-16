@@ -6,19 +6,16 @@ import { User } from '../customer/user.model.js';
 import { DeleteLocalFile_H, } from '../../utils/fileHelper.js';
 import { ToDeleteFromCloudStorage_H } from '../../utils/cloudUpload.js';
 import { Notify } from '../notification/notification.service.js';
-import { BuildQuery_H, Pagination_H, ToDeleteFilesParallel_H, ToDeleteSelectedFiles_H, UploadFilesWithRollBack_H, UploadImageWithRollBack_H } from '../../utils/helper.js';
+import { BuildQuery_H, FindVendorFail_H, Pagination_H, success, ToDeleteFilesParallel_H, ToDeleteSelectedFiles_H, UploadFilesWithRollBack_H, UploadImageWithRollBack_H } from '../../utils/helper.js';
 
-export const GetVendor = async (vendorId) => {
-    const vendor = await Vendor.findById(vendorId);
+export const GetVendorById = async (keyVal) => {
 
-    if (!vendor) {
-        throw {
-            status: 404,
-            message: `Account not found for ID: ${vendorId}`
-        }
-    }
+    const vendor = await FindVendorFail_H(keyVal);
 
-    return { status: 200, message: 'Vendor account fetched successfully.', data: vendor, success: false };
+    return success({
+        message: 'Vendor account fetched successfully.',
+        data: vendor
+    });
 }
 
 export const GetVendors = async (options) => {
@@ -44,17 +41,14 @@ export const GetVendors = async (options) => {
 
     delete pagination.skip;
 
-    return {
-        status: 200,
-        success: true,
+    return success({
         message: 'Data fetched successfully',
-        count: total,
+        data: vendors || [],
         pagination,
-        data: vendors || []
-    }
+    });
 }
 
-export const UpdateVendor = async (keyVal={}, reqData={}, filePayload={}) => {
+export const UpdateVendor = async (keyVal, reqData, filePayload = {}) => {
 
     const { removeDocPaths, ...rest } = reqData;
     const { logoFile, documents } = filePayload;
@@ -66,31 +60,23 @@ export const UpdateVendor = async (keyVal={}, reqData={}, filePayload={}) => {
 
     let updateOps = { $set: {}, $push: {}, $pull: {} };
 
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
 
-        const vendor = await Vendor.findOne(keyVal).select("documents logoUrl").lean();
+        const vendor = await FindVendorFail_H(keyVal, "documents logoUrl");
 
-        if (!vendor) {
-            throw {
-                status: 404,
-                message: `Vendor account not found for ID: ${keyVal?.id || keyVal?.businessEmail}`
-            }
-        }
         if (logoFile) {
+
+            // Only upload logo
             uploaded.logoUrl = await UploadImageWithRollBack_H(logoFile, "eCommerce/logoUrls");
-
-            if (ENV.IS_PROD && vendor?.logoUrl?.public_id) {
-                await ToDeleteFromCloudStorage_H(vendor.logoUrl.public_id)
-            }
-
-            if (!ENV.IS_PROD && vendor?.logoUrl?.secure_url) {
-                await DeleteLocalFile_H(vendor.logoUrl.secure_url)
-            }
 
             updateOps.$set.logoUrl = uploaded.logoUrl
         }
 
         if (documents?.length > 0) {
+
             // Only upload documents
             uploaded.documents = await UploadFilesWithRollBack_H(documents, "eCommerce/documents");
 
@@ -124,11 +110,19 @@ export const UpdateVendor = async (keyVal={}, reqData={}, filePayload={}) => {
         if (Object.keys(updateOps.$set).length === 0) delete updateOps.$set;
 
         // Final Update
-        const updated = await Vendor.findOneAndUpdate(keyVal, updateOps, { new: true, runValidators: true });
+        const updated = await Vendor.findOneAndUpdate(
+            keyVal,
+            updateOps,
+            { new: true, runValidators: true }
+        );
 
         return { status: 200, message: 'Vendor profile updated successfully', data: updated, success: true };
 
     } catch (error) {
+
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
 
         // ROLLBACK
 
@@ -156,83 +150,105 @@ export const UpdateVendor = async (keyVal={}, reqData={}, filePayload={}) => {
             }
         }
 
-        throw {
-            status: error.status || 500,
-            message: error.message || "Internal Server Error"
-        };
+        throw error;
+    } finally {
+        session.endSession();
     }
 }
 
 export const RemoveVendor = async (keyVal) => {
 
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
-        // Fetch vendor
-        const vendor = await Vendor.findOne(keyVal).lean();
-        if (!vendor) {
-            throw {
-                status: 404,
-                message: `Vendor account not found for '${keyVal?._id || keyVal?.businessEmail}'`,
-            }
-        }
+        // Step 1: Fetch vendor WITH session
+        const vendor = await FindVendorFail_H(
+            keyVal,
+            "userId role logoUrl documents",
+            session
+        );
 
-        // Remove vendor role from User
+        // Step 2: Remove vendor role from User
         if (vendor.userId && vendor.role) {
-            await User.findByIdAndUpdate(vendor.userId, { $pull: { roles: vendor.role } });
+            await User.findByIdAndUpdate(
+                vendor.userId,
+                { $pull: { roles: vendor.role } },
+                { session });
         }
 
-        // Delete Logo & Documents (if exists)
+        // Step 3: Collect Logo & Documents paths (if exists)
         const filesToDelete = [];
         if (vendor.logoUrl) filesToDelete.push(vendor.logoUrl);
-        if (vendor.documents) filesToDelete.push(...vendor.documents);   //Spread all documents
 
+        if (Array.isArray(vendor.documents)) {
+            filesToDelete.push(...vendor.documents);   //Spread all documents
+        }
+
+
+        // Step 4: Delete vendor record WITH session
+        const deleted = await Vendor.findOneAndDelete(keyVal, { session });
+
+        // Step 5: Commit transaction
+        await session.commitTransaction()
+
+        // Step 6: External side-effects AFTER commit
         if (filesToDelete.length > 0) {
             await ToDeleteFilesParallel_H(filesToDelete);
         }
 
-        // Delete vendor record
-        const deleted = await Vendor.findOneAndDelete(keyVal);
-
+        // Step 7: Notify to heads
         if (deleted) {
-            await Notify.super({
+            await Notify.admin({
                 title: 'Vendor Delete',
                 message: `Vendor who has ID: ${deleted._id} deleted by admin`,
                 type: 'delete'
             });
         }
 
-        return {
-            status: 200,
+        return success({
             message: 'Vendor deleted successfully',
-            data: deleted,
-            success: true,
-        };
+            data: deleted
+        });
+
     } catch (error) {
-        throw {
-            status: error.status || 500,
-            message: error.message || "Internal Server Error"
-        };
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
+
+        throw error;
+    } finally {
+        session.endSession();
     }
 }
 
 export const RemoveAllVendors = async () => {
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
-        const vendors = await Vendor.find().populate('role').lean();
+
+        // Step 1: Fetch vendors WITH session
+        const vendors = await Vendor.find()
+            .select("_id userId role logoUrl documents")
+            .session(session)
+            .lean();
 
         if (vendors.length === 0) {
-            return {
-                status: 400,
-                error: 'No vendor found to delete',
-                success: false,
-            };
+            throw {
+                status: 404,
+                message: "Vendor not found for deleted"
+            }
         }
 
         const filesToDelete = [];
         const roleRemovals = [];
 
+        // Step 2: Collect roleId & Logo & Documents paths from vendor (if exists)
         for (const vendor of vendors) {
             if (vendor.userId && vendor.role) {
 
-                // Collect role for update to user
                 roleRemovals.push({
                     updateOne: {
                         filter: { _id: vendor.userId },
@@ -243,39 +259,50 @@ export const RemoveAllVendors = async () => {
 
             // Collect logo & document files
             if (vendor.logoUrl) filesToDelete.push(vendor.logoUrl);
-            if (vendor.documents) filesToDelete.push(...vendor.documents);
+
+            if (Array.isArray(vendor.documents)) {
+                filesToDelete.push(...vendor.documents);
+            }
         }
 
-        // Apply role removal updates in bulk if any
+        // Step 2: Apply role removal updates in bulk if any
         if (roleRemovals.length > 0) {
-            await User.bulkWrite(roleRemovals);
+            await User.bulkWrite(roleRemovals, { session });
         }
 
-        // Delete files (logo & document from cloud)
+        // Step 4: Delete vendor record WITH session
+        const deleted = await Vendor.deleteMany({}, { session });
+
+        // Step 5: Commit transaction
+        await session.commitTransaction();
+
+        // Step 6: External side-effects AFTER commit (Delete files (logo & document from cloud))
         if (filesToDelete.length > 0) {
             await ToDeleteFilesParallel_H(filesToDelete);
         }
 
-        const deleted = await Vendor.deleteMany({});
-
+        // Step 7: Notify to heads
         if (deleted.deletedCount > 0) {
-            await Notify.super({
+            await Notify.admin({
                 title: "Vendor Cleared",
                 message: `Deleted ${deleted.deletedCount} vendors`,
                 type: "Delete"
             });
         }
 
-        return {
-            status: 200,
-            message: `All vendors cleared successfully (${deleted.deletedCount} deleted)`,
-            success: true,
-        };
+        return success({
+            message: `All vendor cleared successfully.`,
+            data: { deletedCount: deleted.deletedCount }
+        });
+
     } catch (error) {
-        throw {
-            status: error.status || 500,
-            message: error.message || "Internal Server Error"
-        };
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
+
+        throw error;
+    } finally {
+        session.endSession();
     }
 }
 

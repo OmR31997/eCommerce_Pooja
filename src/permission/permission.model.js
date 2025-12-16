@@ -15,6 +15,7 @@ const PermissionSchema = new mongoose.Schema({
     required: [true, `'name' field must be required (e.g., 'manage_products', 'manage_users')`],
     unique: true,
     trim: true,
+    lowercase: true
   },
   modules: {
     type: [String],
@@ -24,6 +25,7 @@ const PermissionSchema = new mongoose.Schema({
       'Order', 'Discount', 'Account', 'Payment'
     ],
     required: [true, `'module' field must be required (e.g., 'Product', 'Order', etc)`],
+    validate: [arr => arr.length > 0, "'modules' must have at least one module"]
   },
   description: {
     type: String,
@@ -31,7 +33,7 @@ const PermissionSchema = new mongoose.Schema({
   },
   actions: {
     type: ActionSchema,
-    default: {},
+    default: () => ({}),  // ensures ActionSchema defaults apply
   },
 }, { timestamps: true });
 

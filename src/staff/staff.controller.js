@@ -1,225 +1,190 @@
 import { Pagination_H } from '../../utils/helper.js';
 import { Staff } from './staff.model.js';
-import { CreateStaff, UpdateStaff } from './staff.service.js';
+import { ClearStaff, CreateStaff, DeleteStaff, GetStaffByID, GetStaffs, UpdateStaff } from './staff.service.js';
 
-export const get_me = async (req, res) => {
-    const staffId = req.user.id;
+// READ------------------------------------|
+export const get_me = async (req, res, next) => {
 
-    const staff = await Staff.findById(staffId);
-
-    if (!staff) {
-        return res.status(404).json({
-            error: 'Data not found',
-            success: false,
-        });
-    }
-
-    return res.status(200).json({
-        message: 'Data fetched successfully',
-        data: staff,
-        success: true,
-    })
-}
-
-export const create_staff = async (req, res) => {
-    const { role: m_role } = req.user;
-
-    const {
-        name, email, phone, password,
-        role, permissions, isActive,
-    } = req.body;
-
-    const staffData = {
-        name: name || undefined,
-        email: email || undefined,
-        password: password || undefined,
-        phone: phone || undefined,
-    }
-
-    if (m_role === 'super_admin' || m_role === 'admin') {
-
-        const { status, error, errors, success, message, data } = await CreateStaff(staffData);
-
-        if (!success) {
-            return res.status(status).json({ errors, error, message, })
-        }
-
-        return res.status(status).json({ message, data, success });
-    }
-
-    return res.status(403).json({
-        success: false,
-        message: 'Unauthorized: only super_admin or admin can create staff',
-    });
-}
-
-export const read_staffs = async (req, res) => {
     try {
-        const {
-            page = 1, limit = 10, offset,
-            sortBy = 'createdAt', orderSequence = 'desc' } = req.query;
-
-        const parsedLimit = parseInt(limit);
-
-        // Count total records
-        const total = await Staff.countDocuments();
-
-        const { skip, nextUrl, prevUrl, totalPages, currentPage } = Pagination_H(
-            parseInt(page),
-            parsedLimit,
-            offset,
-            total,
-            `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`, {});
-
-        const sortField = ['name', 'email', 'createdAt'].includes(sortBy) ? sortBy : 'createdAt';
-        const sortDirection = orderSequence === 'asc' ? 1 : -1;
-        const sortOption = { [sortField]: sortDirection };
-
-        const staffs = await Staff.find()
-            .skip(skip)
-            .limit(parsedLimit)
-            .sort(sortOption);
-
-        if (staffs.length === 0) {
-            return res.status(404).json({
-                error: 'Staff not found',
-                success: false,
-            });
+        const keyVal = {
+            _id: req.user.id
         }
 
-        return res.status(200).json({
-            message: 'Staff fetched successfully.',
-            pagination: {
-                count: total,
-                prevUrl,
-                nextUrl,
-                currentPage,
-                totalPages,
-                success: true,
-            },
-            data: staffs,
-        });
+        const response = await GetStaffByID(keyVal);
 
-    } catch (error) {
-        console.log(`Errorr in 'ReadStaff'`, error.message);
-        return { status: 500, success: false, error: 'Internal Server Error' };
-    }
-}
+        return res.status(200).json(response);
 
-export const read_staff_byId = async (req, res) => {
-    try {
-        const staffId = req.params.id;
-        const { id, role } = req.user;
-
-        if (role === 'staff' && staffId !== id) {
-            return res.status(400).json({
-                error: 'You can access only own data',
-                success: false,
-            });
-        }
-
-        const staff = await Staff(staffId);
-
-        if (!deletedStaff) {
-            return res.status(404).json({
-                error: 'Staff not found to delete',
-                success: false,
-            });
-        }
-
-        return res.status(user.status).json({
-            data: staff,
-            success: user.success,
-        });
-
-    } catch (error) {
-        console.log(`Errorr in 'read_staff'`, error.message);
-        return { status: 500, success: false, error: 'Internal Server Error' };
-    }
-}
-
-export const update_staff = async (req, res) => {
-    const staffId = req.params.id;
-    const { id, role: m_role } = req.user;
-
-    const {
-        name, email, phone,
-        role, permissions, isActive,
-    } = req.body;
-
-    const staffData = {
-        name: name || undefined,
-        email: email || undefined,
-        phone: phone || undefined,
-        role: role || undefined,
-        permissions: permissions ? Array.isArray(permissions) ? permissions : [permissions] : undefined,
-        isActive: typeof isActive === 'string' ? isActive.toLowerCase() === 'true' : Boolean(false),
-    }
-
-    if (m_role === 'staff') {
-        if (staffId !== id) return res.status(409).json({ message: 'Staff can update only own profile', data: staff, success: true });
-        staffData.isActive = delete staffData.isActive;
-    }
-
-    const { status, error, errors, success, message, data } = await UpdateStaff(staffData, staffId);
-
-    if (!success) {
-        return res.status(status).json({ errors, error, message })
-    }
-
-    return res.status(status).json({ message, data, success });
-}
-
-export const remove_staff = async (req, res, next) => {
-    try {
-        const staffId = req.params.id;
-        const { id, role } = req.user;
-
-        if (role === 'staff') {
-            if (id !== staffId)
-                return res.status(409).json({ error: `You can delete own profile only`, success: false });
-
-            await Staff.findByIdAndUpdate(staffId, { isActive: false });
-        }
-
-        const deletedStaff = await Staff.findByIdAndDelete(staffId);
-
-        if (!deletedStaff) {
-            return res.status(404).json({
-                error: 'Staff not found to delete',
-                success: false,
-            });
-        }
-
-        return res.status(200).json({
-            message: 'Staff deleted successfully',
-            success: true,
-        })
     } catch (error) {
         next(error);
     }
 }
 
-export const clear_staff = async (req, res) => {
-    try {
-        const result = await Staff.deleteMany();
+export const get_staff_by_id = async (req, res, next) => {
 
-        if (result.deletedCount === 0) {
-            return res.status(404).json({
-                error: 'No users found to delete',
-                success: false,
-            });
+    try {
+        const keyVal = {
+            _id: req.params.id
         }
 
-        return res.status(200).json({
-            message: `All user cleared successfully (${result.deletedCount} deleted)`,
-            success: true,
-        });
+        const response = await GetStaffByID(keyVal);
+
+        return res.status(200).json(response);
+
     } catch (error) {
-        return res.status(500).json({
-            error: error.message,
-            message: 'Internal Server Error',
-            success: false,
-        });
+        next(error);
+    }
+}
+
+export const get_staffs = async (req, res, next) => {
+    try {
+
+        const {
+            page = 1, limit = 10,
+            search,
+            sortBy = '-createdAt', orderSequence = '-1'
+        } = req.query;
+
+        const options = {
+            baseUrl: `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`,
+
+            pagingReq: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                sortBy, orderSequence
+            },
+
+            filter: {
+                search
+            },
+        }
+
+        const response = await GetStaffs(options);
+
+        return res.status(200).json(response);
+
+    } catch (error) {
+        next(error);
+    }
+}
+
+// CREATE----------------------------------|
+export const create_staff = async (req, res, next) => {
+    try {
+        const {
+            name, staffEmail, staffphone, password,
+            permissionName,
+        } = req.body;
+
+        if (!["admin", "super_admin"].includes(req.user.role)) {
+            throw {
+                status: 401,
+                message: "Unauthorized: You don't have permission to create staff",
+            }
+        }
+
+        const reqData = {
+            name,
+            staffEmail,
+            staffphone,
+            password, permissionName
+        }
+
+        const isValidToCreate = Object.values(reqData).some(val => val === undefined);
+
+        if (isValidToCreate) {
+
+            throw {
+                status: 400,
+                message: `${Object.keys(reqData).slice(0, -1).join(', ')}, and ` +
+                    `${Object.keys(reqData).slice(-1)} fields must be provided to create staff!`
+            }
+        }
+
+        const response = await CreateStaff(reqData);
+
+        return res.status(201).json(response);
+
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const update_staff = async (req, res, next) => {
+    try {
+
+        const {
+            name, staffEmail, staffPhone,
+            permissionName,
+        } = req.body;
+
+        const keyVal = {
+            _id: req.params.id
+        }
+
+        const reqData = {
+            name,
+            staffEmail, staffPhone,
+            permissionName
+        }
+
+        const isValidToUpdate = Object.values(reqData).some(val => val !== undefined);
+
+        if (!isValidToUpdate) {
+
+            throw {
+                status: 400,
+                message: `Either ${Object.keys(reqData).slice(0, -1).join(', ')}, or ` +
+                    `${Object.keys(reqData).slice(-1)} fields must be provided to update staff!`
+            }
+        }
+
+        const response = await UpdateStaff(keyVal, reqData);
+
+        return res.status(200).json(response);
+
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const remove_staff = async (req, res, next) => {
+    try {
+
+        if (!["admin", "super_admin"].includes(req.user.role)) {
+            throw {
+                status: 401,
+                message: "Unauthorized: You don't have permission to create staff",
+            }
+        }
+
+        const keyVal = {
+            _id: req.params.id
+        }
+
+        const response = await DeleteStaff(keyVal);
+
+        return res.status(200).json(response);
+
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const clear_staff = async (req, res, next) => {
+    try {
+        
+        if (req.user.role !== "super_admin") {
+            throw {
+                status: 401,
+                message: "Unauthorized: You don't have permission to create staff",
+            }
+        }
+
+        const response = await ClearStaff();
+
+        return res.status(200).json(response);
+
+    } catch (error) {
+        next(error);
     }
 }

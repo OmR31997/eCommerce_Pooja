@@ -1,39 +1,72 @@
-import { CancelOrder, CreateOrderBeforePayment, ExchangeOrder, GetOrderById, GetOrders, ReturnOrder } from "./order.service.js";
-import { GenerateReceiptPDF } from '../../utils/generateReceipt.js';
-import { ErrorHandle_H } from "../../utils/helper.js";
+import { CancelOrder, ClearOrders, CreateOrderBeforePayment, DeleteOrder, ExchangeOrder, GetOrderById, GetOrders, ReturnOrder, UpdateOrder } from "./order.service.js";
+import { GenerateReceiptPDF_H } from '../../utils/generateReceipt.js';
 
-// READ ORDER CONTROLLERS-------------------------|
-export const get_orders = async (req, res) => {
+//Generate
+export const download_reciept = async (req, res, next) => {
+    try {
+        const userId = req.query.userId;
+
+        if (userId && req.role === 'user' && req.user.id !== userId) {
+            throw {
+                status: 401,
+                message: `Unauthorized: You don't have permission to get reciept`
+            }
+        }
+
+        const keyVal = {
+            _id: req.params.orderId,
+            userId: req.user.role === 'user' ? req.user.id : userId
+        }
+
+        const { data: order } = await GetOrderById(keyVal);
+
+        await GenerateReceiptPDF_H(order, res);
+    } catch (error) {
+        next(error);
+    }
+}
+
+// READ-------------------------|
+export const get_orders = async (req, res, next) => {
     try {
         const {
-            page = 1, limit = 10, offset,
-            search, userIds, vendorIds,
+            page = 1, limit = 10,
+            search, productIds,
             paymentMethod, paymentStatus, status,
             sortBy = 'createdAt', orderSequence = 'desc'
         } = req.query;
 
-        if (req.user.role === 'user') {
-            throw {
-                status: 405,
-                message: `Method Not Allowed`
-            }
+        const keyVal = {
+            ...(req.user.role === "user"
+                ? { userId: req.user.id }
+                : (req.user.role === "vendor")
+                    ? { vendorId: req.user.id }
+                    : {}
+            )
+        }
+
+        let roleFilter = {};
+        if (keyVal?.userId) {
+            roleFilter.vendorIds = req.query.vendorIds;
+        } else if (keyVal?.vendorId) {
+            roleFilter.userIds = req.query.userIds;
+        } else {
+            roleFilter = { vendorIds: req.query.vendorIds, userIds: req.query.userIds }
         }
 
         const options = {
             pagingReq: {
                 page: parseInt(page),
                 limit: parseInt(limit),
-                offset,
                 sortBy, orderSequence
             },
 
             baseUrl: `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`,
 
             filter: {
-                search,
-                userIds, vendorIds,
-                status, paymentStatus,
-                paymentMethod
+                ...roleFilter,
+                search, productIds,
+                paymentMethod, paymentStatus, status,
             },
 
             populates: {
@@ -44,52 +77,49 @@ export const get_orders = async (req, res) => {
 
         }
 
-        const { status: statusCode, message, pagination, success, data, } = await GetOrders(options);
+        const response = await GetOrders(keyVal, options);
 
-        return res.status(statusCode).json({ message, pagination, success, data, });
+        return res.status(200).json(response);
 
     } catch (error) {
-        return res.status(error.status || 500).json({
-            success: false,
-            error: error.message || `Internal Server Error ${error}`
-        });
+        next(error);
     }
 }
 
-export const get_order_by_orderId = async (req, res) => {
+export const get_order_by_id = async (req, res, next) => {
+
     try {
-
         const keyVal = {
-            _id: req.params.orderId,
-            ...(["admin", "super_admin", "staff"].includes(req.user.role)
-                ? { main: true }
-                : req.user.role === "vendor"
+            ...(req.user.role === "user"
+                ? { userId: req.user.id }
+                : (req.user.role === "vendor")
                     ? { vendorId: req.user.id }
-                    : { userId: req.user.id })
+                    : {}
+            )
         }
-        
-        const { status, message, data, success } = await GetOrderById(keyVal);
 
-        return res.status(status).json({ message, data, success });
+        keyVal._id = req.params.orderId;
+
+        const response = await GetOrderById(keyVal);
+
+        return res.status(200).json(response);
 
     } catch (error) {
-        if (error.status) {
-            return res.status(error.status).json({ success: false, error: error.message });
-        }
-
-        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+        next(error);
     }
 }
 
-// CREATE ORDER CONTROLLER------------------------|
+// CREATE-----------------------| 
 export const checkout_before_payment = async (req, res, next) => {
 
     try {
 
+        const userId = req.query.userId;
+
         const {
             shippingTo, phone, postalCode,
             addressLine, city, state,
-            userId } = req.body;
+        } = req.body;
 
         if (userId && req.user.role === 'user' && userId !== req.user.id) {
             throw {
@@ -98,18 +128,20 @@ export const checkout_before_payment = async (req, res, next) => {
             }
         }
 
-        const orderData = {
+        const reqData = {
             userId: req.user.role === 'user' ? req.user.id : userId,
             shippingAddress: {
                 name: shippingTo,
                 phone, addressLine, city, state,
                 postalCode
-            }, paymentMethod:"COD", paymentStatus: "pending"
+            },
+            paymentMethod: "COD",
+            paymentStatus: "pending"
         }
 
-        const { status, success, message, data, count } = await CreateOrderBeforePayment(orderData);
+        const response = await CreateOrderBeforePayment(reqData);
 
-        return res.status(status).json({ message, data, created: count, success });
+        return res.status(201).json(response);
 
     } catch (error) {
 
@@ -117,8 +149,134 @@ export const checkout_before_payment = async (req, res, next) => {
     }
 }
 
-// UPDATE ORDER CONTROLLER------------------------|
-export const exchange_order = async (req, res) => {
+// UPDATE-----------------------| 
+export const update_order = async (req, res, next) => {
+    try {
+
+        const {
+            userId,
+            shippingTo, phone, postalCode,
+            paymentStatus,
+            addressLine, city, state,
+            trackingId
+        } = req.body;
+
+        if (req.user.role === "user") {
+            throw {
+                status: 401,
+                message: "Unauthorized: You don't have permission to update order"
+            }
+        }
+
+        const keyVal = {
+            _id: req.params.orderId,
+            userId
+        }
+
+        const reqData = {
+            shippingAddress: {
+                name: shippingTo,
+                phone, addressLine, city, state,
+                postalCode
+            },
+            trackingId,
+            paymentStatus
+        }
+
+        const isValidToUpdate = Object.values(reqData.shippingAddress).some(val => val !== undefined);
+
+        if (!isValidToUpdate) {
+            delete reqData.shippingAddress;
+        }
+
+        if (!reqData.shippingAddress && !trackingId && !paymentStatus) {
+            throw {
+                status: 400,
+                message: `paymentStatus, trackingId, ${Object.keys(reqData.shippingAddress).slice(0, -1).join(', ')}, or ` +
+                    `${Object.keys(reqData.shippingAddress).slice(-1)} field must be provided to update permissions!`
+            }
+        }
+
+        const response = await UpdateOrder(keyVal, reqData);
+
+        return res.status(200).json(response);
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const cancel_order = async (req, res, next) => {
+    try {
+
+        const userId = req.query.userId;
+
+        if (userId && req.user.role === 'user' && req.user.id !== userId) {
+            throw {
+                status: 401,
+                message: `Unauthorized: You don't have permission`
+            }
+        }
+
+        const keyVal = {
+            _id: req.params.orderId,
+            userId: req.user.role === 'user' ? req.user.id : userId,
+        }
+
+        const response = await CancelOrder(keyVal);
+
+        return res.status(200).json(response);
+
+    } catch (error) {
+
+        next(error);
+    }
+}
+
+// DELETE-----------------------|
+export const delete_order = async (req, res, next) => {
+    try {
+
+        if (req.user.role === 'user') {
+            throw {
+                status: 401,
+                message: `Unauthorized: You don't have permission`
+            }
+        }
+
+        const keyVal = {
+            _id: req.params.orderId,
+        }
+
+        const response = await DeleteOrder(keyVal);
+
+        return res.status(200).json(response);
+
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const clear_orders = async (req, res, next) => {
+    try {
+
+        if (req.user.role !== 'super_admin') {
+            throw {
+                status: 405,
+                message: "Method Not Allowed"
+            }
+        }
+
+        const response = await ClearOrders();
+
+        return res.status(200).json(response);
+
+    } catch (error) {
+        next(error);
+    }
+}
+
+// ||UNDER PROCEES||
+export const exchange_order = async (req, res, next) => {
     try {
         const userId = req.query.userId;
 
@@ -129,26 +287,27 @@ export const exchange_order = async (req, res) => {
             }
         }
 
-        const options = {
+        const keyVal = {
+            _id: req.params.orderId,
             userId: req.user.role === 'user' ? req.user.id : userId,
-            orderId: req.params.orderId,
+        }
+
+        const reqData = {
             newProductId: req.params.pId
         }
 
-        const { status, success, message } = await ExchangeOrder(options);
+        const response = await ExchangeOrder(keyVal, reqData);
 
-        return res.status(status).json({ message, success });
+        return res.status(200).json(response);
 
     } catch (error) {
 
-        return res.status(error.status || 500).json({
-            success: false,
-            error: error.message || `Internal Server Error ${error}`
-        });
+        next(error)
     }
 }
 
-export const return_order = async (req, res) => {
+// ||UNDER PROCESS||
+export const return_order = async (req, res, next) => {
     try {
         const userId = req.query.userId;
 
@@ -167,81 +326,6 @@ export const return_order = async (req, res) => {
         const { status, success, message } = await ReturnOrder(options);
 
         return res.status(status).json({ message, success });
-    } catch (error) {
-
-        return res.status(error.status || 500).json({
-            success: false,
-            error: error.message || `Internal Server Error ${error}`
-        });
-    }
-}
-
-
-// DELETE ORDER CONTROLLER------------------------|
-export const cancel_order = async (req, res) => {
-    try {
-
-        const userId = req.query.userId;
-
-        if (userId && req.user.role === 'user' && req.user.id !== userId) {
-            throw {
-                status: 401,
-                message: `Unauthorized: You don't have permission`
-            }
-        }
-
-        const options = {
-            userId: req.user.role === 'user' ? req.user.id : userId,
-            orderId: req.params.orderId
-        }
-
-        const { status, success, message } = await CancelOrder(options);
-
-        return res.status(status).json({ message, success });
-
-    } catch (error) {
-
-        return res.status(error.status || 500).json({
-            success: false,
-            error: error.message || `Internal Server Error ${error}`
-        });
-    }
-}
-
-//-------------------------------------RECIEPT GENRATE CONTROLLER--------------------------------------|
-export const download_reciept = async (req, res, next) => {
-    try {
-        const userId = req.query.userId;
-
-        if (userId && req.role === 'user' && req.user.id !== userId) {
-            throw {
-                status: 401,
-                message: `Unauthorized: You don't have permission to get reciept`
-            }
-        }
-
-        const keyVal = {
-            userId: req.user.role === 'user' ? req.user.id : userId,
-            _id: req.params.orderId
-        }
-
-        const options = {
-            populates: {
-                vendor: { path: 'vendorId', select: 'businessName' },
-                product: { path: 'items.productId', select: 'name quantity price subtotal totalAmount' },
-            },
-        }
-
-        const { data: order } = await GetOrderById(keyVal);
-
-        if (!order.items.length === 0) {
-            throw {
-                status: 404,
-                message: 'Item not found'
-            }
-        }
-
-        await GenerateReceiptPDF(order, res);
     } catch (error) {
         next(error);
     }

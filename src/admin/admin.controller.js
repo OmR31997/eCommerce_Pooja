@@ -1,7 +1,67 @@
-import { CreateAdmin, DeleteAdmin, UpdateAdmin, ManageProduct, ManageStaff, ManageUser, ManageVendor, GetAdmin, ManageRefund } from "./admin.service.js";
-import { ErrorHandle_H } from "../../utils/helper.js";
+import { CreateAdmin, DeleteAdmin, UpdateAdmin, ManageProduct, ManageStaff, ManageUser, ManageVendor, ManageRefund, GetAdmins, GetAdminById } from "./admin.service.js";
 
-// CREATE CONTROLLERS---------------------------|
+// READ-----------------------------|
+export const get_admins = async (req, res, next) => {
+    try {
+
+        if (req.user.role === "admin") {
+            throw {
+                status: 405,
+                message: "Method Not Allowd"
+            }
+        }
+
+        const {
+            page = 1, limit = 10,
+            search,
+            sortBy = '-createdAt', orderSequence = '-1'
+        } = req.query;
+
+        const options = {
+            baseUrl: `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`,
+
+            pagingReq: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                sortBy, orderSequence
+            },
+
+            filter: {
+                search
+            },
+        }
+
+        const response = await GetAdmins(options);
+
+        return res.status(200).json(response);
+
+    } catch (error) {
+        next(error)
+    }
+}
+
+export const get_admin_by_id = async (req, res, next) => {
+    try {
+
+        if (req.user.role !== "super_admin") {
+            throw {
+                status: 401,
+                message: "Unauthorized: You don't have permission to access"
+            }
+        }
+
+        const keyVal = { _id: req.params.id }
+
+        const response = await GetAdminById(keyVal);
+
+        return res.status(200).json(response);
+
+    } catch (error) {
+        next(error)
+    }
+}
+
+// CREATE---------------------------|
 export const create_admin = async (req, res, next) => {
     try {
         const { name, email, password, } = req.body;
@@ -24,24 +84,32 @@ export const create_admin = async (req, res, next) => {
     }
 }
 
-// READ CONTROLLERS---------------------------|
-export const get_admin = async (req, res, next) => {
+export const get_me = async (req, res, next) => {
     try {
-        const response = await GetAdmin(req.user);
+        const keyVal = { _id: req.user.id }
+
+        const response = await GetAdminById(keyVal);
+
+        if (!response || response?.length <= 0) {
+            throw {
+                status: 404,
+                data: admin,
+            }
+        }
 
         return res.status(200).json(response);
 
     } catch (error) {
-        next(error);
+        next(error)
     }
-
 }
 
-// UPDATE CONTROLLERS---------------------------|
+// UPDATE---------------------------|
 export const update_profile = async (req, res, next) => {
 
     try {
         const adminId = req.query.id;
+
         const { name, email } = req.body;
 
         if (adminId && req.user.role === "admin" && adminId !== req.user.id) {
@@ -52,7 +120,9 @@ export const update_profile = async (req, res, next) => {
         }
 
         const keyVal = {
-            _id: req.user.role === "super_admin" ? adminId : req.user.id
+            _id: (req.user.role === "admin" || !adminId)
+                ? req.user.id
+                : adminId
         }
 
         if (!name && !email) {
@@ -87,9 +157,9 @@ export const manage_staff = async (req, res, next) => {
             })
         }
 
-        const { status: statusCode, success, data, message } = await ManageStaff(staffId, reqData);
+        const response = await ManageStaff(staffId, reqData);
 
-        return res.status(statusCode).json({ message, data, success });
+        return res.status(200).json(response);
 
     } catch (error) {
         next(error);
@@ -100,7 +170,10 @@ export const manage_vendor = async (req, res, next) => {
 
     try {
 
-        const vendorId = req.params.vendorId;
+        const keyVal = {
+            _id: req.params.vendorId
+        }
+
         const reqData = { status: req.body.status };
 
         if (!reqData.status) {
@@ -110,7 +183,7 @@ export const manage_vendor = async (req, res, next) => {
             }
         }
 
-        const response = await ManageVendor(vendorId, reqData);
+        const response = await ManageVendor(keyVal, reqData);
 
         return res.status(200).json(response);
 
@@ -122,7 +195,7 @@ export const manage_vendor = async (req, res, next) => {
 export const manage_user = async (req, res, next) => {
 
     try {
-        const userId = req.params.id;
+        const keyVal = { _id: req.params.userId };
 
         const reqData = { status: req.body.status };
 
@@ -133,7 +206,7 @@ export const manage_user = async (req, res, next) => {
             }
         }
 
-        const response = await ManageUser(userId, reqData);
+        const response = await ManageUser(keyVal, reqData);
 
         return res.status(200).json(response);
 
@@ -146,7 +219,9 @@ export const manage_user = async (req, res, next) => {
 export const manage_product = async (req, res, next) => {
 
     try {
-        const productId = req.params.pId;
+        const keyVal = {
+            _id: req.params.pId
+        }
 
         const reqData = { status: req.body.status };
 
@@ -157,7 +232,7 @@ export const manage_product = async (req, res, next) => {
             }
         }
 
-        const response = await ManageProduct(productId, reqData);
+        const response = await ManageProduct(keyVal, reqData);
 
         return res.status(200).json(response);
     } catch (error) {
@@ -168,75 +243,35 @@ export const manage_product = async (req, res, next) => {
 export const manage_refund = async (req, res) => {
     const keyVal = { _id: req.params.returnId };
 
-    const { status, message, data, success } = await ManageRefund(keyVal);
+    const response = await ManageRefund(keyVal);
 
-    return res.status(status).json({ message, data, success });
+    return res.status(200).json(response);
 };
 
-
-export const manage_permission = async (req, res) => {
+// DELETE---------------------------|
+export const delete_admin = async (req, res, next) => {
     try {
-        const permissionId = req.params.permissionId
+        const { role, id } = req.user;
+        const keyVal = { _id: req.params.id };
 
-        const { addModules, removeModules, actions } = req.body;
-
-        if (!modules && !actions) {
+        if (role === "super_admin" && keyVal._id === id) {
             throw {
                 status: 400,
-                message: `Either 'modules' or 'action' field must be required!`
+                message: "Super Admin cannot delete their own profile."
             }
         }
 
-        const permissionData = {
-            addModules: Array.isArray(addModules)
-                ? addModules
-                : (typeof addModules === 'object')
-                    ? Object.values(addModules)
-                    : (typeof addModules === 'string')
-                        ? addModules.split(',').map(w => w.trim())
-                        : [],
-            removeModules: Array.isArray(removeModules)
-                ? removeModules
-                : (typeof removeModules === 'object')
-                    ? Object.values(removeModules)
-                    : (typeof removeModules === 'string')
-                        ? removeModules.split(',').map(w => w.trim())
-                        : [],
-            actions: ''
-        }
-
-    } catch (error) {
-        const handle = ErrorHandle_H(error);
-
-        if (handle?.status)
-            return res.status(handle.status).json({ success: false, error: handle.error, errors: handle.errors });
-
-        return res.status(500).json({ success: false, error: error.message });
-    }
-}
-
-// DELETE CONTROLLERS---------------------------|
-export const delete_admin = async (req, res) => {
-
-    try {
-        const { role, id } = req.user;
-        const adminId = req.params.id;
-
-        if (role === 'admin' && id !== adminId) {
+        if (role === 'admin' && id !== keyVal._id) {
             throw {
                 status: 401,
                 message: `Unauthorized: You don't have permission to update another`,
             }
         }
 
-        const { status, success, data, message } = await DeleteAdmin(adminId);
+        const response = await DeleteAdmin(keyVal);
 
-        return res.status(status).json({ message, data, success });
+        return res.status(200).json(response);
     } catch (error) {
-        if (error.status) {
-            return res.status(error.status).json({ success: false, error: error.message });
-        }
-
-        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+        next(error);
     }
 }

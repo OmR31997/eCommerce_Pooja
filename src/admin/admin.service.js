@@ -1,4 +1,4 @@
-import { FindOrderFail_H, FindProductFail_H, FindReturnFail_H, GenerateEmail_H, success } from "../../utils/helper.js";
+import { BuildQuery_H, FindReturnFail_H, GenerateEmail_H, Pagination_H, success } from "../../utils/helper.js";
 import bcrypt from 'bcryptjs';
 import { Role } from '../role/role.model.js';
 import { Admin } from './admin.model.js';
@@ -10,7 +10,49 @@ import { Permission } from '../permission/permission.model.js';
 import { Notify } from '../notification/notification.service.js';
 import { Refund } from "../refund/refund.model.js";
 
-// CREATE SERVICES-------------------------------|
+// READ----------------------------------|
+export const GetAdmins = async (options) => {
+
+    const { filter = {}, pagingReq = {}, baseUrl, select } = options;
+
+    const matchedQuery = BuildQuery_H(filter, 'admin');
+
+    const total = await Admin.countDocuments(matchedQuery);
+
+    const pagination = Pagination_H(pagingReq.page, pagingReq.limit, undefined, total, baseUrl, matchedQuery);
+
+    const sortField = ['name', 'createdAt'].includes(pagingReq.sortBy) ? pagingReq.sortBy : 'createdAt';
+    const sortDirection = pagingReq.orderSequence === 'asc' ? 1 : -1;
+    const sortOption = { [sortField]: sortDirection };
+
+
+    const admins = await Admin.find(matchedQuery)
+        .populate({ path: 'role', select: '-permissions' })
+        .populate('permission')
+        .skip(pagination.skip)
+        .limit(pagingReq.limit)
+        .sort(sortOption)
+        .select(select)
+        .lean();;
+
+    return success({ message: 'Date fetched successfully', data: admins || [], pagination });
+}
+
+export const GetAdminById = async (keyVal) => {
+
+    const admin = await Admin.findOne(keyVal);
+
+    if (!admin) {
+        throw {
+            status: 404,
+            message: `Admin not found for ID: '${keyVal._id}'`
+        }
+    }
+
+    return success({ message: "Data fetched successfully", data: admin });
+}
+
+// CREATE--------------------------------|
 export const CreateAdmin = async (reqData) => {
     const { email, password } = reqData;
     const roleId = await Role.findOne({ name: 'admin' });
@@ -26,45 +68,25 @@ export const CreateAdmin = async (reqData) => {
     return success({ message: 'Admin created successfully!', data: result })
 }
 
-// READ SERVICES-------------------------------|
-export const GetAdmin = async (user) => {
-    let admin = undefined;
-
-    if (user.role === 'admin')
-        admin = await Admin.findById(user.id).populate({ path: 'role', select: '-permissions' }).populate('permission');
-    else
-        admin = await Admin.find().populate({ path: 'role', select: '-permissions' }).populate('permission');
-
-    if (!admin || admin.length === 0) {
-        throw {
-            status: 404,
-            message: 'Admin not found'
-        }
-    }
-
-    return success({ message: 'Date fetched successfully', data: admin });
-}
-
 // UPDATE SERVICES-------------------------------|
 export const UpdateAdmin = async (keyVal, reqData) => {
 
-    console.log(keyVal)
     const updated = await Admin.findOneAndUpdate(keyVal, reqData, { new: true, runValidators: true });
 
     if (!updated) {
-        error({ status: 404, message: `Admin not found for ID: ${keyVal._id}` });
+        throw { status: 404, message: `Admin not found for ID: ${keyVal._id}` };
     }
 
     return success({ message: 'Admin updated successfully', data: updated });
 }
 
-export const ManageStaff = async (staffId, reqData) => {
-    const updatedStaff = await Staff.findByIdAndUpdate(staffId, reqData, { new: true, runValidators: true });
+export const ManageStaff = async (keyVal, reqData) => {
+    const updatedStaff = await Staff.findOneAndUpdate(keyVal, reqData, { new: true, runValidators: true });
 
     if (!updatedStaff) {
         throw {
             status: 404,
-            message: `Staff account not found for ID: ${staffId}`
+            message: `Staff account not found for ID: ${keyVal._id}`
         }
     }
 
@@ -78,20 +100,20 @@ export const ManageStaff = async (staffId, reqData) => {
     });
 }
 
-export const ManageVendor = async (vendorId, reqData) => {
+export const ManageVendor = async (keyVal, reqData) => {
 
-    const updatedVendor = await Vendor.findByIdAndUpdate(vendorId, reqData, { new: true, runValidators: true });
+    const updatedVendor = await Vendor.findOneAndUpdate(keyVal, reqData, { new: true, runValidators: true });
 
     if (!updatedVendor) {
         throw {
             status: 404,
-            message: `Vendor account not found for ID: ${vendorId}`,
+            message: `Vendor account not found for ID: ${keyVal._id}`,
         };
     }
 
-    await Notify.vendor(vendorId, {
+    await Notify.vendor(updatedVendor._id, {
         title: 'Vendor Status Update',
-        message: `Your vendor account has been ${reqData.status}.`,
+        message: `Your vendor account has been ${updatedVendor.status}.`,
         type: 'vendor'
     });
 
@@ -105,20 +127,20 @@ export const ManageVendor = async (vendorId, reqData) => {
     });
 }
 
-export const ManageUser = async (userId, reqData) => {
-    const updatedUser = await User.findByIdAndUpdate(userId, reqData, { new: true, runValidators: true });
+export const ManageUser = async (keyVal, reqData) => {
+    const updatedUser = await User.findOneAndUpdate(keyVal, reqData, { new: true, runValidators: true });
 
     if (!updatedUser) {
 
         throw {
             status: 404,
-            message: `User account not found for ID: ${userId}`
+            message: `User account not found for ID: ${keyVal._id}`
         }
     }
 
-    await Notify.vendor(userId, {
+    await Notify.user(updatedUser._id, {
         title: 'User Status Update',
-        message: `Your vendor account has been ${reqData.status}.`,
+        message: `Your vendor account has been ${updatedUser.status}.`,
         type: 'vendor'
     })
 
@@ -132,15 +154,15 @@ export const ManageUser = async (userId, reqData) => {
     });
 }
 
-export const ManageProduct = async (productId, reqData) => {
+export const ManageProduct = async (keyVal, reqData) => {
 
-    const updatedProduct = await Product.findByIdAndUpdate(productId, reqData, { new: true, runValidators: true });
+    const updatedProduct = await Product.findOneAndUpdate(keyVal, reqData, { new: true, runValidators: true });
 
     if (!updatedProduct) {
 
         throw {
             status: 404,
-            message: `Product not found for ID: ${productId}`
+            message: `Product not found for ID: ${keyVal._id}`
         }
     }
 
@@ -182,45 +204,39 @@ export const ManageRefund = async (keyVal) => {
 
         await returnOrder.save();
 
-        return {
-            status: 201,
-            success: true,
+        return success({
             message: "Refund initiated successfully",
             data: created
-        }
+        });
+
     } else if (returnOrder.status !== "rejected") {
-        return {
-            status: 200,
-            success: true,
+        return success({
             message: "Under processing",
             data: null
-        }
+        });
     }
     else {
-        return {
-            status: 400,
-            success: false,
+        return success({
             message: "Refund cannot be processed for rejected return",
             data: null
-        }
+        });
     }
 }
 
 // DELETE SERVICES-------------------------------|
-export const DeleteAdmin = async (adminId) => {
-    const deletedAdmin = await Admin.findByIdAndDelete(adminId);
+export const DeleteAdmin = async (keyVal) => {
+
+    const deletedAdmin = await Admin.findOneAndDelete(keyVal).select('_id name');
 
     if (!deletedAdmin) {
         throw {
             status: 404,
-            message: `Admin not found for ID: ${adminId}`
+            message: `Admin not found for ID: ${keyVal._id}`
         }
     }
 
-    return {
-        status: 200,
+    return success({
         message: `Admin deleted successfully`,
         data: deletedAdmin,
-        success: true
-    };
+    });
 }

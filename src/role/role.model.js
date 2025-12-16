@@ -4,8 +4,9 @@ const RoleSchema = new mongoose.Schema({
     name: {
         type: String,
         required: [true, `'name' field must be required`],
-        trim: true,
         unique: true,
+        trim: true,
+        lowercase: true
     },
     permissions: [
         {

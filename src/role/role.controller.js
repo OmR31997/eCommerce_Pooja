@@ -1,220 +1,125 @@
-import mongoose from "mongoose";
-import { Permission } from '../permission/permission.model.js';
-import { Role } from '../role/role.model.js'; // you must have a Role model
+import { CleanIntoArray_H } from "../../utils/helper.js";
+import { ClearRoles, CreateRole, DeleteRole, GetRoleById, GetRoles, UpdateRole } from "./role.service.js";
 
-export const create_roles = async (req, res) => {
+// READ-----------------------|
+export const get_roles = async (req, res, next) => {
     try {
-        const { name, permissionIds, description } = req.body;
+        const {
+            page = 1, limit = 10,
+            search,
+            sortBy = '-createdAt', orderSequence = '-1'
+        } = req.query;
 
-        let permissionsArray = [];
+        const options = {
+            baseUrl: `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`,
 
-        if (permissionIds) {
+            pagingReq: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                sortBy, orderSequence
+            },
 
-            if (typeof permissionIds === "string") {
-                permissionsArray = permissionIds.split(",").map(id => id.trim());
-            }
-            else if (Array.isArray(permissionIds)) {
-                permissionsArray = permissionIds;
-            }
-            else {
-                return res.status(400).json({
-                    message: "permissionIds must be array or comma-separated string",
-                    success: false
-                });
-            }
-
-            for (const id of permissionsArray) {
-                if (!mongoose.Types.ObjectId.isValid(id)) {
-                    return res.status(400).json({
-                        error: `Invalid permission ID: ${id}`,
-                        success: false,
-                    });
-                }
-            }
-
-            const foundPermissions = await Permission.find({
-                _id: { $in: permissionsArray }
-            });
-
-            if (foundPermissions.length !== permissionsArray.length) {
-                return res.status(400).json({
-                    error: "Some permission IDs do not exist",
-                    success: false,
-                });
-            }
+            filter: {
+                search
+            },
         }
 
-        const roleData = {
+        const response = await GetRoles(options);
+
+        return res.status(200).json(response);
+
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const get_role_by_id = async (req, res, next) => {
+    try {
+
+        const keyVal = { _id: req.params.roleId }
+
+        const response = await GetRoleById(keyVal);
+
+        return res.status(200).json(response);
+
+    } catch (error) {
+        next(error);
+    }
+}
+
+// CREATE---------------------|
+export const create_role = async (req, res, next) => {
+    try {
+        const { name, permissionsIds, description } = req.body;
+
+        const reqData = {
             name,
-            description: description || "",
-            permissions: permissionsArray.length > 0 ? permissionsArray : [],
-        };
+            permissions: [...new Set(CleanIntoArray_H(permissionsIds))],
+            description
+        }
 
-        const savedRole = await Role.create(roleData);
+        const response = await CreateRole(reqData);
 
-        return res.status(201).json({
-            message: "Role created successfully",
-            data: savedRole,
-            success: true,
-        });
+        return res.status(201).json(response);
 
     } catch (error) {
-        return res.status(500).json({
-            error: error.message,
-            message: "Internal Server Error",
-            success: false,
-        });
+        next(error);
+    }
+}
+
+// UPDATE---------------------|
+export const update_role = async (req, res, next) => {
+    try {
+        const keyVal = { _id: req.params.roleId };
+        const { name, addPermissionsIds, removePermissionsIds, description } = req.body;
+
+        const reqData = {
+            name,
+            addPermissions: [...new Set(CleanIntoArray_H(addPermissionsIds))],
+            removePermissions: [...new Set(CleanIntoArray_H(removePermissionsIds))],
+            description
+        }
+
+        if (!reqData.name && 
+            !reqData.description && 
+            reqData.addPermissions.length === 0 &&
+            reqData.removePermissions.length === 0
+        ) {
+            throw {
+                status: 400,
+                message: `'name', 'addPermissionsIds', 'removePermissionsIds', or 'description' field must be provided to update permissions!`
+            }
+        }
+
+        const response = await UpdateRole(keyVal, reqData);
+
+        return res.status(200).json(response);
+
+    } catch (error) {
+        next(error);
+    }
+}
+
+// DELETE---------------------|
+export const delete_role = async (req, res, next) => {
+    try {
+        const keyVal = { _id: req.params.roleId };
+
+        const response = await DeleteRole(keyVal);
+
+        return res.status(200).json(response);
+
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const clear_all_roles = async (req, res, next) => {
+    try {
+        const response = await ClearRoles();
+
+        return res.status(200).json(response);
+    } catch (error) {
+        next(error);
     }
 };
-
-export const get_roles = async (req, res) => {
-    try {
-        const permissions = await Role.find().populate('permissions');
-
-        if (!permissions || permissions.length === 0) {
-            return res.status(404).json({
-                error: 'Data not found',
-                success: false,
-            });
-        }
-
-        return res.status(200).json({
-            message: 'Data fetched successfully',
-            data: permissions,
-            success: true,
-        });
-
-    } catch (error) {
-        return res.status(500).json({
-            message: "Internal Server Error",
-            error: error.message,
-            success: false
-        });
-    }
-}
-
-export const update_roles = async (req, res) => {
-    try {
-        const roleId = req.params.roleId;
-        const { name, permissionIds, description } = req.body;
-
-        //Find role
-        const role = await Role.findById(roleId);
-        if (!role) {
-            return res.status(404).json({
-                message: "Role not found",
-                success: false
-            });
-        }
-
-        //Process & validate permissionIds (optional)
-        if (permissionIds !== undefined) {
-            let permissionsArray = [];
-
-            // Convert string to array
-            if (typeof permissionIds === "string") {
-                permissionsArray = permissionIds.split(",").map(i => i.trim());
-            }
-            else if (Array.isArray(permissionIds)) {
-                permissionsArray = permissionIds;
-            }
-            else {
-                return res.status(400).json({
-                    message: "permissionIds must be an array or comma-separated string",
-                    success: false
-                });
-            }
-
-            // Validate each ObjectId
-            for (const permId of permissionsArray) {
-                if (!mongoose.Types.ObjectId.isValid(permId)) {
-                    return res.status(400).json({
-                        error: `Invalid permission ID: ${permId}`,
-                        success: false,
-                    });
-                }
-            }
-
-            // Validate existence of each permission
-            const foundPermissions = await Permission.find({
-                _id: { $in: permissionsArray }
-            });
-
-            if (foundPermissions.length !== permissionsArray.length) {
-                return res.status(400).json({
-                    error: "One or more permission IDs do not exist",
-                    success: false,
-                });
-            }
-
-            role.permissions = permissionsArray;
-        }
-
-        // Update name if provided
-        if (name !== undefined) {
-            role.name = name;
-        }
-
-        // Update description if provided
-        if (description !== undefined) {
-            role.description = description;
-        }
-
-        // Save role
-        const updatedRole = await role.save();
-
-        return res.status(200).json({
-            message: "Role updated successfully",
-            data: updatedRole,
-            success: true
-        });
-
-    } catch (error) {
-        return res.status(500).json({
-            message: "Internal Server Error",
-            error: error.message,
-            success: false
-        });
-    }
-};
-
-export const delete_role = async (req, res) => {
-    const roleId = req.params.roleId;
-
-    const role = await Role.findById(roleId);
-
-    if (!role) {
-        return res.status(404).json({
-            message: "Data not found",
-            success: false
-        });
-    }
-
-    await Role.findByIdAndDelete(roleId);
-
-    return res.status(200).json({
-        message: "Data deleted successfully",
-        data: role,
-        success: true
-    });
-
-}
-
-export const clear_roles = async (req, res) => {
-    try {
-        const result = await Role.deleteMany({});
-
-        return res.status(200).json({
-            message: "All roles have been deleted successfully",
-            data: result,
-            success: true,
-        });
-
-    } catch (error) {
-        return res.status(500).json({
-            message: "Internal Server Error",
-            error: error.message,
-            success: false,
-        });
-    }
-}

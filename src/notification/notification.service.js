@@ -1,3 +1,4 @@
+import { BuildQuery_H, Pagination_H, success } from '../../utils/helper.js';
 import { Admin } from '../admin/admin.model.js';
 import { Notification } from './notification.model.js';
 
@@ -20,17 +21,18 @@ export const ToAdmin = async (notifyData) => {
     }
 }
 
+// CREATE-----------------------------|
 export const Notify = (() => ({
     super: async (notifyData) => {
         try {
-            const admin = await Admin.findOne({email: 'super@admin.com'}).select("_id");
+            const admin = await Admin.findOne({ email: 'super@admin.com' }).select("_id");
             await Notification.create({
                 ...notifyData,
                 receiverId: admin._id,
                 role: 'admin'
             })
         } catch (error) {
-            
+
         }
     },
     admin: async (notifyData) => {
@@ -66,30 +68,81 @@ export const Notify = (() => ({
     }
 }))();
 
-export const GetUserNotifications = async (options = {}) => {
-    const result = await Notification.find(options)
-        .sort({ createdAt: -1 });
+// READ-------------------------------|
+export const GetNotifications = async (keyVal = {}, options = {}) => {
 
-    if (result.length === 0) {
-        throw {
-            status: 404,
-            message: 'No Notifications'
-        }
+    const { filter = {}, pagingReq = {}, baseUrl, select } = options;
+    const matchedQuery = BuildQuery_H(filter);
+
+    if(keyVal?.receiverId) {
+        matchedQuery.receiverId = keyVal.receiverId
     }
 
-    return { status: 200, message: 'Data fetched successfully', data: result, success: true }
+    const total = await Notification.countDocuments(matchedQuery);
+    
+    const pagination = Pagination_H(
+        pagingReq.page, pagingReq.limit,
+        undefined,
+        total, baseUrl,
+        matchedQuery
+    );
+
+    const sortField = ['role', 'createdAt'].includes(pagingReq.sortBy) ? pagingReq.sortBy : 'createdAt';
+    const sortDirection = pagingReq.orderSequence === 'asc' ? 1 : -1;
+    const sortOption = { [sortField]: sortDirection };
+
+    const notifications = await Notification.find(matchedQuery)
+        .skip(pagination.skip)
+        .limit(pagingReq.limit)
+        .sort(sortOption)
+        .select(select)
+        .lean();
+
+    delete pagination.skip;
+
+    return success({
+        pagination,
+        message: 'Data fetched successfully',
+        data: notifications || []
+    });
 }
 
-export const MarkReadNotification = async (notifyId) => {
+export const GetNotificationById = async (keyVal) => {
 
-    const result = await Notification.findByIdAndUpdate(notifyId, { read: true }, { new: true });
+    if(!keyVal.receiverId) {
+        delete keyVal.receiverId
+    }
 
-    if (!result) {
+    const notification = await Notification.findOne(keyVal);
+
+    if (!notification) {
         throw {
             status: 404,
-            message: 'No notification'
+            message: `Notification not found for ID: ${keyVal._id}`
         }
     }
 
-    return { status: 200, message: 'Read marked successfully', data:result, success: true };
+    return success({
+        message: "Data fetched successfully",
+        data: notification
+    });
+
+}
+
+export const MarkReadNotification = async (keyVal) => {
+
+    const notification = await Notification.findByIdAndUpdate(keyVal,
+        { read: true }, { new: true });
+
+    if (!notification) {
+        throw {
+            status: 404,
+            message: `Notification not found for ID: ${keyVal._id}`
+        }
+    }
+
+    return success({
+        message: 'Read marked successfully',
+        data: notification
+    });
 }

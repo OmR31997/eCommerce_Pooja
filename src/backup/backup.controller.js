@@ -4,23 +4,22 @@ import { RestoreDB } from '../../backup-system/restore.js';
 import fs from 'fs';
 import { CreateBackupInMemory, CreateExcelBuffer, CreateZipBuffer } from "../../backup-system/backupMemory.js";
 
-export const create_backup = async (req, res) => {
+export const create_backup = async (req, res, next) => {
     try {
+        console.log(req.headers['x-backup-key']+"---"+process.env.BACKUP_SECRET)
         if (!['admin', 'super_admin'].includes(req.user.role)) {
             throw {
                 status: 401,
                 message: `Unauthorized: You don't have permission to create backup`,
-                success: false,
             }
         }
-
+        
         // Checking... Secret Key
         const securedKey = req.headers['x-backup-key'];
         if (!securedKey || securedKey !== process.env.BACKUP_SECRET) {
             throw {
                 status: 403,
                 message: `Invalid backup key or not provided`,
-                success: false,
             }
         }
 
@@ -31,7 +30,7 @@ export const create_backup = async (req, res) => {
         const zipPath = await CompressFile(backupPath);
 
         res.download(backupPath, fileName, (error) => {
-            if(error) {
+            if (error) {
                 console.error("Download error:", error);
             }
 
@@ -43,18 +42,15 @@ export const create_backup = async (req, res) => {
                 } catch (error) {
                     console.error("Error deleting files:", error);
                 }
-            }, 5*60*1000)
+            }, 5 * 60 * 1000)
         });
 
     } catch (error) {
-        if (error.status) {
-            return res.status(error.status).json({ error: error.message, success: error.success })
-        }
-        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+        next(error);
     }
 }
 
-export const restore_backup = async (req, res) => {
+export const restore_backup = async (req, res, next) => {
     try {
         const { mongoUri, fileName } = req.query;
 
@@ -62,7 +58,6 @@ export const restore_backup = async (req, res) => {
             throw {
                 status: 401,
                 message: `Unauthorized: You don't have permission to restore`,
-                success: false,
             }
         }
 
@@ -70,29 +65,25 @@ export const restore_backup = async (req, res) => {
             throw {
                 status: 400,
                 message: `Fields: 'mongo_Uri' & 'fileName' must be Required!`,
-                success: false
             }
         }
 
-        await RestoreDB(`../backup-system/tmp/${fileName}`, mongo_Uri);
-        return res.status(200).json({ message: 'Database restored successfully', success: true })
+        await RestoreDB(`../backup-system/tmp/${fileName}`, mongoUri);
+
+        return success({ message: 'Database restored successfully' })
 
     } catch (error) {
-        if (error.status) {
-            return res.status(error.status).json({ error: error.message, success: error.success })
-        }
-        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+        next(error)
     }
 }
 
-export const backup_in_excel = async (req, res) => {
+export const backup_in_excel = async (req, res, next) => {
     try {
 
         if (!['admin', 'super_admin'].includes(req.user.role)) {
             throw {
                 status: 401,
                 message: `Unauthorized: You don't have permission to create backup`,
-                success: false,
             }
         }
 
@@ -102,7 +93,6 @@ export const backup_in_excel = async (req, res) => {
             throw {
                 status: 403,
                 message: `Invalid backup key or not provided`,
-                success: false,
             }
         }
 
@@ -128,9 +118,6 @@ export const backup_in_excel = async (req, res) => {
         return res.end(zipBuffer);
 
     } catch (error) {
-        if (error.status) {
-            return res.status(error.status).json({ error: error.message, success: error.success })
-        }
-        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+        next(error);
     }
 }

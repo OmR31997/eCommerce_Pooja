@@ -1,5 +1,5 @@
 import express from 'express';
-import { create_product, delete_product, product_filters, public_product_byId, public_products, rating_product, secured_product_by_productId, secured_product_by_sku, secured_products, stock_product, update_product } from '../src/product/product.controller.js';
+import { create_product, delete_product, product_filters, public_product, public_products, rating_product, secured_product, secured_products, stock_product, update_product } from '../src/product/product.controller.js';
 import { Upload } from '../middlewares/upload.middleware.js';
 import { AuthAccess, Authentication } from '../middlewares/auth.middleware.js';
 
@@ -8,6 +8,7 @@ const MAX_PRODUCT_IMAGES = parseInt(process.env.MAX_PRODUCT_IMAGES) || 5;
 
 // READ-----------------|
 
+// PRIVATE
 /* @description -> To get secured products
    @end-Point -> /api/product/all-secured
    @methtod -> GET
@@ -20,14 +21,33 @@ router.get('/all-secured', Authentication, AuthAccess('Product', 'read'), secure
    @methtod -> GET
    @access -> (admin, super_admin, product_manager(staff)) 
 */
-router.get('/secured-via-pId/:pId', Authentication, AuthAccess('Product', 'read'), secured_product_by_productId);
+router.get('/secured-via-pId/:pId', Authentication, AuthAccess('Product', 'read'), secured_product);
 
 /* @description -> To get single product bySku
    @end-Point -> /api/product/via-product-sku/:sku
    @methtod -> GET
    @access -> (admin, super_admin, product_manager(staff)) 
 */
-router.get('/secured-via-sku/:sku', Authentication, AuthAccess('Product', 'read'), secured_product_by_sku);
+router.get('/secured-via-sku/:sku', Authentication, AuthAccess('Product', 'read'), secured_product);
+
+// PUBLIC
+/* @description -> To view products
+   @end-Point -> /api/product/view
+   @methtod -> GET
+*/
+router.get('/all-public', public_products);
+
+/* @description -> To view products
+   @end-Point -> /api/product/:pId/public-via-pId
+   @methtod -> GET
+*/
+router.get('/:pId/public-via-pId', public_product);
+
+/* @description -> To view products
+   @end-Point -> /api/product/:sku/secured-via-sku
+   @methtod -> GET
+*/
+router.get('/:sku/secured-via-sku', public_product);
 
 /* @description -> To give rating to the product
    @end-Point -> /api/product/filter?
@@ -76,20 +96,5 @@ router.patch('/:pId/stock', Authentication, AuthAccess('Product', 'update'), sto
 */
 router.delete('/:pId/delete', Authentication, AuthAccess('Product', 'delete'), delete_product);
 
-//-----------------------------------------------------------------------------------------------------
-
-// PUBLIC
-
-/* @description -> To view products
-   @end-Point -> /api/product/view
-   @methtod -> GET
-*/
-router.get('/view', public_products);
-
-/* @description -> To view products
-   @end-Point -> /api/product/pId
-   @methtod -> GET
-*/
-router.get('/:pId', public_product_byId);
 
 export default router;

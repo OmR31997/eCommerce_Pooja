@@ -1,9 +1,8 @@
 import { ErrorHandle_H } from "../../utils/helper.js";
 import { ClearCategories, CreateCategory, DeleteCategory, GetCategories, GetCategoryById, UpdateCategory } from "./category.service.js";
 
-// READ CONTROLLERS--------------------------------|
-/*      *get_categories req/res handler*     */
-export const get_categories = async (req, res) => {
+// READ --------------------------------|
+export const get_categories = async (req, res, next) => {
     try {
         const {
             page = 1, limit = 10,
@@ -26,21 +25,16 @@ export const get_categories = async (req, res) => {
             },
         }
 
-        const { status: statusCode, success, message, count, pagination, data } = await GetCategories(options);
+        const response = await GetCategories(options);
 
-        return res.status(statusCode).json({
-            success, message, count, pagination, data
-        });
+        return res.status(200).json(response);
 
     } catch (error) {
-        return res.status(error.status || 500).json({
-            error: error.message || `Internal Server Error '${error}'`
-        });
+        next(error);
     }
 }
 
-/*      *get_category_by_id req/res handler*     */
-export const get_category_by_id = async (req, res) => {
+export const get_category_by_id = async (req, res, next) => {
     try {
 
         const isAdmin = ['admin', 'super_admin'].includes(req.user.role);
@@ -50,18 +44,15 @@ export const get_category_by_id = async (req, res) => {
             ...(isAdmin ? {} : {status: 'active'})
         }
 
-        const { status, success, message, data } = await GetCategoryById(keyVal);
+        const response = await GetCategoryById(keyVal);
 
-        return res.status(status).json({ message, data, success });
+        return res.status(200).json(response);
     } catch (error) {
-        return res.status(error.status || 500).json({
-            error: error.message || `Internal Server Error '${error}'`
-        });
+        next(error)
     }
 }
 
-/*      *get_category_by_slug req/res handler*     */
-export const get_category_by_slug = async (req, res) => {
+export const get_category_by_slug = async (req, res, next) => {
     try {
 
         const isAdmin = ['admin', 'super_admin'].includes(req.user.role);
@@ -71,19 +62,16 @@ export const get_category_by_slug = async (req, res) => {
             ...(isAdmin ? {} : {status: 'active'})
         }
 
-        const { status, success, message, data } = await GetCategoryById(keyVal);
+        const response = await GetCategoryById(keyVal);
 
-        return res.status(status).json({ message, data, success });
+        return res.status(200).json(response);
     } catch (error) {
-        return res.status(error.status || 500).json({
-            error: error.message || `Internal Server Error '${error}'`
-        });
+        next(error);
     }
 }
 
-// CREATE CONTROLLERS------------------------------|
-/*      *create_category req/res handler*     */
-export const create_category = async (req, res) => {
+// CREATE-------------------------------|
+export const create_category = async (req, res, next) => {
     try {
         const {
             name, description
@@ -97,26 +85,17 @@ export const create_category = async (req, res) => {
             imageFile: req.file
         };
 
-        const { status, success, message, data } = await CreateCategory(reqData, filePayload)
+        const response = await CreateCategory(reqData, filePayload)
 
-        return res.status(status).json({ success, message, data });
+        return res.status(201).json(response);
 
     } catch (error) {
 
-        try {
-            ErrorHandle_H(error);
-        } catch (handled) {
-            return res.status(handled.status || 500).json({
-                success: false,
-                message: handled.message,
-                errors: handled.errors || null
-            });
-        }
+        next(error);
     }
 }
 
-/*      *create_sub_category req/res handler*     */
-export const create_sub_category = async (req, res) => {
+export const create_sub_category = async (req, res, next) => {
     try {
         const {
             name, description
@@ -132,26 +111,17 @@ export const create_sub_category = async (req, res) => {
             imageFile: req.file
         };
 
-        const { status, success, message, data } = await CreateCategory(reqData, filePayload)
+        const response = await CreateCategory(reqData, filePayload)
 
-        return res.status(status).json({ success, message, data });
+        return res.status(201).json(response);
 
     } catch (error) {
-        try {
-            ErrorHandle_H(error);
-        } catch (handled) {
-            return res.status(handled.status || 500).json({
-                success: false,
-                message: handled.message,
-                errors: handled.errors || null
-            });
-        }
+        next(error);
     }
 }
 
-// UPDATE CONTROLLERS------------------------------|
-/*      *update_category req/res handler*     */
-export const update_category = async (req, res) => {
+// UPDATE-------------------------------|
+export const update_category = async (req, res, next) => {
     try {
 
         const { name, description } = req.body;
@@ -173,43 +143,32 @@ export const update_category = async (req, res) => {
             name, description
         }
 
-        const { status, success, message, data } = await UpdateCategory(keyVal, reqData, filePayload);
+        const response = await UpdateCategory(keyVal, reqData, filePayload);
 
-        return res.status(status).json({ message, data, success });
+        return res.status(200).json(response);
 
     } catch (error) {
-        try {
-            ErrorHandle_H(error);
-        } catch (handled) {
-            return res.status(handled.status || 500).json({
-                success: false,
-                message: handled.message,
-                errors: handled.errors || null
-            });
-        }
+        next(error)
     }
 }
 
-/*      *delete_category req/res handler*     */
-export const delete_category = async (req, res) => {
+// DELETE-------------------------------|
+export const delete_category = async (req, res, next) => {
     try {
         const keyVal = {
             _id: req.params.categoryId
         }
+        
+        const response = await DeleteCategory(keyVal);
 
-        const { status, message, data, success } = await DeleteCategory(keyVal);
-
-        return res.status(status).json({ message, data, success });
+        return res.status(200).json(response);
 
     } catch (error) {
-        return res.status(error.status).json({
-            error: error.message || `Internal Server Error '${error}'`
-        });
+        next(error);
     }
 }
 
-/*      *clear_Category req/res handler*     */
-export const clear_Category = async (req, res) => {
+export const clear_categories = async (req, res, next) => {
     try {
 
         if(req.user.role !== 'super_admin') {
@@ -219,13 +178,11 @@ export const clear_Category = async (req, res) => {
             }
         }
 
-        const { status, message, success } = await ClearCategories();
+        const response = await ClearCategories();
 
-        return res.status(status).json({ message, success });
+        return res.status(200).json(response);
 
     } catch (error) {
-        return res.status(error.status || 500).json({
-            error: error.message || `Internal Server Error '${error}'`
-        });
+        next(error);
     }
 }

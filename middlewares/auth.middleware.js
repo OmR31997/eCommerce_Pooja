@@ -5,7 +5,6 @@ import { Staff } from '../src/staff/staff.model.js';
 import { Admin } from '../src/admin/admin.model.js';
 import { IdentifyModelByRole_H } from '../utils/helper.js';
 
-
 export const Authentication = async (req, res, next) => {
   let authHeader = req.headers.authorization;
   if (!authHeader) {
@@ -47,7 +46,7 @@ export const AuthAccess = (moduleName, actionKey, options = {}) => {
   return async (req, res, next) => {
     try {
       const { id: logId, role: logRole } = req.user;
-      
+
       const { model } = IdentifyModelByRole_H(logRole);
 
       const Models = { Admin, Staff, Vendor, User };
@@ -58,13 +57,11 @@ export const AuthAccess = (moduleName, actionKey, options = {}) => {
       if (logRole?.toLowerCase() === 'super_admin') return next();
 
       // Self-Access Rule (Reusable)
-      if (['user', 'vendor'].includes(logRole) && req.params.id) {
-        if (logId !== req.params.id) {
-          throw {
-            status: 401,
-            message: `Unauthorized: You don't have permission to access this module`,
-            success: false,
-          }
+      if (req.params.id && ['user', 'vendor', 'staff'].includes(logRole) && logId.toString() !== req.params.id) {
+        throw {
+          status: 401,
+          message: `Unauthorized: You don't have permission to access this module`,
+          success: false,
         }
       }
 
@@ -80,7 +77,7 @@ export const AuthAccess = (moduleName, actionKey, options = {}) => {
       const hasAccess =
         existing.permission?.modules.includes(moduleName) &&
         existing.permission?.actions?.[actionKey] === true;
-        
+
       if (!hasAccess) {
         return res.status(403).json({
           error: `Access denied: You don't have permission to ${actionKey} on ${moduleName}`,

@@ -1,10 +1,11 @@
 import express from 'express';
 import { Upload } from '../middlewares/upload.middleware.js';
-import { clear_staff, create_staff, get_me, read_staff_byId, read_staffs, remove_staff, update_staff, } from '../src/staff/staff.controller.js';
+import { clear_staff, create_staff, get_me, get_staff_by_id, get_staffs, remove_staff, update_staff, } from '../src/staff/staff.controller.js';
 import { AuthAccess } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
+// READ----------------------------------------------|
 /* @description -> To get profile
    @end-Point -> /api/staff/me
    @methtod -> POST
@@ -12,6 +13,21 @@ const router = express.Router();
 */
 router.get('/me', AuthAccess('Staff', 'read'), get_me);
 
+/* @description -> To read all staff records
+   @end-Point -> /api/staff/view
+   @methtod -> GET
+   @access -> Private (super_admin/admin/staff_manager) 
+*/
+router.get('/view', AuthAccess('Staff', 'read'), get_staffs);
+
+/* @description -> To read all staff records
+   @end-Point -> /api/staff/view/:id
+   @methtod -> GET
+   @access -> Private (super_admin/admin/staff_manager) 
+*/
+router.get('/:id/read', AuthAccess('Staff', 'read'), get_staff_by_id);
+
+// CREATE--------------------------------------------|
 /* @description -> To create new staff
    @end-Point -> /api/staff/create
    @methtod -> POST
@@ -19,20 +35,7 @@ router.get('/me', AuthAccess('Staff', 'read'), get_me);
 */
 router.post('/create', AuthAccess('Staff', 'create'), create_staff);
 
-/* @description -> To read all staff records
-   @end-Point -> /api/staff/view
-   @methtod -> GET
-   @access -> Private (super_admin/admin/staff_manager) 
-*/
-router.get('/view', AuthAccess('Staff', 'read'), read_staffs);
-
-/* @description -> To read all staff records
-   @end-Point -> /api/staff/view/:id
-   @methtod -> GET
-   @access -> Private (super_admin/admin/staff_manager) 
-*/
-router.get('/view/:id', AuthAccess('Staff', 'read'), read_staff_byId);
-
+// UPDATE--------------------------------------------|
 /* @description -> To update profile like: name, email, & phone etc. 
    @end-Point -> /api/staff/:id/update
    @methtod -> PATCH
@@ -40,6 +43,7 @@ router.get('/view/:id', AuthAccess('Staff', 'read'), read_staff_byId);
 */
 router.patch('/:id/update', AuthAccess('Staff', 'update'), update_staff);
 
+// DELETE--------------------------------------------|
 /* @description -> To delete staff record byId
    @end-Point -> /api/staff/:id/delete
    @methtod -> DELETE
@@ -52,6 +56,6 @@ router.delete('/:id/delete', AuthAccess('Staff', 'delete'), remove_staff);
    @methtod -> DELETE
    @access -> Private (super_admin) 
 */
-router.delete('/:id/clear', AuthAccess('Staff', 'delete'), clear_staff);
+router.delete('/clear', AuthAccess('Staff', 'delete'), clear_staff);
 
 export default router;

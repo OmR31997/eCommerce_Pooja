@@ -1,159 +1,133 @@
 import { GetAccountManagerDashboard, GetAdminDashboard, GetOrderManagerDashboard, GetProductManagerDashboard, GetStaffManagerDashboard, GetSuperAdminDashboard, GetUserManagerDashboard, GetVendorDashboard_ById, GetVendorManagerDashboard } from './dashboard.service.js';
 
-export const super_admin_dashboard = async (req, res) => {
-    const { year, yearType, page = 1 } = req.query;
+export const super_admin_dashboard = async (req, res, next) => {
+    try {
+        const { year, yearType, page = 1 } = req.query;
 
-    const filter = {
-        selectedYear: parseInt(year) || new Date().getFullYear(),
-        range: yearType || 'full',
-        page: parseInt(page) || undefined,
+        const filter = {
+            selectedYear: parseInt(year) || new Date().getFullYear(),
+            range: yearType || 'full',
+            page: parseInt(page) || undefined,
+        }
+
+        const response = await GetSuperAdminDashboard(filter);
+
+        return res.status(200).json(response);
+    } catch (error) {
+        next(error);
     }
-
-    const { status, error, errors, success, message, data } = await GetSuperAdminDashboard(filter);
-
-    if (!success) {
-        return res.status(status).json({ errors, error, message, })
-    }
-
-    return res.status(status).json({
-        message,
-        data: data,
-        success,
-    });
 }
 
-export const admin_dashboard = async (req, res) => {
-    const { year, yearType, page = 1 } = req.query;
+export const admin_dashboard = async (req, res, next) => {
 
-    const filter = {
-        selectedYear: parseInt(year) || new Date().getFullYear(),
-        range: yearType || 'full',
-        page: parseInt(page) || undefined,
+    try {
+        const { year, yearType, page = 1 } = req.query;
+
+        const filter = {
+            selectedYear: parseInt(year) || new Date().getFullYear(),
+            range: yearType || 'full',
+            page: parseInt(page) || undefined,
+        }
+
+        const response = await GetAdminDashboard(filter)
+
+        return res.status(200).json(response);
+
+    } catch (error) {
+        next(error);
     }
-
-    const { status, error, errors, success, message, data } = await GetAdminDashboard(filter)
-
-    if (!success) {
-        return res.status(status).json({ errors, error, message, })
-    }
-
-    return res.status(status).json({
-        message,
-        data: data,
-        success,
-    });
 }
 
-export const vendor_dashboard = async (req, res) => {
-    const vendorId = req.user.id;
+export const vendor_dashboard = async (req, res, next) => {
 
-    const { year, yearType, page = 1 } = req.query;
+    try {
+        const vendorId = req.user.id;
 
-    const filter = {
-        selectedYear: parseInt(year) || new Date().getFullYear(),
-        range: yearType || 'full',
-        page: parseInt(page) || undefined,
+        const { year, yearType, page = 1 } = req.query;
+
+        const filter = {
+            selectedYear: parseInt(year) || new Date().getFullYear(),
+            range: yearType || 'full',
+            page: parseInt(page) || undefined,
+        }
+
+        const response = await GetVendorDashboard_ById(vendorId, filter);
+
+        return res.status(200).json(response);
+
+    } catch (error) {
+        next(error);
     }
-
-    const { status, error, errors, success, message, data } = await GetVendorDashboard_ById(vendorId, filter);
-
-    if (!success) {
-        return res.status(status).json({ errors, error, message, })
-    }
-
-    return res.status(status).json({
-        message,
-        data: data,
-        success,
-    });
 }
 
-export const staff_manager_dashboard = async (req, res) => {
+export const staff_manager_dashboard = async (req, res, next) => {
 
-    const { status, error, errors, success, message, data } = await GetStaffManagerDashboard();
+    try {
+        const response = await GetStaffManagerDashboard();
 
-    if (!success) {
-        return res.status(status).json({ errors, error, message, })
+        return res.status(200).json(response);
+
+    } catch (error) {
+        next(error);
     }
-
-    return res.status(status).json({
-        message,
-        data: data,
-        success,
-    });
 }
 
-export const vendor_manager_dashboard = async (req, res) => {
+export const vendor_manager_dashboard = async (req, res, next) => {
 
-    const { status, error, errors, success, message, data } = await GetVendorManagerDashboard();
+    try {
+        const response = await GetVendorManagerDashboard();
 
-    if (!success) {
-        return res.status(status).json({ errors, error, message, })
+        return res.status(200).json(response);
+
+    } catch (error) {
+        next(error);
     }
-
-    return res.status(status).json({
-        message,
-        data: data,
-        success,
-    });
 }
 
-export const user_manager_dashboard = async (req, res) => {
+export const user_manager_dashboard = async (req, res, next) => {
 
-    const { status, error, errors, success, message, data } = await GetUserManagerDashboard();
+    try {
+        const response = await GetUserManagerDashboard();
 
-    if (!success) {
-        return res.status(status).json({ errors, error, message, })
+        return res.status(200).json(response);
+
+    } catch (error) {
+        next(error);
     }
-
-    return res.status(status).json({
-        message,
-        data: data,
-        success,
-    });
 }
 
-export const product_manager_dashboard = async (req, res) => {
+export const product_manager_dashboard = async (req, res, next) => {
 
-    const { status, error, errors, success, message, data } = await GetProductManagerDashboard();
+    try {
+        const response = await GetProductManagerDashboard();
 
-    if (!success) {
-        return res.status(status).json({ errors, error, message, })
+        return res.status(200).json(response);
+
+    } catch (error) {
+        next(error);
     }
-
-    return res.status(status).json({
-        message,
-        data: data,
-        success,
-    });
 }
 
-export const order_manager_dashboard = async (req, res) => {
+export const order_manager_dashboard = async (req, res, next) => {
 
-    const { status, error, errors, success, message, data } = await GetOrderManagerDashboard();
+    try {
+        const response = await GetOrderManagerDashboard();
 
-    if (!success) {
-        return res.status(status).json({ errors, error, message, })
+        return res.status(200).json(response);
+
+    } catch (error) {
+        next(error);
     }
-
-    return res.status(status).json({
-        message,
-        data: data,
-        success,
-    });
 }
 
 export const account_manager_dashboard = async (req, res) => {
 
-    const { status, error, errors, success, message, data } = await GetAccountManagerDashboard();
+    try {
+        const response = await GetAccountManagerDashboard();
 
-    if (!success) {
-        return res.status(status).json({ errors, error, message, })
+        return res.status(200).json(response);
+
+    } catch (error) {
+        next(error);
     }
-
-    return res.status(status).json({
-        message,
-        data: data,
-        success,
-    });
 }

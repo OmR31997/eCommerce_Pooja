@@ -2,68 +2,73 @@ import { count } from 'console';
 import { GetOrderById, GetOrders } from '../order/order.service.js';
 import { GetAllUsers, GetUser, RemoveAllUsers, RemoveUser, UpdateUser } from './user.service.js';
 
-// READ CONTROLLERS-----------------------|
-export const get_me = async (req, res) => {
+// READ-------------------------|
+export const get_me = async (req, res, next) => {
     try {
-        const { status, success, message, data } = await GetUser(req.user.id);
 
-        return res.status(status).json({ message, data, success });
+        const keyVal = { _id: req.user.id };
+
+        const response = await GetUser(keyVal);
+
+        return res.status(200).json(response);
     } catch (error) {
-        if (error.status) {
-            return res.status(error.status).json({ success: false, error: error.message });
-        }
-
-        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+        next(error)
     }
 }
 
-export const get_user_byId = async (req, res) => {
+export const get_user_byId = async (req, res, next) => {
     try {
-        const userId = req.params.id;
 
-        const { status, success, message, data } = await GetUser(userId);
-
-        return res.status(status).json({ message, data, success });
-
-    } catch (error) {
-        if (error.status) {
-            return res.status(error.status).json({ success: false, error: error.message });
-        }
-
-        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
-    }
-}
-
-export const get_users = async (req, res) => {
-    try {
-        if (req.user.role === 'user')
+        if (req.user.role === 'user') {
             throw {
                 status: 401,
-                message: `Unauthorized: You haven't accessibility`,
+                message: `Unauthorized: You don't have permission to access`,
                 success: false
             }
+        }
 
+        const keyVal = { _id: req.params.id };
+
+        const response = await GetUser(keyVal);
+
+        return res.status(200).json(response);
+
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const get_users = async (req, res, next) => {
+    try {
         const {
             page = 1,
             limit = 10,
-            offset,
             sortBy = 'createdAt',
             orderSequence = 'desc' } = req.query;
 
-        const { status, success, message, pagination, data } = await GetAllUsers(
-            `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`,
-            { page: parseInt(page), limit: parseInt(limit), offset, sortBy, orderSequence },
-            {}
-        );
-
-        return res.status(status).json({ message, pagination, success, data });
-
-    } catch (error) {
-        if (error.status) {
-            return res.status(error.status).json({ success: false, error: error.message });
+        if (req.user.role === 'user') {
+            throw {
+                status: 401,
+                message: `Unauthorized: You don't have permission to access`
+            }
         }
 
-        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+        const options = {
+            baseUrl: `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`,
+
+            pagingReq: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                sortBy, orderSequence
+            },
+        }
+
+        const response = await GetAllUsers(options);
+
+        return res.status(200).json(response);
+
+    } catch (error) {
+        next(error);
     }
 }
 
@@ -79,7 +84,7 @@ export const users_filters = async (req, res) => {
         if (req.user.role === 'user') {
             throw {
                 status: 401,
-                message: `Unauthorized: You haven't accessibility`,
+                message: `Unauthorized: You don't have permission to access`,
                 success: false
             }
         }
@@ -96,13 +101,12 @@ export const users_filters = async (req, res) => {
             filter: {
                 search, status,
                 phone, segment, joinRange, updatedRange, address,
-                status: ['admin', 'super_admin'].includes(req.user.role) ? undefined : 'active'
             },
         }
 
-        const { status: statusCode, success, message, pagination, data } = await GetAllUsers(options);
+        const response = await GetAllUsers(options);
 
-        return res.status(statusCode).json({ message, pagination, data, success });
+        return res.status(200).json(response);
 
     } catch (error) {
         if (error.status) {
@@ -113,85 +117,72 @@ export const users_filters = async (req, res) => {
     }
 };
 
-// UPDATE CONTROLLERS
-export const update_user_profile = async (req, res) => {
+// UPDATE-------------------------|
+export const update_user_profile = async (req, res, next) => {
     try {
         const {
             name, email, phone,
             segment, address
         } = req.body;
 
-        const userId = req.params.id;
+        const keyVal = { _id: req.params.id };
 
-        const userData = {
-            name: name || undefined,
-            email: email || undefined,
-            phone: phone || undefined,
-            address: address || undefined,
-            segment: segment || undefined,
+        const reqData = {
+            name, email,
+            phone, segment,
+            address
         }
 
-        const hasAnyField = Object.values(userData).some(value => value !== undefined)
+        const isValidToUpdate = Object.values(reqData).some(val => val !== undefined);
 
-        if (!hasAnyField) {
+        if (!isValidToUpdate) {
+
             throw {
                 status: 400,
-                message: 'Atleast one field must be required for update',
-                success: false
+                message: `Either ${Object.keys(reqData).slice(0, -1).join(', ')}, or ` +
+                    `${Object.keys(reqData).slice(-1)} field must be provided to update permissions!`
             }
         }
 
-        const { status, success, message, data } = await UpdateUser(userData, userId);
+        const response = await UpdateUser(keyVal, reqData);
 
-        return res.status(status).json({ message, data, success });
+        return res.status(200).json(response);
 
     } catch (error) {
-        if (error.status) {
-            return res.status(error.status).json({ success: false, error: error.message });
-        }
-
-        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+        next(error);
     }
 }
 
-// DELETE CONTROLLERS
-export const remove_user_profile = async (req, res) => {
+// DELETE-------------------------|
+export const remove_user_profile = async (req, res, next) => {
     try {
-        const keyVal = {_id: req.params.id};
+        const keyVal = { _id: req.params.id };
 
-        const { status, success, message, data } = await RemoveUser(keyVal);
+        const response = await RemoveUser(keyVal);
 
-        return res.status(status).json({ message, data, success });
+        return res.status(200).json(response);
 
     } catch (error) {
-        if (error.status) {
-            return res.status(error.status).json({ success: false, error: error.message });
-        }
-
-        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+        next(error);
     }
 }
 
-export const clear_users = async (req, res) => {
+export const clear_users = async (req, res, next) => {
     try {
 
         if (req.user.role !== 'super_admin') {
             throw {
-                status: 405,
-                message: `Method Not Allowed`
+                status: 401,
+                message: `Authorized: You don't have permission to clear`
             }
         }
 
-        const { status, success, message, data } = await RemoveAllUsers();
+        const response = await RemoveAllUsers();
 
-        return res.status(status).json({ message, data, success });
+        return res.status(200).json(response);
 
     } catch (error) {
-        if (error.status) {
-            return res.status(error.status).json({ success: false, error: error.message });
-        }
-
-        return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
+        next(error);
     }
 }
 
@@ -264,51 +255,5 @@ export const get_order_byId = async (req, res) => {
         }
 
         return res.status(500).json({ success: false, error: `Internal Server Error ${error}` });
-    }
-}
-
-// ------------------------------------------------------------------------
-// VENDOR
-export const vendor_registration_ByUser = async (req, res) => {
-    try {
-        const {
-            businessName, businessEmail, businessPhone, password,
-            businessDescription,
-            accountNumber, ifsc, bankName,
-            gstNumber, address, type,
-        } = req.body;
-
-        const files = req.files || {};
-
-        const filePayload = {
-            logoUrl: files.logoUrl?.[0] || null,
-            documents: files.documents || []
-        }
-
-        const { status, success, message, data } = await VendorRegistration({
-            userId: req.params.userId,
-            businessName, businessEmail, businessPhone,
-            businessDescription, password, gstNumber,
-            status: ['admin', 'super_admin', 'staff'].includes(req.user.role) ? 'approved' : 'pending',
-            bankDetails: {
-                accountNumber,
-                ifsc,
-                bankName
-            },
-            type, address
-        }, filePayload);
-
-        return res.status(status).json({
-            message, data, success
-        });
-
-    } catch (error) {
-
-        const handle = ErrorHandle(error);
-
-        if (handle?.status)
-            return res.status(handle.status).json({ error: handle.error, errors: handle.errors, success: false });
-
-        return res.status(500).json({ error: error.message });
     }
 }

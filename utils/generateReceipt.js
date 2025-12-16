@@ -15,7 +15,7 @@ const printRow = (doc, label, value, labelFont='Bold', valueFont = 'Regular', x 
     doc.moveDown(0.4);
 };
 
-export const GenerateReceiptPDF = async (order, res) => {
+export const GenerateReceiptPDF_H = async (order, res) => {
     try {
         const doc = new PDFDocument({ margin: 50 });
 

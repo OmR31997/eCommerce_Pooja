@@ -1,100 +1,132 @@
-import mongoose from 'mongoose';
 import bcrypt from "bcryptjs";
 import { Staff } from "./staff.model.js";
-import { Role } from '../role/role.model.js';
-import { Permission } from '../permission/permission.model.js';
-import { ErrorHandle_H } from '../../utils/helper.js';
+import { BuildQuery_H, FindRoleFail_H, Pagination_H, Permission_H, success } from '../../utils/helper.js';
 
-export const CreateStaff = async (staffData) => {
-    try {
+export const GetStaffs = async (options) => {
+    const { filter = {}, pagingReq = {}, baseUrl } = options;
 
-        const { permissions, role } = staffData;
+    const matchedQuery = BuildQuery_H(filter, 'staff');
 
-        if (role && !mongoose.Types.ObjectId.isValid(role)) return { status: 400, success: false, error: `Invalid permission IDs detected from 'role' field` };
+    const total = await Staff.countDocuments(matchedQuery);
 
-        const isExistRole = await Role.findById(role);
+    const pagination = Pagination_H(pagingReq.page, pagingReq.limit, undefined, total, baseUrl, matchedQuery);
 
-        if (!isExistRole) return { status: 404, success: false, error: 'role not found' };
+    const sortField = ['name', 'createdAt'].includes(pagingReq.sortBy) ? pagingReq.sortBy : 'createdAt';
+    const sortDirection = pagingReq.orderSequence === 'asc' ? 1 : -1;
+    const sortOption = { [sortField]: sortDirection };
 
-        let permissionIds = [];
-        if (permissions && permissions.length > 0) {
-            const invalidIds = permissions.filter((id) => !mongoose.Types.ObjectId.isValid(id));
 
-            if (invalidIds.length > 0) {
-                return {
-                    status: 400,
-                    success: false,
-                    error: 'Invalid permission IDs detected',
-                }
-            }
+    const staffs = await Staff.find(matchedQuery)
+        .populate({ path: "role", select: "name" })
+        .skip(pagination.skip)
+        .limit(pagingReq.limit)
+        .sort(sortOption)
+        .lean();
 
-            const found = await Permission.find({ _id: { $in: permissions } });
-
-            if (found.length !== permissions.length)
-                return { status: 400, success: false, error: 'Some permissions not found' };
-
-            permissionIds = found.map(p => p._id);
-        }
-
-        if (staffData.password) {
-            staffData.password = await bcrypt.hash(staffData.password, Number(process.env.HASH_SALT));
-        }
-
-        const response = await Staff.create({ ...staffData, permissions: permissionIds });
-
-        return { status: 200, success: true, data: response, message: 'Staff Created Successfully' };
-
-    } catch (error) {
-        console.log(error.message);
-        const handled = await ErrorHandle_H(error, 'CreateStaff');
-        return handled || { status: 500, success: false, error: 'Internal Server Error' };
-    }
+    delete pagination.skip;
+    return success({ 
+        message: 'Date fetched successfully', 
+        data: staffs || [], 
+        pagination });
 }
 
-export const UpdateStaff = async (staffData, staffId) => {
-    try {
-        const { permissions } = staffData;
+export const GetStaffByID = async (keyVal) => {
+    const staff = await Staff.findOne(keyVal)
+        .populate({ path: "role", select: "name" });
 
-        let permissionIds = [];
-        if (permissions && permissions.length > 0) {
-
-            const invalidIds = permissions.filter((id) => !mongoose.Types.ObjectId.isValid(id));
-
-            if (invalidIds.length > 0) {
-                return {
-                    status: 400,
-                    success: false,
-                    error: 'Invalid permission IDs detected',
-                }
-            }
-
-            const found = await Permission.find({ _id: { $in: permissions } })
-
-            if (found.length !== permissions.length)
-                return { status: 400, success: false, error: 'Some permissions not found' };
-
-            permissionIds = found.map(p => p._id);
+    if (!staff) {
+        throw {
+            status: 404,
+            message: `Staff not found for ID: '${keyVal._id}'`
         }
-
-        if (staffData.password) {
-            staffData.password = await bcrypt.hash(staffData.password, Number(process.env.HASH_SALT));
-        }
-
-        const updatedStaff = await Staff.findByIdAndUpdate(staffId, staffData);
-
-        if (!updatedStaff)
-            return {
-                status: 404,
-                error: 'Staff not found',
-                success: false,
-            }
-
-        return { status: 200, message: 'Staff updated Successfully', success: true, data: { staffId, ...staffData } };
-
-    } catch (error) {
-
-        console.log(error.message)
-        const handle = ErrorHandle_H(error, 'UpdateStaff');
-        return { status: 500, success: false, error: handle ? handle?.error : handle.errors || 'Internal Server Error' };
     }
+
+    return success({ message: "Data fetched successfully", data: staff });
+}
+
+export const CreateStaff = async (reqData) => {
+
+    const { permissionName, password, ...rest } = reqData;
+    const role = await FindRoleFail_H({ name: "staff" }, "_id");
+
+    const permissionId = await Permission_H(permissionName);
+
+    const staffData = {
+        ...rest,
+        role: role._id,
+        permission: permissionId
+    }
+
+    if (password) {
+        staffData.password = await bcrypt.hash(password, Number(process.env.HASH_SALT));
+    }
+
+    const created = await Staff.create(staffData);
+
+    return success({
+        message: "Staff Created Successfully",
+        data: created,
+    });
+}
+
+export const UpdateStaff = async (keyVal, reqData) => {
+    const { permissionName, role, ...rest } = reqData;
+
+    const staffData = { ...rest };
+
+    if (role) {
+        const role = await FindRoleFail_H({ name: "staff" }, "_id");
+
+        staffData.role = role._id;
+    }
+
+    if (permissionName) {
+        staffData.permission = await Permission_H(permissionName);
+    }
+
+    const updated = await Staff.findOneAndUpdate(keyVal, staffData, { new: true, runValidators: true });
+
+    if (!updated) {
+        throw {
+            status: 404,
+            message: `Staff not found for ID: '${keyVal._id}'`
+        }
+    }
+
+    return success({
+        message: 'Staff updated Successfully',
+        data: updated
+    });
+}
+
+export const DeleteStaff = async (keyVal) => {
+    const deleted = await Staff.findOneAndDelete(keyVal);
+
+    if (!deleted) {
+        throw {
+            status: 404,
+            message: `Staff not for ID: '${keyVal._id}'`
+        }
+    }
+
+    return success({
+        message: "Staff deleted successfully.",
+        data: deleted
+    });
+}
+
+export const ClearStaff = async () => {
+    const result = await Staff.deleteMany({});
+
+    if (result.deletedCount === 0) {
+        throw {
+            status: 404,
+            message: "Staff not found for delete"
+        }
+    }
+    
+    return success({
+        message: "All staffs have been deleted successfully",
+        deletedCount: result.deletedCount
+    });
 }

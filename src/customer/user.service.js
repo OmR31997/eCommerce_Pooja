@@ -2,18 +2,25 @@ import mongoose from 'mongoose';
 import { User } from './user.model.js';
 import { Order } from '../order/order.model.js';
 import { Vendor } from '../vendor/vendor.model.js';
-import { BuildQuery_H, Pagination_H } from '../../utils/helper.js';
+import { BuildQuery_H, Pagination_H, success } from '../../utils/helper.js';
 import { Notify } from '../notification/notification.service.js';
 
-export const GetUser = async (userId) => {
-    const user = await User.findById(userId).
+// READ-------------------------------|
+export const GetUser = async (keyVal) => {
+
+    const user = await User.findOne(keyVal).
         populate({ path: 'permission', select: 'modules actions' }).
         populate({ path: 'roles', select: 'name' });
 
-    if (!user)
-        throw { status: 404, message: `Account not found for ID: ${userId}`, success: false };
+    if (!user) {
+        throw {
+            status: 404,
+            message: `Account not found for ID: ${keyVal._id}`
+        };
+    }
 
-    return { status: 200, message: 'Account fetched successfully', data: user }
+
+    return success({ message: 'Account fetched successfully', data: user })
 }
 
 export const GetAllUsers = async (options) => {
@@ -40,85 +47,141 @@ export const GetAllUsers = async (options) => {
 
     delete pagination.skip;
 
-    return {
-        status: 200,
-        success: true,
+    return success({
         message: 'Data fetched successfully',
-        count: total,
         pagination,
         data: users || []
-    }
-}
-
-export const UpdateUser = async (userData, userId) => {
-
-    const user = await User.findByIdAndUpdate(userId, userData);
-
-    if (!user) {
-        throw {
-            status: 404,
-            message: `User account not found for '${userId}'`,
-            success: false
-        }
-    }
-
-    return { status: 200, message: 'User account updated successfully', data: userData, success: true };
-}
-
-export const RemoveUser = async (keyVal) => {
-    const user = await User.findOneAndDelete(keyVal);
-
-    if (!user) {
-        throw {
-            status: 404,
-            message: `User account not found for ID:'${keyVal._id}'`,
-            success: false
-        }
-    }
-
-    await Notify.admin({
-        title: 'Customer Document Delete',
-        message: `Vendor who has ID: ${user._id} deleted by admin`,
-        type: 'delete'
     });
+}
 
-    return { status: 200, message: 'User account deleted successfully', data: user, success: false };
+// UPDATE-----------------------------|
+export const UpdateUser = async (keyVal, reqData) => {
+
+    const user = await User.findOneAndUpdate(keyVal, reqData, { new: true, runValidators: true });
+
+    if (!user) {
+        throw {
+            status: 404,
+            message: `User account not found for ID: '${keyVal._id}'`,
+        }
+    }
+
+    return success({
+        message: 'User account updated successfully',
+        data: user
+    });
+}
+
+// REMOVE-----------------------------|
+export const RemoveUser = async (keyVal) => {
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        // Step 1: Check if user is a vendor
+        const vendor = await Vendor.findOne({ userId: keyVal._id }).session(session).select('businessName');
+
+        if (vendor) {
+            throw {
+                status: 400,
+                message: `Be Carefull! User registered as a vendor (${vendor.businessName})`
+            }
+        }
+
+        // Step 2: Delete the user
+        const user = await User.findOneAndDelete(keyVal).session(session);
+
+        if (!user) {
+            throw {
+                status: 404,
+                message: `User account not found for ID:'${keyVal._id}'`,
+            }
+        }
+
+        // Step 3: Commit transaction
+        await session.commitTransaction();
+
+        // Step 4: Notify admin (after commit)
+        await Notify.admin({
+            title: 'Customer Document Delete',
+            message: `User with ID: ${user._id} deleted by admin`,
+            type: 'delete'
+        });
+
+        return success({ message: 'User account deleted successfully', data: user });
+
+    } catch (error) {
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
+
+        throw error;
+    } finally {
+        session.endSession();
+    }
 }
 
 export const RemoveAllUsers = async () => {
-    const users = await User.find();
 
-    if (users.length === 0) {
-        throw {
-            status: 404,
-            error: 'No user found to delete',
-            success: false,
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        // Step 1: Get all vendor userIds
+        const vendors = await Vendor.find({}, { userId: 1, _id: 0 }).session(session).lean();
+
+        const vendorUserIds = vendors.map(v => v.userId);
+
+        if (vendorUserIds.length === 0) {
+            throw {
+                status: 400,
+                message: "No vendors found. Deletion aborted."
+            }
         }
-    }
 
-    // In case want to delte vendor account also 
-    for (const user of users) {
-        await Vendor.findOneAndDelete({ userId: user._id });
-    }
+        // Step 2: Delete users who are NOT vendors
+        const result = await User.deleteMany({ _id: { $nin: vendorUserIds }, session });
 
-    const result = await User.deleteMany({});
-
-    if (result.deletedCount === 0) {
-        throw {
-            status: 404,
-            error: 'No user found to delete',
-            success: false,
+        if (result.deletedCount === 0) {
+            throw {
+                status: 404,
+                message: "No user found to delete"
+            }
         }
-    }
 
-    return {
-        status: 200,
-        message: `All users cleared successfully (${result.deletedCount} deleted)`,
-        success: true,
-    };
+        // Step 3: Commit transaction
+        await session.commitTransaction();
+
+        // Step 4: Notify admin (after commit)
+        await Notify.admin({
+            title: 'Customer Records Delete',
+            message: `Deleted: ${result.deletedCount}, NotDeleted: ${vendorUserIds.length}`,
+            type: 'delete'
+        });
+
+        return success({
+            message: "All common users cleared successfully",
+            data: {
+                deleted: result.deletedCount,
+                not_deleted: `${vendorUserIds.length} users have vendor role.`
+
+            }
+        });
+
+    } catch (error) {
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
+
+        throw error;
+    } finally {
+        session.endSession();
+    }
 }
 
-export const getUserDetails = async (userId) => {
+/*
+export const GetUserDetails = async (userId) => {
     const userObjectId = new mongoose.Types.ObjectId(userId);
 
     const user = await User.findById(userId).populate('orders').lean();
@@ -169,3 +232,4 @@ export const getUserDetails = async (userId) => {
     }
 
 } 
+*/

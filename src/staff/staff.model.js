@@ -11,12 +11,13 @@ const StaffSchema = new mongoose.Schema({
         lowercase: true,
         trim: true,
         unique: true,
-        required: [true, `'email' field must be required`],
+        required: [true, `'staffEmail' field must be required`],
     },
     staffPhone: {
         type: String,
         trim: true,
         unique: true,
+        required: [true, `'staffPhone' field must be required`]
     },
     password: {
         type: String,
@@ -31,6 +32,7 @@ const StaffSchema = new mongoose.Schema({
     permission: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Permission',
+        required: [true, `'permission' field must be provided`],
     },
     status: {
         type: String,

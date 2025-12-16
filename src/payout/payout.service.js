@@ -2,6 +2,7 @@ import axios from 'axios';
 import { Vendor } from '../vendor/vendor.model.js';
 import { Notify } from '../notification/notification.service.js';
 import { Transaction } from '../transaction/transaction.model.js';
+import { success } from '../../utils/helper.js';
 
 const Razor = {
     base: `https://api.razorpay.com/v1`,
@@ -114,16 +115,14 @@ export const CreateVendorPayout = async (vendorId, amount) => {
             type: 'payout'
         });
 
-        return {
-            status: 200,
+        return success({
             message: 'Payout initiated successfully',
-            payout: response.data,
-            success: true
-        };
+            data: { payout: response.data }
+        });
 
     } catch (error) {
         throw {
-            status: error.status || 500,
+            status: 502,
             message: `Payout failed: ${error.message}`
         }
     }
@@ -159,14 +158,14 @@ export const CheckPayoutStatus = async (payoutId, vendorId, amount) => {
             });
         }
 
-        return {
+        return success({
             message: 'Data fetched successfully',
-            status,
-            success: true
-        };
+            data: { status }
+        });
+
     } catch (error) {
         throw {
-            status: error.status || 500,
+            status: 502,
             message: `Failed to check payout status: ${error.message}`
         }
     }

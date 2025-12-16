@@ -10,7 +10,7 @@ const SetOtp = (otpKey, otp, ttlMs) => {
     setTimeout(() => otpStore.delete(otpKey), ttlMs);
 }
 
-export const VerifyOtp = (otpKey, otp) => {
+export const VerifyOtp_H = (otpKey, otp) => {
     console.log(`OtpKey: ${otpKey}, OTP: ${otp}`)
     const existing = otpStore.get(otpKey);
 
@@ -41,7 +41,7 @@ export const VerifyOtp = (otpKey, otp) => {
     return { valid: true };
 }
 
-export const GenerateOtp = (otpKey) => {
+export const GenerateOtp_H = (otpKey) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const ttlMs = 5*60*1000;
     const otpExpiresAt = new Date(Date.now() + ttlMs);
